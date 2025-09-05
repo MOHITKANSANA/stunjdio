@@ -23,23 +23,40 @@ import { useToast } from "@/hooks/use-toast";
 import type { ConfirmationResult, RecaptchaVerifier } from "firebase/auth";
 
 const formSchema = z.object({
-  email: z.string().email({ message: "Invalid email address." }).optional(),
-  password: z.string().min(6, { message: "Password must be at least 6 characters." }).optional(),
-  phone: z.string().regex(/^\+[1-9]\d{1,14}$/, { message: "Invalid phone number (e.g., +919876543210)." }).optional(),
-  otp: z.string().length(6, { message: "OTP must be 6 digits." }).optional(),
-}).refine(data => {
-    if ('phone' in data && data.phone) return true;
-    if ('email' in data && data.email && 'password' in data && data.password) return true;
-    return false;
-}, {
-    message: "Provide either phone or email/password"
+  email: z.string().optional(),
+  password: z.string().optional(),
+  phone: z.string().optional(),
+  otp: z.string().optional(),
+}).superRefine((data, ctx) => {
+    // This custom refinement logic will be replaced by dynamic schemas
 });
 
+
 type LoginFormValues = z.infer<typeof formSchema>;
+type FormType = "login" | "signup" | "phone";
+
+const getValidationSchema = (formType: FormType, showOtp: boolean) => {
+    if (formType === 'phone') {
+        if (showOtp) {
+            return z.object({
+                phone: z.string(), // Keep phone in schema for context
+                otp: z.string().length(6, { message: "OTP must be 6 digits." })
+            });
+        }
+        return z.object({
+            phone: z.string().regex(/^\+[1-9]\d{1,14}$/, { message: "Invalid phone number (e.g., +919876543210)." })
+        });
+    }
+    return z.object({
+        email: z.string().email({ message: "Invalid email address." }),
+        password: z.string().min(6, { message: "Password must be at least 6 characters." })
+    });
+};
+
 
 export function LoginForm() {
   const [isLoading, setIsLoading] = useState(false);
-  const [formType, setFormType] = useState<"login" | "signup" | "phone">("login");
+  const [formType, setFormType] = useState<FormType>("login");
   const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
   const [appVerifier, setAppVerifier] = useState<RecaptchaVerifier | null>(null);
   const [showOtpInput, setShowOtpInput] = useState(false);
@@ -49,7 +66,7 @@ export function LoginForm() {
   const { toast } = useToast();
 
   const form = useForm<LoginFormValues>({
-    resolver: zodResolver(formSchema),
+    resolver: zodResolver(getValidationSchema(formType, showOtpInput)),
     defaultValues: {
       email: "",
       password: "",
@@ -57,6 +74,15 @@ export function LoginForm() {
       otp: "",
     },
   });
+
+  useEffect(() => {
+      form.reset(); // Reset form state when type changes
+      // Update resolver when form type changes
+      const newResolver = zodResolver(getValidationSchema(formType, showOtpInput));
+      // @ts-ignore
+      form.resolver = newResolver;
+  }, [formType, showOtpInput, form]);
+
 
   useEffect(() => {
     if (formType === 'phone' && !appVerifier) {
