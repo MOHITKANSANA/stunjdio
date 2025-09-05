@@ -13,17 +13,10 @@ import {
 export async function generateAiTutorResponseAction(
   input: GenerateAiTutorResponseInput
 ): Promise<GenerateAiTutorResponseOutput> {
-  try {
-    const result = await generateAiTutorResponse(input);
-    return result;
-  } catch (error) {
-    console.error('Error in generateAiTutorResponseAction:', error);
-    // Return a structured error response that matches the expected output type
-    return {
-      answer: "An error occurred while generating the AI tutor response. Please try again.",
-      followUpQuestions: [],
-    };
-  }
+  // No try-catch block here to let errors propagate to the client component
+  // where they can be handled and displayed to the user.
+  const result = await generateAiTutorResponse(input);
+  return result;
 }
 
 export async function getAudioAction(text: string): Promise<GenerateAudioOutput> {

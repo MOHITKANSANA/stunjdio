@@ -14,9 +14,27 @@ import {
 import Link from 'next/link';
 import { useLanguage } from '@/hooks/use-language';
 import { Card, CardContent } from '@/components/ui/card';
+import { useEffect, useState } from 'react';
+
+const motivationalLines = [
+  "Success is not final, failure is not fatal: it is the courage to continue that counts.",
+  "Believe you can and you're halfway there.",
+  "The only way to do great work is to love what you do.",
+  "The future belongs to those who believe in the beauty of their dreams.",
+  "Don't watch the clock; do what it does. Keep going."
+];
 
 export default function DashboardPage() {
     const { t } = useLanguage();
+    const [currentLine, setCurrentLine] = useState(t('motivational_line'));
+
+    useEffect(() => {
+        const lineKey = motivationalLines[Math.floor(Math.random() * motivationalLines.length)];
+        // Note: For a real app, you'd want to add these to your locale files.
+        // For this demo, we will just display the English version.
+        setCurrentLine(lineKey);
+    }, []);
+
 
     const dashboardGridItems = [
       { label: t('student_portal'), icon: Briefcase, href: "/dashboard/profile" },
@@ -35,7 +53,7 @@ export default function DashboardPage() {
       <div className="overflow-hidden rounded-lg bg-gradient-to-r from-purple-600 to-indigo-700 p-4 text-center text-primary-foreground shadow-lg">
           <div className="relative h-6 w-full overflow-hidden">
             <p className="absolute whitespace-nowrap text-sm font-medium animate-marquee">
-              {t('motivational_line')}
+              {currentLine}
             </p>
           </div>
       </div>
