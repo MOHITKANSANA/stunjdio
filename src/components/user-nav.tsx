@@ -1,3 +1,4 @@
+
 "use client"
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -24,7 +25,7 @@ export function UserNav() {
   const getInitials = (name: string | null | undefined) => {
     if (!name) return "S";
     const names = name.split(' ');
-    if (names.length > 1) {
+    if (names.length > 1 && names[1]) {
       return names[0].charAt(0) + names[names.length - 1].charAt(0);
     }
     return name.charAt(0);
@@ -33,9 +34,9 @@ export function UserNav() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-          <Avatar className="h-8 w-8">
-            <AvatarImage src={user.photoURL || "https://picsum.photos/100"} alt={user.displayName || "student"} data-ai-hint="student" />
+        <Button variant="ghost" className="relative h-9 w-9 rounded-full">
+          <Avatar className="h-9 w-9">
+            <AvatarImage src={user.photoURL || undefined} alt={user.displayName || "student"} />
             <AvatarFallback>{getInitials(user.displayName)}</AvatarFallback>
           </Avatar>
         </Button>

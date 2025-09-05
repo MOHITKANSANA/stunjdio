@@ -1,20 +1,21 @@
+
 "use client";
 
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { onAuthStateChanged, User, signInWithEmailAndPassword, createUserWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, signOut, RecaptchaVerifier, signInWithPhoneNumber, ConfirmationResult } from 'firebase/auth';
+import { onAuthStateChanged, User, signInWithEmailAndPassword, createUserWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, signOut, RecaptchaVerifier, signInWithPhoneNumber, ConfirmationResult, UserCredential } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { useRouter } from 'next/navigation';
 
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  login: (email: string, password: string) => Promise<any>;
-  signup: (email: string, password: string) => Promise<any>;
-  googleLogin: () => Promise<any>;
-  logout: () => Promise<any>;
+  login: (email: string, password: string) => Promise<UserCredential>;
+  signup: (email: string, password: string) => Promise<UserCredential>;
+  googleLogin: () => Promise<UserCredential>;
+  logout: () => Promise<void>;
   setupRecaptcha: (elementId: string) => RecaptchaVerifier;
   sendOtp: (phoneNumber: string, appVerifier: RecaptchaVerifier) => Promise<ConfirmationResult>;
-  verifyOtp: (confirmationResult: ConfirmationResult, otp: string) => Promise<any>;
+  verifyOtp: (confirmationResult: ConfirmationResult, otp: string) => Promise<UserCredential>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -51,7 +52,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
   
   const setupRecaptcha = (elementId: string) => {
+    // Ensure this only runs on the client
     if (typeof window !== 'undefined') {
+      // @ts-ignore
+      if (window.recaptchaVerifier) {
+        // @ts-ignore
+        window.recaptchaVerifier.clear();
+      }
       // @ts-ignore
       window.recaptchaVerifier = new RecaptchaVerifier(auth, elementId, {
         'size': 'invisible',
@@ -62,8 +69,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       // @ts-ignore
       return window.recaptchaVerifier;
     }
-    // @ts-ignore
-    return window.recaptchaVerifier;
+    // This part should ideally not be reached in a browser environment.
+    // We return a dummy object to satisfy TypeScript, but it won't work server-side.
+    return {} as RecaptchaVerifier;
   };
 
   const sendOtp = (phoneNumber: string, appVerifier: RecaptchaVerifier) => {

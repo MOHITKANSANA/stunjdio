@@ -7,10 +7,12 @@ import {
   Book,
   BookOpenCheck,
   Briefcase,
+  CheckSquare,
   ClipboardCheck,
   FileText,
   Globe,
   GraduationCap,
+  Home,
   LayoutDashboard,
   LogOut,
   Newspaper,
@@ -22,41 +24,22 @@ import {
   Wallet,
 } from 'lucide-react';
 
-import {
-  Sidebar,
-  SidebarContent,
-  SidebarHeader,
-  SidebarInset,
-  SidebarMenu,
-  SidebarMenuItem,
-  SidebarMenuButton,
-  SidebarProvider,
-  SidebarTrigger,
-  SidebarFooter
-} from '@/components/ui/sidebar';
 import { usePathname } from 'next/navigation';
 import { UserNav } from '@/components/user-nav';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/use-auth';
 import { useRouter } from 'next/navigation';
+import { cn } from '@/lib/utils';
+import { Badge } from '@/components/ui/badge';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
-const navItems = [
-  { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-  { href: '/dashboard/courses', icon: Wallet, label: 'Paid Courses' },
-  { href: '/dashboard/tests', icon: FileText, label: 'Test Series' },
-  { href: '/dashboard/free-courses', icon: GraduationCap, label: 'Free Courses' },
-  { href: '/dashboard/papers', icon: Newspaper, label: 'Previous Papers' },
-  { href: '/dashboard/affairs', icon: Globe, label: 'Current Affairs' },
-  { href: '/dashboard/quiz', icon: Trophy, label: 'Quiz' },
-  { href: '/dashboard/syllabus', icon: Scroll, label: 'Syllabus' },
-  { href: '/dashboard/books', icon: Book, label: 'Our Books' },
-  { href: '/dashboard/alerts', icon: Briefcase, label: 'Job Alerts' },
-  { href: '/dashboard/profile', icon: User, label: 'Profile' },
-];
 
 const bottomNavItems = [
-  { href: '/dashboard/settings', icon: Settings, label: 'Settings' },
-  { href: '/admin', icon: Shield, label: 'Admin' },
+  { href: '/dashboard', icon: Home, label: 'Home' },
+  { href: '/dashboard/courses', icon: Book, label: 'Courses' },
+  { href: '/dashboard/tests', icon: CheckSquare, label: 'Tests' },
+  { href: '/dashboard/papers', icon: FileText, label: 'Papers' },
+  { href: '/dashboard/profile', icon: User, label: 'Profile' },
 ];
 
 export default function DashboardLayout({
@@ -69,7 +52,7 @@ export default function DashboardLayout({
   const router = useRouter();
 
   if (loading) {
-    return <div>Loading...</div>; // Or a proper loading spinner
+    return <div className="flex h-screen w-full items-center justify-center">Loading...</div>;
   }
 
   if (!user) {
@@ -78,85 +61,40 @@ export default function DashboardLayout({
   }
 
   return (
-    <SidebarProvider>
-      <div className="flex h-screen w-full">
-        <Sidebar collapsible="icon">
-          <SidebarHeader>
-             <div className="flex items-center gap-2 overflow-hidden px-2">
-                <BookOpenCheck className="size-6 shrink-0 text-primary" />
-                <span className="text-lg font-semibold font-headline">Go Swami</span>
-             </div>
-          </SidebarHeader>
-          <SidebarContent>
-            <SidebarMenu>
-              {navItems.map((item) => (
-                <SidebarMenuItem key={item.href}>
-                  <Link href={item.href}>
-                    <SidebarMenuButton isActive={pathname.startsWith(item.href)} tooltip={item.label}>
-                      <item.icon />
-                      <span>{item.label}</span>
-                    </SidebarMenuButton>
-                  </Link>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarContent>
-          <SidebarFooter className='mt-auto'>
-             <SidebarMenu>
-                {bottomNavItems.map((item) => (
-                    <SidebarMenuItem key={item.href}>
-                    <Link href={item.href}>
-                        <SidebarMenuButton isActive={pathname === item.href} tooltip={item.label}>
-                        <item.icon />
-                        <span>{item.label}</span>
-                        </SidebarMenuButton>
-                    </Link>
-                    </SidebarMenuItem>
-                ))}
-                <SidebarMenuItem>
-                    <SidebarMenuButton tooltip="Log Out" onClick={logout}>
-                      <LogOut />
-                      <span>Log Out</span>
-                    </SidebarMenuButton>
-                </SidebarMenuItem>
-             </SidebarMenu>
-          </SidebarFooter>
-        </Sidebar>
-        <SidebarInset>
-          <header className="flex h-14 items-center gap-4 border-b bg-card px-6">
-            <SidebarTrigger className="md:hidden" />
-            <div className="flex-1">
-               {/* Header content like a search bar can go here */}
+      <div className="flex h-screen w-full flex-col bg-background">
+          <header className="flex h-16 shrink-0 items-center justify-between gap-4 border-b border-border/50 px-4 md:px-6">
+            <div className='flex items-center gap-2'>
+                <Shield className="h-7 w-7 text-primary" />
+                <span className="text-lg font-semibold font-headline">गो स्वामी डिफेस एकेडमी</span>
             </div>
-            <Button variant="ghost" size="icon">
-                <Bell className="h-5 w-5"/>
-                <span className="sr-only">Notifications</span>
-            </Button>
-            <UserNav />
+            <div className="flex items-center gap-2">
+                <Button variant="ghost" size="icon">
+                    <Bell className="h-5 w-5"/>
+                    <span className="sr-only">Notifications</span>
+                </Button>
+                <UserNav />
+            </div>
           </header>
-          <main className="flex-1 overflow-y-auto p-4 md:p-8">
-            <AuthProvider>{children}</AuthProvider>
+          <main className="flex-1 overflow-y-auto p-4 md:p-6">
+            {children}
           </main>
-        </SidebarInset>
+          <footer className="sticky bottom-0 z-10 border-t border-border/50 bg-background/95 backdrop-blur-sm md:hidden">
+              <nav className="flex items-center justify-around p-2">
+                {bottomNavItems.map((item) => (
+                   <Link 
+                     key={item.label}
+                     href={item.href}
+                     className={cn(
+                       "flex flex-col items-center gap-1 rounded-md p-2 text-xs font-medium transition-colors hover:bg-accent hover:text-accent-foreground",
+                       pathname === item.href ? "text-primary" : "text-muted-foreground"
+                     )}
+                   >
+                      <item.icon className="h-6 w-6" />
+                      <span>{item.label}</span>
+                   </Link>
+                ))}
+              </nav>
+          </footer>
       </div>
-    </SidebarProvider>
   );
-}
-
-// Create a client-side AuthProvider
-function AuthProvider({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useAuth();
-  const router = useRouter();
-
-  React.useEffect(() => {
-    if (!loading && !user) {
-      router.push('/');
-    }
-  }, [user, loading, router]);
-
-  if (loading || !user) {
-    return <div>Loading...</div>; // Or a proper loading spinner
-  }
-
-  return <>{children}</>;
 }
