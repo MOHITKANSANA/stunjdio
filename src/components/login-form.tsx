@@ -183,6 +183,7 @@ export function LoginForm() {
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
           {renderFormContent()}
         </form>
+        <div id="recaptcha-container" className="mt-4"></div>
       </CardContent>
       <CardFooter className="flex flex-col gap-4">
         {formType !== 'phone' && (
@@ -225,7 +226,6 @@ export function LoginForm() {
           ) : null}
         </div>
       </CardFooter>
-      <div id="recaptcha-container"></div>
     </Card>
   );
 }
