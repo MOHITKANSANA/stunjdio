@@ -9,7 +9,6 @@
 
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
-import { Part } from 'genkit';
 
 const GenerateAiTutorResponseInputSchema = z.object({
   question: z.string().describe('The question asked by the user.'),
@@ -36,7 +35,7 @@ const prompt = ai.definePrompt({
   name: 'generateAiTutorResponsePrompt',
   input: { schema: GenerateAiTutorResponseInputSchema },
   output: { schema: GenerateAiTutorResponseOutputSchema },
-  prompt: `You are an expert AI Tutor. Your role is to provide a clear, concise, and helpful answer to the user's question. After answering, you must also provide exactly three relevant follow-up questions to help the user test their understanding and explore the topic further.
+  prompt: `You are an expert AI Tutor. Your role is to provide a clear, concise, and helpful answer to the user's question. If the user only provides an image, describe the image or answer the implied question. If there is text and an image, use both to provide the best answer. After answering, you must also provide exactly three relevant follow-up questions to help the user test their understanding and explore the topic further.
 
 Generate the response in the following language: {{{language}}}.
 
@@ -55,21 +54,6 @@ const generateAiTutorResponseFlow = ai.defineFlow(
     outputSchema: GenerateAiTutorResponseOutputSchema,
   },
   async (input) => {
-    
-    const requestParts: Part[] = [
-        {
-            text: `You are an expert AI Tutor. Your role is to provide a clear, concise, and helpful answer to the user's question. After answering, you must also provide exactly three relevant follow-up questions to help the user test their understanding and explore the topic further.
-
-            Generate the response in the following language: ${input.language}.
-
-            User's Question: ${input.question}`
-        }
-    ];
-
-    if (input.imageDataUri) {
-        requestParts.push({ media: { url: input.imageDataUri } });
-    }
-
     const { output } = await prompt(input);
     return output!;
   }

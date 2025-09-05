@@ -15,9 +15,12 @@ import { Loader2, Mic, Paperclip, Send, Sparkles, Volume2, X } from "lucide-reac
 import Image from "next/image";
 
 const tutorSchema = z.object({
-  question: z.string().min(1, { message: "Please ask a question." }),
+  question: z.string(),
   language: z.string().default("English"),
   imageFile: z.instanceof(File).optional(),
+}).refine(data => !!data.question || !!data.imageFile, {
+  message: "Please ask a question or upload an image.",
+  path: ["question"], 
 });
 
 type TutorFormValues = z.infer<typeof tutorSchema>;
@@ -43,6 +46,7 @@ export default function AiTutorPage() {
       const file = e.target.files[0];
       form.setValue("imageFile", file);
       setPreviewImage(URL.createObjectURL(file));
+      form.clearErrors("question"); // Clear error when image is added
     }
   };
 
@@ -75,7 +79,7 @@ export default function AiTutorPage() {
     
     try {
       const result = await generateAiTutorResponseAction({
-        question: data.question,
+        question: data.question || "Describe the attached image.", // Provide default question if only image is present
         language: data.language,
         imageDataUri: imageDataUri
       });
@@ -135,7 +139,7 @@ export default function AiTutorPage() {
               <Label htmlFor="question">Your Question</Label>
               <Textarea
                 id="question"
-                placeholder="e.g., Explain the theory of relativity..."
+                placeholder="e.g., Explain the theory of relativity, or upload an image and ask about it."
                 className="min-h-32"
                 {...form.register("question")}
               />
@@ -218,7 +222,7 @@ export default function AiTutorPage() {
              </div>
           </CardHeader>
           <CardContent className="space-y-6">
-            <div className="prose dark:prose-invert max-w-none text-foreground">
+            <div className="prose dark:prose-invert max-w-none text-foreground whitespace-pre-wrap">
               {response.answer}
             </div>
 
