@@ -1,5 +1,5 @@
 import type { LucideIcon } from 'lucide-react';
-import { Book, BrainCircuit, Calculator, FlaskConical, Globe } from 'lucide-react';
+import { Book, BrainCircuit, Calculator, FlaskConical, Globe, Wallet, FileText, GraduationCap, Newspaper, Trophy, Scroll, Briefcase } from 'lucide-react';
 
 export interface Course {
   title: string;
@@ -48,4 +48,22 @@ export const testHistory = [
 
 export const certificates = [
   { name: "Certificate of Completion: English Grammar", date: "2023-10-11" },
+];
+
+export interface DashboardGridItem {
+  label: string;
+  icon: LucideIcon;
+  href: string;
+}
+
+export const dashboardGridItems: DashboardGridItem[] = [
+  { label: "Paid Course", icon: Wallet, href: "/dashboard/courses" },
+  { label: "Test Series", icon: FileText, href: "/dashboard/tests" },
+  { label: "Free Courses", icon: GraduationCap, href: "/dashboard/courses" },
+  { label: "Previous Papers", icon: Newspaper, href: "/dashboard/tests" },
+  { label: "Current Affairs", icon: Globe, href: "/dashboard/courses" },
+  { label: "Quiz", icon: Trophy, href: "/dashboard/tests" },
+  { label: "Syllabus", icon: Scroll, href: "/dashboard/courses" },
+  { label: "Our Books", icon: Book, href: "/dashboard/courses" },
+  { label: "Job Alerts", icon: Briefcase, href: "/dashboard/courses" },
 ];

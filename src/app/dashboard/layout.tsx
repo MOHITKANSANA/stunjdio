@@ -2,16 +2,23 @@
 "use client"
 import Link from 'next/link';
 import {
+  Bell,
   Book,
   BookOpenCheck,
-  BrainCircuit,
+  Briefcase,
   ClipboardCheck,
   FileText,
+  Globe,
+  GraduationCap,
   LayoutDashboard,
   LogOut,
+  Newspaper,
+  Scroll,
   Settings,
   Shield,
+  Trophy,
   User,
+  Wallet,
 } from 'lucide-react';
 
 import {
@@ -28,12 +35,19 @@ import {
 } from '@/components/ui/sidebar';
 import { usePathname } from 'next/navigation';
 import { UserNav } from '@/components/user-nav';
+import { Button } from '@/components/ui/button';
 
 const navItems = [
   { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-  { href: '/dashboard/assessment', icon: ClipboardCheck, label: 'Assessment' },
-  { href: '/dashboard/courses', icon: Book, label: 'Courses' },
-  { href: '/dashboard/tests', icon: FileText, label: 'Practice Tests' },
+  { href: '/dashboard/courses', icon: Wallet, label: 'Paid Courses' },
+  { href: '/dashboard/tests', icon: FileText, label: 'Test Series' },
+  { href: '/dashboard/free-courses', icon: GraduationCap, label: 'Free Courses' },
+  { href: '/dashboard/papers', icon: Newspaper, label: 'Previous Papers' },
+  { href: '/dashboard/affairs', icon: Globe, label: 'Current Affairs' },
+  { href: '/dashboard/quiz', icon: Trophy, label: 'Quiz' },
+  { href: '/dashboard/syllabus', icon: Scroll, label: 'Syllabus' },
+  { href: '/dashboard/books', icon: Book, label: 'Our Books' },
+  { href: '/dashboard/alerts', icon: Briefcase, label: 'Job Alerts' },
   { href: '/dashboard/profile', icon: User, label: 'Profile' },
 ];
 
@@ -64,7 +78,7 @@ export default function DashboardLayout({
               {navItems.map((item) => (
                 <SidebarMenuItem key={item.href}>
                   <Link href={item.href}>
-                    <SidebarMenuButton isActive={pathname === item.href} tooltip={item.label}>
+                    <SidebarMenuButton isActive={pathname.startsWith(item.href)} tooltip={item.label}>
                       <item.icon />
                       <span>{item.label}</span>
                     </SidebarMenuButton>
@@ -97,11 +111,15 @@ export default function DashboardLayout({
           </SidebarFooter>
         </Sidebar>
         <SidebarInset>
-          <header className="flex h-14 items-center gap-4 border-b bg-muted/40 px-6">
+          <header className="flex h-14 items-center gap-4 border-b bg-card px-6">
             <SidebarTrigger className="md:hidden" />
             <div className="flex-1">
-              {/* Header content like a search bar can go here */}
+               {/* Header content like a search bar can go here */}
             </div>
+            <Button variant="ghost" size="icon">
+                <Bell className="h-5 w-5"/>
+                <span className="sr-only">Notifications</span>
+            </Button>
             <UserNav />
           </header>
           <main className="flex-1 overflow-y-auto p-4 md:p-8">
