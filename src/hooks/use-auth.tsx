@@ -1,7 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { onAuthStateChanged, User, signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, signOut } from 'firebase/auth';
+import { onAuthStateChanged, User, signInWithEmailAndPassword, createUserWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, signOut, RecaptchaVerifier, signInWithPhoneNumber, ConfirmationResult } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { useRouter } from 'next/navigation';
 
@@ -9,8 +9,12 @@ interface AuthContextType {
   user: User | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<any>;
+  signup: (email: string, password: string) => Promise<any>;
   googleLogin: () => Promise<any>;
   logout: () => Promise<any>;
+  setupRecaptcha: (elementId: string) => RecaptchaVerifier;
+  sendOtp: (phoneNumber: string, appVerifier: RecaptchaVerifier) => Promise<ConfirmationResult>;
+  verifyOtp: (confirmationResult: ConfirmationResult, otp: string) => Promise<any>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -32,6 +36,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return signInWithEmailAndPassword(auth, email, password);
   };
 
+  const signup = (email: string, password: string) => {
+    return createUserWithEmailAndPassword(auth, email, password);
+  };
+
   const googleLogin = () => {
     const provider = new GoogleAuthProvider();
     return signInWithPopup(auth, provider);
@@ -41,8 +49,33 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     await signOut(auth);
     router.push('/');
   };
+  
+  const setupRecaptcha = (elementId: string) => {
+    if (typeof window !== 'undefined') {
+      // @ts-ignore
+      window.recaptchaVerifier = new RecaptchaVerifier(auth, elementId, {
+        'size': 'invisible',
+        'callback': (response: any) => {
+          // reCAPTCHA solved, allow signInWithPhoneNumber.
+        }
+      });
+      // @ts-ignore
+      return window.recaptchaVerifier;
+    }
+    // @ts-ignore
+    return window.recaptchaVerifier;
+  };
 
-  const value = { user, loading, login, googleLogin, logout };
+  const sendOtp = (phoneNumber: string, appVerifier: RecaptchaVerifier) => {
+    return signInWithPhoneNumber(auth, phoneNumber, appVerifier);
+  };
+
+  const verifyOtp = (confirmationResult: ConfirmationResult, otp: string) => {
+    return confirmationResult.confirm(otp);
+  };
+
+
+  const value = { user, loading, login, signup, googleLogin, logout, setupRecaptcha, sendOtp, verifyOtp };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
