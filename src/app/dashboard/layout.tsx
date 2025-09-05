@@ -62,7 +62,7 @@ const SidebarMenuItemWithHandler = ({ href, icon: Icon, label, closeSidebar }: {
 
     return (
         <SidebarMenuItem>
-            <Link href={href} passHref legacyBehavior>
+            <Link href={href}>
                 <SidebarMenuButton isActive={isActive} onClick={closeSidebar}>
                     <Icon />
                     <span>{t(label)}</span>
@@ -115,7 +115,7 @@ const AppSidebar = () => {
                         />
                     ))}
                     <SidebarMenuItem>
-                        <Link href="/admin" passHref legacyBehavior>
+                        <Link href="/admin">
                            <SidebarMenuButton onClick={() => handleNavigation('/admin')}>
                                 <UserCog />
                                 <span>Admin</span>
@@ -126,7 +126,7 @@ const AppSidebar = () => {
                 <SidebarFooter>
                     <SidebarMenu>
                         <SidebarMenuItem>
-                            <Link href="/dashboard/settings" passHref legacyBehavior>
+                            <Link href="/dashboard/settings">
                                 <SidebarMenuButton onClick={() => handleNavigation('/dashboard/settings')}>
                                     <Settings />
                                     <span>{t('settings')}</span>
