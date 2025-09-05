@@ -5,23 +5,11 @@ import React from 'react';
 import {
   Bell,
   Book,
-  BookOpenCheck,
-  Briefcase,
-  CheckSquare,
-  ClipboardCheck,
-  FileText,
-  Globe,
-  GraduationCap,
   Home,
-  LayoutDashboard,
-  LogOut,
-  Newspaper,
-  Scroll,
-  Settings,
-  Shield,
-  Trophy,
+  CheckSquare,
+  FileText,
   User,
-  Wallet,
+  Shield,
 } from 'lucide-react';
 
 import { usePathname } from 'next/navigation';
@@ -30,17 +18,8 @@ import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/use-auth';
 import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
-import { Badge } from '@/components/ui/badge';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { useLanguage } from '@/hooks/use-language';
 
-
-const bottomNavItems = [
-  { href: '/dashboard', icon: Home, label: 'Home' },
-  { href: '/dashboard/courses', icon: Book, label: 'Courses' },
-  { href: '/dashboard/tests', icon: CheckSquare, label: 'Tests' },
-  { href: '/dashboard/papers', icon: FileText, label: 'Papers' },
-  { href: '/dashboard/profile', icon: User, label: 'Profile' },
-];
 
 export default function DashboardLayout({
   children,
@@ -48,9 +27,18 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
-  const { user, loading, logout } = useAuth();
+  const { user, loading } = useAuth();
   const router = useRouter();
+  const { t } = useLanguage();
 
+  const bottomNavItems = [
+    { href: '/dashboard', icon: Home, label: t('home') },
+    { href: '/dashboard/courses', icon: Book, label: t('courses') },
+    { href: '/dashboard/tests', icon: CheckSquare, label: t('tests') },
+    { href: '/dashboard/papers', icon: FileText, label: t('papers') },
+    { href: '/dashboard/profile', icon: User, label: t('profile') },
+  ];
+  
   if (loading) {
     return <div className="flex h-screen w-full items-center justify-center">Loading...</div>;
   }

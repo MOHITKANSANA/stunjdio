@@ -14,9 +14,11 @@ import {
 } from "@/components/ui/dropdown-menu"
 import Link from "next/link"
 import { useAuth } from "@/hooks/use-auth"
+import { useLanguage } from "@/hooks/use-language"
 
 export function UserNav() {
   const { user, logout } = useAuth();
+  const { t } = useLanguage();
 
   if (!user) {
     return null;
@@ -54,18 +56,18 @@ export function UserNav() {
         <DropdownMenuGroup>
           <Link href="/dashboard/profile">
             <DropdownMenuItem>
-              Profile
+              {t('profile')}
             </DropdownMenuItem>
           </Link>
           <Link href="/dashboard/settings">
             <DropdownMenuItem>
-              Settings
+              {t('settings')}
             </DropdownMenuItem>
           </Link>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={logout}>
-          Log out
+          {t('log_out')}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

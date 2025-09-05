@@ -1,3 +1,4 @@
+
 import type { LucideIcon } from 'lucide-react';
 import { Book, BrainCircuit, Calculator, FlaskConical, Globe, Wallet, FileText, GraduationCap, Newspaper, Trophy, Scroll, Briefcase } from 'lucide-react';
 
@@ -47,7 +48,7 @@ export const testHistory = [
 ];
 
 export const certificates = [
-  { name: "Certificate of Completion: English Grammar", date: "2023-10-11" },
+  { name: "Certificate of Completion: English Grammar", course: "English Grammar", date: "2023-10-11" },
 ];
 
 export interface DashboardGridItem {

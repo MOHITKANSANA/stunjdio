@@ -12,30 +12,30 @@ import {
   Star,
 } from 'lucide-react';
 import Link from 'next/link';
-import { useAuth } from '@/hooks/use-auth';
+import { useLanguage } from '@/hooks/use-language';
 import { Card, CardContent } from '@/components/ui/card';
 
-const dashboardGridItems = [
-    { label: "स्टूडेंट पोर्टल", icon: Briefcase, href: "/dashboard/profile" },
-    { label: "हमारे कोर्स", icon: BookCheck, href: "/dashboard/courses" },
-    { label: "लाइव कक्षाएं", icon: Radio, href: "/dashboard/live" },
-    { label: "AI टेस्ट", icon: CheckSquare, href: "/dashboard/assessment" },
-    { label: "AI ट्यूटर", icon: GraduationCap, href: "/dashboard/tutor" },
-    { label: "डेली पांसेस", icon: Library, href: "/dashboard/passes" },
-    { label: "क्विज़ गेम", icon: Gamepad2, href: "/dashboard/quiz" },
-    { label: "खेल-खेल में सीखें", icon: Star, href: "/dashboard/learn" },
-    { label: "पठन-अभ्यास", icon: Lightbulb, href: "/dashboard/practice" },
-  ];
-  
-
 export default function DashboardPage() {
-    const { user } = useAuth();
+    const { t } = useLanguage();
+
+    const dashboardGridItems = [
+      { label: t('student_portal'), icon: Briefcase, href: "/dashboard/profile" },
+      { label: t('our_courses'), icon: BookCheck, href: "/dashboard/courses" },
+      { label: t('live_classes'), icon: Radio, href: "/dashboard/live" },
+      { label: t('ai_tests'), icon: CheckSquare, href: "/dashboard/assessment" },
+      { label: t('ai_tutor'), icon: GraduationCap, href: "/dashboard/tutor" },
+      { label: t('daily_passes'), icon: Library, href: "/dashboard/passes" },
+      { label: t('quiz_game'), icon: Gamepad2, href: "/dashboard/quiz" },
+      { label: t('learn_with_fun'), icon: Star, href: "/dashboard/learn" },
+      { label: t('reading_practice'), icon: Lightbulb, href: "/dashboard/practice" },
+    ];
+    
   return (
     <div className="space-y-6">
       <div className="overflow-hidden rounded-lg bg-gradient-to-r from-purple-600 to-indigo-700 p-4 text-center text-primary-foreground shadow-lg">
           <div className="relative h-6 w-full overflow-hidden">
             <p className="absolute whitespace-nowrap text-sm font-medium animate-marquee">
-            आपकी उपलब्धि की सफलता को... आपकी उपलब्धि की सफलता को... आपकी उपलब्धि की सफलता को...
+              {t('motivational_line')}
             </p>
           </div>
       </div>
