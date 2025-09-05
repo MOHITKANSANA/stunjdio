@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -64,26 +65,32 @@ export function LoginForm() {
     }
   }, [formType, appVerifier, setupRecaptcha]);
 
+  const handleSuccess = (type: string) => {
+    toast({ title: `${type} successful!` });
+    router.push("/dashboard");
+  }
+
   const onSubmit = async (data: LoginFormValues) => {
     setIsLoading(true);
     try {
       if (formType === 'phone') {
-        if (showOtpInput && confirmationResult) {
-          await verifyOtp(confirmationResult, data.otp!);
-          toast({ title: "Phone login successful!" });
-          router.push("/dashboard");
-        } else {
-            if(appVerifier) {
-                const result = await sendOtp(data.phone!, appVerifier);
-                setConfirmationResult(result);
-                setShowOtpInput(true);
-                toast({ title: "OTP Sent", description: "Please check your phone for the OTP." });
-            }
+        if (showOtpInput && confirmationResult && data.otp) {
+          await verifyOtp(confirmationResult, data.otp);
+          handleSuccess("Phone login");
+        } else if (data.phone && appVerifier) {
+          const result = await sendOtp(data.phone, appVerifier);
+          setConfirmationResult(result);
+          setShowOtpInput(true);
+          toast({ title: "OTP Sent", description: "Please check your phone for the OTP." });
         }
-      } else {
-        const authFunction = formType === 'login' ? login : signup;
-        await authFunction(data.email!, data.password!);
-        router.push("/dashboard");
+      } else if (data.email && data.password) {
+        if (formType === 'login') {
+          await login(data.email, data.password);
+          handleSuccess("Login");
+        } else {
+          await signup(data.email, data.password);
+          handleSuccess("Signup");
+        }
       }
     } catch (error: any) {
       toast({
@@ -100,7 +107,7 @@ export function LoginForm() {
     setIsLoading(true);
     try {
       await googleLogin();
-      router.push("/dashboard");
+      handleSuccess("Google login");
     } catch (error: any) {
       toast({
         title: "Google Login Failed",
