@@ -9,6 +9,7 @@ import {
   Library,
   Lightbulb,
   Radio,
+  ShieldQuestion,
   Star,
 } from 'lucide-react';
 import Link from 'next/link';
@@ -40,7 +41,7 @@ export default function DashboardPage() {
       { label: t('student_portal'), icon: Briefcase, href: "/dashboard/profile" },
       { label: t('our_courses'), icon: BookCheck, href: "/dashboard/courses" },
       { label: t('live_classes'), icon: Radio, href: "/dashboard/live" },
-      { label: t('ai_tests'), icon: CheckSquare, href: "/dashboard/assessment" },
+      { label: t('ai_tests'), icon: ShieldQuestion, href: "/dashboard/ai-test" },
       { label: t('ai_tutor'), icon: GraduationCap, href: "/dashboard/tutor" },
       { label: t('daily_passes'), icon: Library, href: "/dashboard/passes" },
       { label: t('quiz_game'), icon: Gamepad2, href: "/dashboard/quiz" },
