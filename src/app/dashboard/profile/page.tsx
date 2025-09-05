@@ -5,7 +5,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { userCourses, testHistory, certificates } from "@/lib/data";
-import { Award, BookOpen, FileText } from "lucide-react";
+import { Award, BookOpen, FileText, Pencil } from "lucide-react";
+import Link from "next/link";
 
 export default function ProfilePage() {
   return (
@@ -15,10 +16,16 @@ export default function ProfilePage() {
           <AvatarImage src="https://picsum.photos/100" data-ai-hint="student" />
           <AvatarFallback>SC</AvatarFallback>
         </Avatar>
-        <div>
+        <div className="flex-grow">
           <h1 className="text-3xl md:text-4xl font-bold font-headline">Student Name</h1>
           <p className="text-muted-foreground">student@example.com</p>
         </div>
+        <Button asChild>
+          <Link href="/dashboard/complete-profile">
+            <Pencil className="mr-2 h-4 w-4" />
+            Edit Profile
+          </Link>
+        </Button>
       </div>
 
       <Tabs defaultValue="courses" className="w-full">

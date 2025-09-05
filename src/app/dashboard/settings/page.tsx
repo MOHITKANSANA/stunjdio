@@ -44,10 +44,6 @@ export default function SettingsPage() {
               </SelectContent>
             </Select>
           </div>
-          
-          <div className="flex justify-end">
-            <Button>Save Preferences</Button>
-          </div>
         </CardContent>
       </Card>
     </div>
