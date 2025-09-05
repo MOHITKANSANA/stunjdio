@@ -36,6 +36,8 @@ import {
 import { usePathname } from 'next/navigation';
 import { UserNav } from '@/components/user-nav';
 import { Button } from '@/components/ui/button';
+import { useAuth } from '@/hooks/use-auth';
+import { useRouter } from 'next/navigation';
 
 const navItems = [
   { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
@@ -62,6 +64,17 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const { user, loading, logout } = useAuth();
+  const router = useRouter();
+
+  if (loading) {
+    return <div>Loading...</div>; // Or a proper loading spinner
+  }
+
+  if (!user) {
+    router.push('/');
+    return null;
+  }
 
   return (
     <SidebarProvider>
@@ -100,12 +113,10 @@ export default function DashboardLayout({
                     </SidebarMenuItem>
                 ))}
                 <SidebarMenuItem>
-                  <Link href="/">
-                    <SidebarMenuButton tooltip="Log Out">
+                    <SidebarMenuButton tooltip="Log Out" onClick={logout}>
                       <LogOut />
                       <span>Log Out</span>
                     </SidebarMenuButton>
-                  </Link>
                 </SidebarMenuItem>
              </SidebarMenu>
           </SidebarFooter>
@@ -123,10 +134,28 @@ export default function DashboardLayout({
             <UserNav />
           </header>
           <main className="flex-1 overflow-y-auto p-4 md:p-8">
-            {children}
+            <AuthProvider>{children}</AuthProvider>
           </main>
         </SidebarInset>
       </div>
     </SidebarProvider>
   );
+}
+
+// Create a client-side AuthProvider
+function AuthProvider({ children }: { children: React.ReactNode }) {
+  const { user, loading } = useAuth();
+  const router = useRouter();
+
+  React.useEffect(() => {
+    if (!loading && !user) {
+      router.push('/');
+    }
+  }, [user, loading, router]);
+
+  if (loading || !user) {
+    return <div>Loading...</div>; // Or a proper loading spinner
+  }
+
+  return <>{children}</>;
 }

@@ -12,24 +12,40 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import Link from "next/link"
+import { useAuth } from "@/hooks/use-auth"
 
 export function UserNav() {
+  const { user, logout } = useAuth();
+
+  if (!user) {
+    return null;
+  }
+
+  const getInitials = (name: string | null | undefined) => {
+    if (!name) return "S";
+    const names = name.split(' ');
+    if (names.length > 1) {
+      return names[0].charAt(0) + names[names.length - 1].charAt(0);
+    }
+    return name.charAt(0);
+  }
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="relative h-8 w-8 rounded-full">
           <Avatar className="h-8 w-8">
-            <AvatarImage src="https://picsum.photos/100" alt="@student" data-ai-hint="student" />
-            <AvatarFallback>SC</AvatarFallback>
+            <AvatarImage src={user.photoURL || "https://picsum.photos/100"} alt={user.displayName || "student"} data-ai-hint="student" />
+            <AvatarFallback>{getInitials(user.displayName)}</AvatarFallback>
           </Avatar>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-56" align="end" forceMount>
         <DropdownMenuLabel className="font-normal">
           <div className="flex flex-col space-y-1">
-            <p className="text-sm font-medium leading-none">Student</p>
+            <p className="text-sm font-medium leading-none">{user.displayName || "Student"}</p>
             <p className="text-xs leading-none text-muted-foreground">
-              student@example.com
+              {user.email}
             </p>
           </div>
         </DropdownMenuLabel>
@@ -47,11 +63,9 @@ export function UserNav() {
           </Link>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
-        <Link href="/">
-          <DropdownMenuItem>
-            Log out
-          </DropdownMenuItem>
-        </Link>
+        <DropdownMenuItem onClick={logout}>
+          Log out
+        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   )
