@@ -5,8 +5,16 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import en from '@/locales/en.json';
 import hi from '@/locales/hi.json';
 import kn from '@/locales/kn.json';
+import ml from '@/locales/ml.json';
+import ta from '@/locales/ta.json';
+import te from '@/locales/te.json';
+import bn from '@/locales/bn.json';
+import gu from '@/locales/gu.json';
+import mr from '@/locales/mr.json';
+import pa from '@/locales/pa.json';
+import or from '@/locales/or.json';
 
-const translations: Record<string, Record<string, string>> = { en, hi, kn };
+const translations: Record<string, Record<string, string>> = { en, hi, kn, ml, ta, te, bn, gu, mr, pa, or };
 
 interface LanguageContextType {
   language: string;

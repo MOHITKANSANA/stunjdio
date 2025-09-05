@@ -14,6 +14,14 @@ export default function SettingsPage() {
     { value: "en", label: "English" },
     { value: "hi", label: "Hindi" },
     { value: "kn", label: "Kannada" },
+    { value: "ml", label: "Malayalam" },
+    { value: "ta", label: "Tamil" },
+    { value: "te", label: "Telugu" },
+    { value: "bn", label: "Bengali" },
+    { value: "gu", label: "Gujarati" },
+    { value: "mr", label: "Marathi" },
+    { value: "pa", label: "Punjabi" },
+    { value: "or", label: "Odia" },
   ];
 
   return (
