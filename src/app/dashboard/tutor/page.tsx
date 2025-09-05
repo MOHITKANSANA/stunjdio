@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useRef, ChangeEvent, useEffect } from "react";
@@ -254,7 +255,7 @@ export default function AiTutorPage() {
             {response.followUpQuestions && response.followUpQuestions.length > 0 && (
                 <div>
                     <h3 className="font-semibold mb-3">Follow-up Questions:</h3>
-                    <div className="flex flex-col sm:flex-row gap-2 flex-wrap">
+                    <div className="flex flex-wrap gap-2">
                         {response.followUpQuestions.map((q, index) => (
                             <Button key={index} variant="outline" size="sm" className="h-auto" onClick={() => askFollowUp(q)}>
                                 <span className="text-left py-1">{q}</span>

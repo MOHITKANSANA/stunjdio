@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -35,7 +36,7 @@ import {
 } from '@/components/ui/select';
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Loader2, Sparkles, FileText, AlertTriangle, Award, Download, CheckCircle, XCircle } from 'lucide-react';
+import { Loader2, Sparkles, FileText, AlertTriangle, Award, Download } from 'lucide-react';
 import { useLanguage } from '@/hooks/use-language';
 import { useAuth } from '@/hooks/use-auth';
 import Certificate from '@/components/certificate';
@@ -278,9 +279,21 @@ export default function AiTestPage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Subject</FormLabel>
-                    <FormControl>
-                      <Input placeholder="e.g., Indian History, Algebra" {...field} />
-                    </FormControl>
+                     <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select a subject" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="Maths">Maths</SelectItem>
+                          <SelectItem value="Science">Science</SelectItem>
+                          <SelectItem value="GK">General Knowledge (GK)</SelectItem>
+                          <SelectItem value="English">English</SelectItem>
+                          <SelectItem value="Reasoning">Reasoning</SelectItem>
+                          <SelectItem value="Indian History">Indian History</SelectItem>
+                        </SelectContent>
+                      </Select>
                     <FormMessage />
                   </FormItem>
                 )}
