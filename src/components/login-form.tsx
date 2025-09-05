@@ -41,6 +41,7 @@ export function LoginForm() {
   const [formType, setFormType] = useState<"login" | "signup" | "phone">("login");
   const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
   const [appVerifier, setAppVerifier] = useState<RecaptchaVerifier | null>(null);
+  const [showOtpInput, setShowOtpInput] = useState(false);
 
   const { login, signup, googleLogin, sendOtp, verifyOtp, setupRecaptcha } = useAuth();
   const router = useRouter();
@@ -67,7 +68,7 @@ export function LoginForm() {
     setIsLoading(true);
     try {
       if (formType === 'phone') {
-        if (confirmationResult) {
+        if (showOtpInput && confirmationResult) {
           await verifyOtp(confirmationResult, data.otp!);
           toast({ title: "Phone login successful!" });
           router.push("/dashboard");
@@ -75,6 +76,7 @@ export function LoginForm() {
             if(appVerifier) {
                 const result = await sendOtp(data.phone!, appVerifier);
                 setConfirmationResult(result);
+                setShowOtpInput(true);
                 toast({ title: "OTP Sent", description: "Please check your phone for the OTP." });
             }
         }
@@ -114,7 +116,7 @@ export function LoginForm() {
     if (formType === 'phone') {
       return (
         <>
-          {!confirmationResult ? (
+          {!showOtpInput ? (
             <div className="space-y-2">
               <Label htmlFor="phone">Phone Number</Label>
               <Input
@@ -139,7 +141,7 @@ export function LoginForm() {
           )}
           <Button type="submit" className="w-full" disabled={isLoading}>
             {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {confirmationResult ? 'Verify OTP' : 'Send OTP'}
+            {showOtpInput ? 'Verify OTP' : 'Send OTP'}
           </Button>
         </>
       );
@@ -208,7 +210,7 @@ export function LoginForm() {
           </>
         )}
         {formType === 'phone' && (
-            <Button variant="link" onClick={() => { setFormType('login'); setConfirmationResult(null); }}>
+            <Button variant="link" onClick={() => { setFormType('login'); setShowOtpInput(false); setConfirmationResult(null); }}>
                 Back to email login
             </Button>
         )}
