@@ -1,16 +1,13 @@
 
 "use client";
 import {
-  BookCheck,
-  Briefcase,
-  CheckSquare,
-  GraduationCap,
-  Library,
-  Lightbulb,
-  Radio,
-  ShieldQuestion,
-  Star,
+  Book,
+  FileText,
   Trophy,
+  Lightbulb,
+  Briefcase,
+  Radio,
+  Settings,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useLanguage } from '@/hooks/use-language';
@@ -21,25 +18,25 @@ export default function DashboardPage() {
     const { t } = useLanguage();
 
     const dashboardGridItems = [
-      { label: t('our_courses'), icon: BookCheck, href: "/dashboard/courses", color: "bg-blue-500" },
-      { label: t('ai_tests'), icon: ShieldQuestion, href: "/dashboard/ai-test", color: "bg-green-500" },
-      { label: t('ai_tutor'), icon: GraduationCap, href: "/dashboard/tutor", color: "bg-orange-500" },
+      { label: t('courses'), icon: Book, href: "/dashboard/courses", color: "bg-blue-500" },
+      { label: t('ai_tests'), icon: FileText, href: "/dashboard/ai-test", color: "bg-green-500" },
+      { label: t('papers'), icon: FileText, href: "/dashboard/papers", color: "bg-orange-500" },
       { label: t('achievements'), icon: Trophy, href: "/dashboard/profile", color: "bg-red-500" },
-      { label: t('papers'), icon: Library, href: "/dashboard/papers", color: "bg-purple-500" },
-      { label: t('resources'), icon: Lightbulb, href: "/dashboard/courses", color: "bg-teal-500" },
+      { label: t('resources'), icon: Lightbulb, href: "/dashboard/courses", color: "bg-purple-500" },
       { label: t('teachers'), icon: Briefcase, href: "/admin", color: "bg-yellow-500" },
-      { label: t('live_classes'), icon: Radio, href: "/dashboard/live", color: "bg-pink-500" },
-      { label: t('settings'), icon: Star, href: "/dashboard/settings", color: "bg-indigo-500" },
+      { label: t('live_classes'), icon: Radio, href: "#", color: "bg-pink-500" },
+      { label: t('settings'), icon: Settings, href: "/dashboard/settings", color: "bg-indigo-500" },
+      { label: t('ai_tutor'), icon: Lightbulb, href: "/dashboard/tutor", color: "bg-teal-500" },
     ];
     
   return (
     <div className="flex flex-col h-full">
-      <div className="relative h-[45%] bg-gradient-to-br from-purple-600 via-indigo-700 to-orange-500 p-6 text-primary-foreground flex flex-col justify-center items-center text-center">
-          <div className="absolute top-16 left-6 text-lg font-bold">EDUCATION</div>
+      <div className="relative h-[40%] bg-gradient-to-br from-purple-600 via-indigo-700 to-orange-500 p-6 text-primary-foreground flex flex-col justify-center items-center text-center">
+          <div className="absolute top-16 left-6 text-lg font-bold">गो स्वामी डिफेस एकेडमी</div>
           <Image 
             src="https://picsum.photos/300/200"
-            width={250}
-            height={150}
+            width={150}
+            height={100}
             alt="Student studying"
             className="mb-4 rounded-lg"
             data-ai-hint="student studying"

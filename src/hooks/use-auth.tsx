@@ -2,7 +2,7 @@
 "use client";
 
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { onAuthStateChanged, User, signInWithEmailAndPassword, createUserWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, signOut, RecaptchaVerifier, signInWithPhoneNumber, ConfirmationResult, UserCredential, getAuth } from 'firebase/auth';
+import { onAuthStateChanged, User, signInWithEmailAndPassword, createUserWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, signOut, RecaptchaVerifier, signInWithPhoneNumber, ConfirmationResult, UserCredential } from 'firebase/auth';
 import { doc, setDoc, serverTimestamp, getDoc } from 'firebase/firestore';
 import { auth, firestore } from '@/lib/firebase';
 import { useRouter } from 'next/navigation';
@@ -13,17 +13,21 @@ const updateUserInFirestore = async (user: User) => {
     const userRef = doc(firestore, 'users', user.uid);
     const docSnap = await getDoc(userRef);
 
-    if (!docSnap.exists()) { // Only create if user doesn't exist
+    const userData = {
+        uid: user.uid,
+        email: user.email,
+        displayName: user.displayName,
+        photoURL: user.photoURL,
+        lastLogin: serverTimestamp(),
+    };
+
+    if (!docSnap.exists()) {
         await setDoc(userRef, {
-            uid: user.uid,
-            email: user.email,
-            displayName: user.displayName,
-            photoURL: user.photoURL,
-            lastLogin: serverTimestamp(),
+            ...userData,
             createdAt: serverTimestamp(),
         });
-    } else { // Or just update last login time
-        await setDoc(userRef, { lastLogin: serverTimestamp() }, { merge: true });
+    } else {
+        await setDoc(userRef, userData, { merge: true });
     }
 };
 

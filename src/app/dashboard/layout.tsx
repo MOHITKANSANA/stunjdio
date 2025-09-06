@@ -41,7 +41,7 @@ import { useLanguage } from '@/hooks/use-language';
 const bottomNavItems = [
     { href: '/dashboard', icon: Home, label: 'home' },
     { href: '/dashboard/courses', icon: Book, label: 'courses' },
-    { href: '/dashboard/ai-test', icon: CheckSquare, label: 'ai_tests' },
+    { href: '/dashboard/tutor', icon: GraduationCap, label: 'ai_tutor' },
     { href: '/dashboard/profile', icon: User, label: 'profile' },
 ];
 
@@ -96,10 +96,10 @@ const AppSidebar = () => {
 
     return (
         <Sidebar>
-            <SidebarContent>
+            <SidebarContent className="bg-gradient-to-b from-purple-600 via-indigo-700 to-orange-500 text-white border-none">
                 <SidebarHeader>
                      <div className='flex items-center gap-2'>
-                        <Shield className="h-7 w-7 text-primary" />
+                        <Shield className="h-7 w-7 text-white" />
                         <span className="text-lg font-semibold font-headline">गो स्वामी डिफेस एकेडमी</span>
                     </div>
                 </SidebarHeader>
@@ -157,7 +157,7 @@ const AppHeader = () => {
                     <SidebarTrigger />
                 </div>
                  <div className={cn("hidden md:flex items-center gap-2", isDashboard ? "text-white" : "")}>
-                    <Shield className="h-7 w-7 text-primary" />
+                    <Shield className="h-7 w-7" />
                     <span className="text-lg font-semibold font-headline">गो स्वामी डिफेस एकेडमी</span>
                  </div>
             </div>
@@ -221,7 +221,7 @@ export default function DashboardLayout({
       <SidebarProvider>
           <div className="flex h-screen w-full flex-col bg-background">
              <AppSidebar />
-             <div className="flex flex-col w-full h-screen">
+             <div className="flex flex-col w-full h-full overflow-hidden">
                 <AppHeader />
                  <main className={cn("flex-1 overflow-y-auto", !isDashboard && "p-4 md:p-6")}>
                     <SidebarInset>
