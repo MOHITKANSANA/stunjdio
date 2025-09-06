@@ -6,11 +6,9 @@ import { collection, query, orderBy } from 'firebase/firestore';
 import { firestore } from '@/lib/firebase';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Video, Clock, MessageSquare } from 'lucide-react';
+import { Video, Clock } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { useState, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
-import Link from 'next/link';
 
 const YouTubePlayer = ({ videoId }: { videoId: string }) => {
     return (
@@ -21,7 +19,7 @@ const YouTubePlayer = ({ videoId }: { videoId: string }) => {
                 src={`https://www.youtube.com/embed/${videoId}?autoplay=1`}
                 title="YouTube video player"
                 frameBorder="0"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                 allowFullScreen
                 className="rounded-lg"
             ></iframe>
@@ -46,11 +44,11 @@ export default function LiveClassPage() {
         if (!url) return null;
         let videoId: string | null = null;
         try {
-            const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=|\/live\/)([^#\&\?]*).*/;
+            const regExp = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/|v\/|live\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
             const match = url.match(regExp);
 
-            if (match && match[2].length === 11) {
-                videoId = match[2];
+            if (match && match[1]) {
+                videoId = match[1];
             } else {
                  console.error("Could not parse YouTube URL:", url);
             }
@@ -95,17 +93,9 @@ export default function LiveClassPage() {
                            <Video className="h-8 w-8 text-destructive" />
                         </div>
                     </CardHeader>
-                    <CardContent className="space-y-4">
+                    <CardContent>
                         {getYoutubeVideoId(currentLiveClass.data().youtubeUrl) ? (
-                            <>
-                                <YouTubePlayer videoId={getYoutubeVideoId(currentLiveClass.data().youtubeUrl)!} />
-                                <Button asChild className='w-full md:w-auto'>
-                                    <Link href={currentLiveClass.data().youtubeUrl} target="_blank">
-                                       <MessageSquare className="mr-2 h-4 w-4" />
-                                       Join Live Chat
-                                    </Link>
-                                </Button>
-                            </>
+                            <YouTubePlayer videoId={getYoutubeVideoId(currentLiveClass.data().youtubeUrl)!} />
                         ) : (
                             <p className="text-destructive p-4 border border-destructive/50 rounded-md">The YouTube URL for this class seems to be invalid. Please check back later.</p>
                         )}
