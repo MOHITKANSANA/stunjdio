@@ -13,7 +13,8 @@ import { IndianRupee, BookOpen, Clock, Users } from 'lucide-react';
 import Link from 'next/link';
 
 export default function CourseDetailPage({ params }: { params: { courseId: string } }) {
-  const [courseDoc, loading, error] = useDocument(doc(firestore, 'courses', params.courseId));
+  const { courseId } = params;
+  const [courseDoc, loading, error] = useDocument(doc(firestore, 'courses', courseId));
 
   if (loading) {
     return (
@@ -49,7 +50,7 @@ export default function CourseDetailPage({ params }: { params: { courseId: strin
             <h1 className="text-4xl font-bold font-headline">{course.title}</h1>
           </div>
           <div className="relative h-80 w-full rounded-lg overflow-hidden shadow-lg">
-            <Image src={course.imageUrl || `https://picsum.photos/seed/${params.courseId}/800/600`} alt={course.title} layout="fill" objectFit="cover" data-ai-hint="online learning" />
+            <Image src={course.imageUrl || `https://picsum.photos/seed/${courseId}/800/600`} alt={course.title} layout="fill" objectFit="cover" data-ai-hint="online learning" />
           </div>
           <Card>
             <CardHeader>
@@ -73,7 +74,7 @@ export default function CourseDetailPage({ params }: { params: { courseId: strin
             </CardHeader>
             <CardContent className="space-y-4">
               <Button asChild size="lg" className="w-full text-lg">
-                 <Link href={`/dashboard/enroll/${params.courseId}`}>Enroll Now</Link>
+                 <Link href={`/dashboard/enroll/${courseId}`}>Enroll Now</Link>
               </Button>
               <div className="space-y-3 pt-4 text-sm text-muted-foreground">
                 <div className="flex items-center gap-3">
