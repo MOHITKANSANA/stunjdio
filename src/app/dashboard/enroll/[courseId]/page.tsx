@@ -21,9 +21,8 @@ export default function EnrollPage({ params }: { params: { courseId: string } })
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
-  const courseId = params.courseId as string;
   
-  const [courseDoc, loading, error] = useDocument(doc(firestore, 'courses', courseId));
+  const [courseDoc, loading, error] = useDocument(doc(firestore, 'courses', params.courseId));
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [screenshotFile, setScreenshotFile] = useState<File | null>(null);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
@@ -38,6 +37,7 @@ export default function EnrollPage({ params }: { params: { courseId: string } })
   }
   
   const course = courseDoc.data();
+  const courseId = params.courseId;
 
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -176,5 +176,4 @@ export default function EnrollPage({ params }: { params: { courseId: string } })
       </div>
     </div>
   );
-
-    
+}
