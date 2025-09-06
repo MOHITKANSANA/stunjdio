@@ -22,7 +22,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useState, useEffect } from 'react';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel"
 import { useCollection } from 'react-firebase-hooks/firestore';
-import { collection, query, orderBy } from 'firebase/firestore';
+import { collection, query, orderBy, where, limit } from 'firebase/firestore';
 import { firestore } from '@/lib/firebase';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -43,26 +43,25 @@ const TopStudentCard = ({ rank, name, avatarUrl }: { rank: number, name: string,
 
 const LiveClassCountdown = () => {
     const [liveClasses, loading, error] = useCollection(
-        query(collection(firestore, 'live_classes'), orderBy('startTime', 'asc'))
+        query(
+            collection(firestore, 'live_classes'), 
+            where('startTime', '>', new Date()),
+            orderBy('startTime', 'asc'),
+            limit(1)
+        )
     );
     const [timeLeft, setTimeLeft] = useState<any>(null);
-    const [nextClass, setNextClass] = useState<any>(null);
 
     useEffect(() => {
-        if (liveClasses) {
-            const upcomingClasses = liveClasses.docs.filter(doc => (doc.data().startTime.seconds * 1000) > new Date().getTime());
-            if (upcomingClasses.length > 0) {
-                const next = upcomingClasses[0].data();
-                setNextClass(next);
-            }
+        if (loading || !liveClasses || liveClasses.docs.length === 0) {
+            return;
         }
-    }, [liveClasses]);
 
-    useEffect(() => {
-        if (!nextClass) return;
+        const nextClass = liveClasses.docs[0].data();
+        const targetTime = nextClass.startTime.seconds * 1000;
 
         const calculateTimeLeft = () => {
-            const difference = (nextClass.startTime.seconds * 1000) - new Date().getTime();
+            const difference = targetTime - new Date().getTime();
             let newTimeLeft = {};
 
             if (difference > 0) {
@@ -81,10 +80,11 @@ const LiveClassCountdown = () => {
         }, 1000);
 
         return () => clearInterval(timer);
-    }, [nextClass]);
+    }, [liveClasses, loading]);
     
     if (loading) return <Skeleton className="h-24 w-full" />;
-    if (!nextClass || !timeLeft || Object.keys(timeLeft).length === 0) {
+    
+    if (!timeLeft || Object.keys(timeLeft).length === 0) {
         return (
             <div className="text-center">
                 <h3 className="font-semibold mb-2">No upcoming live classes.</h3>
@@ -92,16 +92,16 @@ const LiveClassCountdown = () => {
         )
     };
 
-
     return (
         <div className="text-center">
-            <h3 className="font-semibold mb-2">{nextClass.title}</h3>
-            <p className="text-sm text-muted-foreground mb-3">Starts in</p>
-            <div className="flex justify-center items-center gap-2">
-                {timeLeft.days > 0 && <div className="text-center"><div className="font-bold text-3xl">{timeLeft.days}</div><div className="text-xs">days</div></div>}
-                <div className="text-center"><div className="font-bold text-3xl">{timeLeft.hours}</div><div className="text-xs">hours</div></div>
-                <div className="text-center"><div className="font-bold text-3xl">{timeLeft.minutes}</div><div className="text-xs">min</div></div>
-                <div className="text-center"><div className="font-bold text-3xl">{timeLeft.seconds}</div><div className="text-xs">sec</div></div>
+            <h3 className="font-semibold mb-2">Next Live Class Starts in</h3>
+            <div className="flex justify-center items-end gap-2">
+                {timeLeft.days > 0 && <div className="text-center"><div className="font-bold text-4xl">{timeLeft.days}</div><div className="text-xs">days</div></div>}
+                <div className="text-center"><div className="font-bold text-4xl">{String(timeLeft.hours).padStart(2,'0')}</div><div className="text-xs">hour</div></div>
+                <div className="text-4xl pb-1">:</div>
+                <div className="text-center"><div className="font-bold text-4xl">{String(timeLeft.minutes).padStart(2,'0')}</div><div className="text-xs">min</div></div>
+                 <div className="text-4xl pb-1">:</div>
+                <div className="text-center"><div className="font-bold text-4xl">{String(timeLeft.seconds).padStart(2,'0')}</div><div className="text-xs">sec</div></div>
             </div>
         </div>
     );
@@ -110,16 +110,14 @@ const LiveClassCountdown = () => {
 export default function DashboardPage() {
     
     const [topStudents, loading, error] = useCollection(
-        query(collection(firestore, 'top_students'), orderBy('addedAt', 'desc'))
+        query(collection(firestore, 'top_students'), orderBy('addedAt', 'desc'), limit(10))
     );
 
     const topSectionItems = [
-      { label: "Today's Course", icon: BookOpen, href: "/dashboard/courses" },
-      { label: "Upcoming Live Class", icon: Video, href: "/dashboard/live-class" },
-      { label: "New Test Series", icon: ShieldQuestion, href: "/dashboard/ai-test" },
-      { label: "Top Scorer", icon: Trophy, href: "/dashboard/profile" },
-      { label: "Current Affairs", icon: Globe, href: "#"},
-      { label: "Previous Papers", icon: BookCopy, href: "/dashboard/papers" },
+      { label: "Today's Course", icon: BookOpen, href: "/dashboard/courses", color: "bg-red-400 text-white" },
+      { label: "Upcoming Live Class", icon: Video, href: "/dashboard/live-class", color: "bg-blue-400 text-white" },
+      { label: "New Test Series", icon: ShieldQuestion, href: "/dashboard/ai-test", color: "bg-green-500 text-white" },
+      { label: "Top Scorer of the Week", icon: Trophy, href: "/dashboard/profile", color: "bg-yellow-500 text-white" },
     ];
     
     const quickAccessItems = [
@@ -137,19 +135,20 @@ export default function DashboardPage() {
     <div className="flex flex-col h-full bg-background p-4 space-y-6 pb-24 md:pb-4">
       
       {/* Top Section */}
-      <div className="grid grid-cols-3 gap-4">
-        {topSectionItems.map((item) => (
-            <Link href={item.href} key={item.label}>
-                <Card className="transform-gpu transition-transform duration-200 ease-in-out hover:-translate-y-1 hover:shadow-xl h-full">
-                    <CardContent className="flex flex-col items-center justify-center gap-2 p-3 text-center aspect-square">
-                         <div className="p-3 bg-red-100 text-red-600 rounded-full">
-                            <item.icon className="h-6 w-6" />
-                        </div>
-                    </CardContent>
-                </Card>
-            </Link>
-        ))}
-      </div>
+        <div className="grid grid-cols-2 gap-4">
+            {topSectionItems.map((item) => (
+                <Link href={item.href} key={item.label}>
+                    <Card className={`transform-gpu transition-transform duration-200 ease-in-out hover:-translate-y-1 hover:shadow-xl h-full rounded-xl ${item.color}`}>
+                        <CardContent className="flex flex-col items-start justify-between gap-2 p-4 aspect-[3/2]">
+                            <div className="p-2 bg-white/30 rounded-full">
+                                <item.icon className="h-6 w-6" />
+                            </div>
+                            <span className="font-semibold">{item.label}</span>
+                        </CardContent>
+                    </Card>
+                </Link>
+            ))}
+        </div>
       
       {/* Quick Access Section */}
       <div>
@@ -157,7 +156,7 @@ export default function DashboardPage() {
         <div className="grid grid-cols-4 gap-4">
           {quickAccessItems.map((item) => (
             <Link href={item.href} key={item.label}>
-              <Card className={`h-full transform-gpu transition-transform duration-200 ease-in-out hover:-translate-y-1 hover:shadow-xl ${item.color} text-white`}>
+              <Card className={`h-full transform-gpu transition-transform duration-200 ease-in-out hover:-translate-y-1 hover:shadow-xl ${item.color} text-white rounded-xl`}>
                 <CardContent className="flex flex-col items-center justify-center gap-2 p-3 text-center aspect-square">
                   <item.icon className="h-6 w-6" />
                   <span className="text-xs font-medium text-center">{item.label}</span>
@@ -185,15 +184,15 @@ export default function DashboardPage() {
               })}
             </CarouselContent>
             {topStudents.docs.length > 3 && <>
-              <CarouselPrevious className="absolute left-0 top-1/2 -translate-y-1/2" />
-              <CarouselNext className="absolute right-0 top-1/2 -translate-y-1/2" />
+              <CarouselPrevious className="hidden md:flex absolute left-0 top-1/2 -translate-y-1/2" />
+              <CarouselNext className="hidden md:flex absolute right-0 top-1/2 -translate-y-1/2" />
             </>}
           </Carousel>
         )}
       </div>
       
       {/* Next Live Class Countdown */}
-      <Card className="p-4 shadow-md">
+      <Card className="p-4 shadow-md rounded-xl">
         <LiveClassCountdown />
       </Card>
 

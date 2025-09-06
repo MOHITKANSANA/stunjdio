@@ -44,7 +44,7 @@ const bottomNavItems = [
     { href: '/dashboard', icon: Home, label: 'Home' },
     { href: '/dashboard/courses', icon: BookCopy, label: 'My Courses' },
     { href: '/dashboard/live-class', icon: Video, label: 'Live Class' },
-    { href: '/dashboard/ai-test', icon: ShieldQuestion, label: 'AI Tests' },
+    { href: '/dashboard/papers', icon: Download, label: 'Downloads' },
     { href: '/dashboard/profile', icon: User, label: 'Profile' },
 ];
 
