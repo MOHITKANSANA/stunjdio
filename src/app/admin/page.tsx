@@ -2,7 +2,9 @@
 'use client';
 
 import { useState, useRef } from 'react';
-import { useForm, Controller } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -19,7 +21,14 @@ import { useToast } from "@/hooks/use-toast";
 import ReactCrop, { type Crop, centerCrop, makeAspectCrop } from 'react-image-crop';
 import 'react-image-crop/dist/ReactCrop.css';
 import { Loader2, Trash2, PlusCircle, MinusCircle } from 'lucide-react';
-import { Switch } from '@/components/ui/switch';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+
+const courseFormSchema = z.object({
+  title: z.string().min(1, 'Title is required'),
+  category: z.string().min(1, 'Category is required'),
+  description: z.string().min(1, 'Description is required'),
+});
+type CourseFormValues = z.infer<typeof courseFormSchema>;
 
 function centerAspectCrop(mediaWidth: number, mediaHeight: number, aspect: number) {
   return centerCrop(
@@ -43,6 +52,11 @@ export default function AdminPage() {
   const [isUploading, setIsUploading] = useState(false);
   const imgRef = useRef<HTMLImageElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const courseForm = useForm<CourseFormValues>({
+    resolver: zodResolver(courseFormSchema),
+    defaultValues: { title: '', category: '', description: '' },
+  });
 
   const liveClassForm = useForm({
     defaultValues: { title: '', youtubeUrl: '', startTime: '' }
@@ -111,7 +125,7 @@ export default function AdminPage() {
       
     try {
       const configDocRef = doc(firestore, 'app_config', 'dashboard');
-      await setDoc(configDocRef, { heroImageDataUri: base64Image });
+      await setDoc(configDocRef, { heroImageDataUri: base64Image }, { merge: true });
 
       toast({ title: 'Success!', description: 'Dashboard image updated successfully.' });
       setImgSrc('');
@@ -124,6 +138,21 @@ export default function AdminPage() {
       setIsUploading(false);
     }
   };
+
+  const onCourseSubmit = async (data: CourseFormValues) => {
+    try {
+      await addDoc(collection(firestore, 'courses'), {
+        ...data,
+        createdAt: serverTimestamp(),
+      });
+      toast({ title: 'Success', description: 'Course created successfully.' });
+      courseForm.reset();
+    } catch (error) {
+      console.error("Error creating course: ", error);
+      toast({ variant: 'destructive', title: 'Error', description: 'Could not create course.' });
+    }
+  };
+
 
   const onLiveClassSubmit = async (data: { title: string; youtubeUrl: string; startTime: string }) => {
     try {
@@ -185,12 +214,34 @@ export default function AdminPage() {
                 <CardDescription>Fill out the details below to add a new course to the catalog.</CardDescription>
               </CardHeader>
               <CardContent>
-                <form className="grid gap-6">
-                  <div className="grid gap-3"><Label htmlFor="title">Course Title</Label><Input id="title" type="text" className="w-full" placeholder="e.g. Algebra Fundamentals"/></div>
-                  <div className="grid gap-3"><Label htmlFor="category">Category</Label><Input id="category" type="text" className="w-full" placeholder="e.g. Maths"/></div>
-                  <div className="grid gap-3"><Label htmlFor="description">Description</Label><Textarea id="description" placeholder="A short description of the course content." className="min-h-32"/></div>
-                  <Button type="submit">Create Course</Button>
-                </form>
+                <Form {...courseForm}>
+                  <form onSubmit={courseForm.handleSubmit(onCourseSubmit)} className="grid gap-6">
+                    <FormField
+                      control={courseForm.control}
+                      name="title"
+                      render={({ field }) => (
+                        <FormItem><FormLabel>Course Title</FormLabel><FormControl><Input placeholder="e.g. Algebra Fundamentals" {...field} /></FormControl><FormMessage /></FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={courseForm.control}
+                      name="category"
+                      render={({ field }) => (
+                        <FormItem><FormLabel>Category</FormLabel><FormControl><Input placeholder="e.g. Maths" {...field} /></FormControl><FormMessage /></FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={courseForm.control}
+                      name="description"
+                      render={({ field }) => (
+                        <FormItem><FormLabel>Description</FormLabel><FormControl><Textarea placeholder="A short description of the course content." className="min-h-32" {...field} /></FormControl><FormMessage /></FormItem>
+                      )}
+                    />
+                    <Button type="submit" disabled={courseForm.formState.isSubmitting}>
+                      {courseForm.formState.isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin"/>Creating...</> : "Create Course"}
+                    </Button>
+                  </form>
+                </Form>
               </CardContent>
             </Card>
 
@@ -333,3 +384,5 @@ export default function AdminPage() {
     </div>
   );
 }
+
+    
