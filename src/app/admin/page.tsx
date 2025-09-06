@@ -11,16 +11,13 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { useCollection } from 'react-firebase-hooks/firestore';
-import { collection, query, orderBy } from 'firebase/firestore';
-import { firestore, app } from '@/lib/firebase';
-import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { collection, query, orderBy, doc, setDoc } from 'firebase/firestore';
+import { firestore } from '@/lib/firebase';
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import ReactCrop, { type Crop, centerCrop, makeAspectCrop } from 'react-image-crop';
 import 'react-image-crop/dist/ReactCrop.css';
 import { Loader2 } from 'lucide-react';
-
-const storage = getStorage(app);
 
 function centerAspectCrop(mediaWidth: number, mediaHeight: number, aspect: number) {
   return centerCrop(
@@ -102,28 +99,22 @@ export default function AdminPage() {
       canvas.height
     );
 
-    canvas.toBlob(async (blob) => {
-      if (!blob) {
-          setIsUploading(false);
-          toast({ variant: 'destructive', title: 'Error', description: 'Could not create image blob.' });
-          return;
-      }
+    const base64Image = canvas.toDataURL('image/jpeg', 0.9); // Adjust quality as needed
       
-      try {
-        const storageRef = ref(storage, 'dashboard/hero.jpg');
-        await uploadBytes(storageRef, blob, { contentType: 'image/jpeg' });
-        await getDownloadURL(storageRef); // To ensure upload is complete
-        toast({ title: 'Success!', description: 'Dashboard image updated successfully.' });
-        setImgSrc('');
-        setCompletedCrop(undefined);
-        if(fileInputRef.current) fileInputRef.current.value = "";
-      } catch (uploadError) {
-        console.error("Upload failed:", uploadError);
-        toast({ variant: 'destructive', title: 'Upload Failed', description: 'Could not upload image to storage.' });
-      } finally {
-        setIsUploading(false);
-      }
-    }, 'image/jpeg', 0.9); // Adjust quality as needed
+    try {
+      const configDocRef = doc(firestore, 'app_config', 'dashboard');
+      await setDoc(configDocRef, { heroImageDataUri: base64Image });
+
+      toast({ title: 'Success!', description: 'Dashboard image updated successfully.' });
+      setImgSrc('');
+      setCompletedCrop(undefined);
+      if(fileInputRef.current) fileInputRef.current.value = "";
+    } catch (uploadError) {
+      console.error("Upload failed:", uploadError);
+      toast({ variant: 'destructive', title: 'Upload Failed', description: 'Could not save image to Firestore.' });
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   return (

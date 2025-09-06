@@ -14,34 +14,16 @@ import Link from 'next/link';
 import { useLanguage } from '@/hooks/use-language';
 import { Card, CardContent } from '@/components/ui/card';
 import Image from 'next/image';
-import { getStorage, ref, getDownloadURL } from "firebase/storage";
-import { app } from '@/lib/firebase';
-import { useEffect, useState } from 'react';
+import { doc } from "firebase/firestore";
+import { useDocumentData } from 'react-firebase-hooks/firestore';
+import { firestore } from '@/lib/firebase';
 
-const storage = getStorage(app);
 
 export default function DashboardPage() {
     const { t } = useLanguage();
-    const [heroImageUrl, setHeroImageUrl] = useState("https://picsum.photos/300/200");
-    const [imageLoading, setImageLoading] = useState(true);
-
-    useEffect(() => {
-      const fetchHeroImage = async () => {
-        try {
-          const heroImageRef = ref(storage, 'dashboard/hero.jpg');
-          const url = await getDownloadURL(heroImageRef);
-          setHeroImageUrl(url);
-        } catch (error) {
-          console.log("Hero image not found, using default.");
-          // Keep the default picsum photo if the hero image doesn't exist
-        } finally {
-            setImageLoading(false);
-        }
-      };
-
-      fetchHeroImage();
-    }, []);
-
+    const [dashboardConfig, loading] = useDocumentData(doc(firestore, 'app_config', 'dashboard'));
+    
+    const heroImageUrl = dashboardConfig?.heroImageDataUri || "https://picsum.photos/300/200";
 
     const dashboardGridItems = [
       { label: t('courses'), icon: Book, href: "/dashboard/courses", color: "bg-blue-500" },
@@ -59,7 +41,7 @@ export default function DashboardPage() {
     <div className="flex flex-col h-full">
       <div className="relative h-[40%] bg-gradient-to-br from-purple-600 via-indigo-700 to-orange-500 p-6 text-primary-foreground flex flex-col justify-center items-center text-center">
           <div className="absolute top-16 left-6 text-lg font-bold">गो स्वामी डिफेस एकेडमी</div>
-          {imageLoading ? (
+          {loading ? (
              <div className="w-[150px] h-[100px] bg-white/20 animate-pulse rounded-lg mb-4"></div>
           ) : (
             <Image 
@@ -69,7 +51,7 @@ export default function DashboardPage() {
                 alt="Student studying"
                 className="mb-4 rounded-lg object-cover"
                 data-ai-hint="student studying"
-                unoptimized // Required for Firebase Storage URLs if hostname is not in next.config.js
+                unoptimized
             />
           )}
           <h1 className="text-3xl font-bold">Learn, Practice, Achieve!</h1>
