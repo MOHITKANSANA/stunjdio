@@ -225,8 +225,8 @@ export default function AdminPage() {
                           <TableCell><div className="font-medium">{enrollment.userDisplayName}</div><div className="text-sm text-muted-foreground">{enrollment.userEmail}</div></TableCell>
                           <TableCell>{enrollment.courseTitle}</TableCell>
                           <TableCell>
-                            <Link href={enrollment.screenshotUrl} target="_blank" rel="noopener noreferrer">
-                              <Image src={enrollment.screenshotUrl} alt="Payment Screenshot" width={80} height={80} className="rounded-md object-cover" />
+                            <Link href={enrollment.screenshotDataUrl} target="_blank" rel="noopener noreferrer">
+                              <Image src={enrollment.screenshotDataUrl} alt="Payment Screenshot" width={80} height={80} className="rounded-md object-cover" />
                             </Link>
                           </TableCell>
                           <TableCell><Badge variant={enrollment.status === 'pending' ? 'secondary' : enrollment.status === 'approved' ? 'default' : 'destructive'}>{enrollment.status}</Badge></TableCell>
