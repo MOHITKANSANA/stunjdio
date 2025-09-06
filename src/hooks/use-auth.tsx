@@ -2,9 +2,31 @@
 "use client";
 
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { onAuthStateChanged, User, signInWithEmailAndPassword, createUserWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, signOut, RecaptchaVerifier, signInWithPhoneNumber, ConfirmationResult, UserCredential } from 'firebase/auth';
-import { auth } from '@/lib/firebase';
+import { onAuthStateChanged, User, signInWithEmailAndPassword, createUserWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, signOut, RecaptchaVerifier, signInWithPhoneNumber, ConfirmationResult, UserCredential, getAuth } from 'firebase/auth';
+import { doc, setDoc, serverTimestamp, getDoc } from 'firebase/firestore';
+import { auth, firestore } from '@/lib/firebase';
 import { useRouter } from 'next/navigation';
+
+
+// Helper function to create/update user in Firestore
+const updateUserInFirestore = async (user: User) => {
+    const userRef = doc(firestore, 'users', user.uid);
+    const docSnap = await getDoc(userRef);
+
+    if (!docSnap.exists()) { // Only create if user doesn't exist
+        await setDoc(userRef, {
+            uid: user.uid,
+            email: user.email,
+            displayName: user.displayName,
+            photoURL: user.photoURL,
+            lastLogin: serverTimestamp(),
+            createdAt: serverTimestamp(),
+        });
+    } else { // Or just update last login time
+        await setDoc(userRef, { lastLogin: serverTimestamp() }, { merge: true });
+    }
+};
+
 
 interface AuthContextType {
   user: User | null;
@@ -26,24 +48,32 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const router = useRouter();
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
+      if (currentUser) {
+        await updateUserInFirestore(currentUser);
+      }
       setLoading(false);
     });
     return () => unsubscribe();
   }, []);
+  
+  const handleAuthSuccess = async (userCredential: UserCredential) => {
+      await updateUserInFirestore(userCredential.user);
+      return userCredential;
+  };
 
   const login = (email: string, password: string) => {
-    return signInWithEmailAndPassword(auth, email, password);
+    return signInWithEmailAndPassword(auth, email, password).then(handleAuthSuccess);
   };
 
   const signup = (email: string, password: string) => {
-    return createUserWithEmailAndPassword(auth, email, password);
+    return createUserWithEmailAndPassword(auth, email, password).then(handleAuthSuccess);
   };
 
   const googleLogin = () => {
     const provider = new GoogleAuthProvider();
-    return signInWithPopup(auth, provider);
+    return signInWithPopup(auth, provider).then(handleAuthSuccess);
   };
 
   const logout = async () => {
@@ -79,7 +109,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const verifyOtp = (confirmationResult: ConfirmationResult, otp: string) => {
-    return confirmationResult.confirm(otp);
+    return confirmationResult.confirm(otp).then(handleAuthSuccess);
   };
 
 

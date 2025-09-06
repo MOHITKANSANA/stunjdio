@@ -1,4 +1,6 @@
 
+'use client';
+
 import {
   Card,
   CardContent,
@@ -20,33 +22,27 @@ import {
 } from "@/components/ui/table";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { useCollection } from 'react-firebase-hooks/firestore';
+import { collection, query, orderBy } from 'firebase/firestore';
+import { firestore } from '@/lib/firebase';
+import { Skeleton } from "@/components/ui/skeleton";
 
-// Mock user data for demonstration purposes
-const users = [
-  {
-    name: "Suresh Kumar",
-    email: "suresh@example.com",
-    lastLogin: "2024-09-05",
-    avatar: "https://picsum.photos/100/100?random=1",
-    initials: "SK",
-  },
-  {
-    name: "Priya Sharma",
-    email: "priya@example.com",
-    lastLogin: "2024-09-05",
-    avatar: "https://picsum.photos/100/100?random=2",
-    initials: "PS",
-  },
-  {
-    name: "Amit Patel",
-    email: "amit@example.com",
-    lastLogin: "2024-09-04",
-    avatar: "https://picsum.photos/100/100?random=3",
-    initials: "AP",
-  },
-];
 
 export default function AdminPage() {
+
+  const [value, loading, error] = useCollection(
+    query(collection(firestore, 'users'), orderBy('lastLogin', 'desc'))
+  );
+
+  const getInitials = (name: string | null | undefined) => {
+    if (!name) return "S";
+    const names = name.split(' ');
+    if (names.length > 1 && names[1]) {
+      return names[0].charAt(0) + names[names.length - 1].charAt(0);
+    }
+    return name.charAt(0);
+  }
+
   return (
     <div className="mx-auto grid w-full max-w-6xl gap-6">
       <h1 className="text-3xl font-semibold font-headline">Administration</h1>
@@ -100,6 +96,7 @@ export default function AdminPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
+             {error && <p className="text-destructive">Error: {error.message}</p>}
             <Table>
               <TableHeader>
                 <TableRow>
@@ -108,25 +105,40 @@ export default function AdminPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {users.map((user) => (
-                  <TableRow key={user.email}>
-                    <TableCell>
-                      <div className="flex items-center gap-3">
-                        <Avatar className="h-9 w-9">
-                          <AvatarImage src={user.avatar} alt={user.name} data-ai-hint="student" />
-                          <AvatarFallback>{user.initials}</AvatarFallback>
-                        </Avatar>
-                        <div className="font-medium">
-                          <p>{user.name}</p>
-                          <p className="text-sm text-muted-foreground">{user.email}</p>
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                       <Badge variant="outline">{user.lastLogin}</Badge>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {loading && (
+                    <>
+                        <TableRow>
+                            <TableCell><Skeleton className="h-9 w-full" /></TableCell>
+                            <TableCell><Skeleton className="h-9 w-full" /></TableCell>
+                        </TableRow>
+                        <TableRow>
+                            <TableCell><Skeleton className="h-9 w-full" /></TableCell>
+                            <TableCell><Skeleton className="h-9 w-full" /></TableCell>
+                        </TableRow>
+                    </>
+                )}
+                {value && value.docs.map((doc) => {
+                  const user = doc.data();
+                  return (
+                      <TableRow key={doc.id}>
+                        <TableCell>
+                          <div className="flex items-center gap-3">
+                            <Avatar className="h-9 w-9">
+                              <AvatarImage src={user.photoURL || undefined} alt={user.displayName} data-ai-hint="student" />
+                              <AvatarFallback>{getInitials(user.displayName)}</AvatarFallback>
+                            </Avatar>
+                            <div className="font-medium">
+                              <p>{user.displayName}</p>
+                              <p className="text-sm text-muted-foreground">{user.email}</p>
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                           <Badge variant="outline">{user.lastLogin ? new Date(user.lastLogin.seconds * 1000).toLocaleDateString() : 'N/A'}</Badge>
+                        </TableCell>
+                      </TableRow>
+                  )
+                })}
               </TableBody>
             </Table>
           </CardContent>

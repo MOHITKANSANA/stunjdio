@@ -257,8 +257,8 @@ export default function AiTutorPage() {
                     <h3 className="font-semibold mb-3">Follow-up Questions:</h3>
                     <div className="flex flex-wrap gap-2">
                         {response.followUpQuestions.map((q, index) => (
-                            <Button key={index} variant="outline" size="sm" className="h-auto" onClick={() => askFollowUp(q)}>
-                                <span className="text-left py-1">{q}</span>
+                            <Button key={index} variant="outline" size="sm" className="h-auto whitespace-normal text-left" onClick={() => askFollowUp(q)}>
+                                <span className="py-1">{q}</span>
                             </Button>
                         ))}
                     </div>
