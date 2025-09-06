@@ -2,10 +2,14 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+    // Allow users to read/write their own data
     match /users/{userId} {
-      // Allow logged-in users to read any user profile (for admin panel)
-      // Allow users to create their own profile and update it
-      allow read, write: if request.auth != null;
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Allow any authenticated user to list the users collection for the admin panel
+    match /users/{document=**} {
+      allow list: if request.auth != null;
     }
   }
 }
