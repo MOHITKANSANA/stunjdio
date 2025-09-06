@@ -21,10 +21,11 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useState, useEffect } from 'react';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel"
-import { useCollection } from 'react-firebase-hooks/firestore';
-import { collection, query, orderBy, where, limit } from 'firebase/firestore';
+import { useCollection, useDocumentData } from 'react-firebase-hooks/firestore';
+import { collection, query, orderBy, where, limit, doc } from 'firebase/firestore';
 import { firestore } from '@/lib/firebase';
 import { Skeleton } from '@/components/ui/skeleton';
+import Image from 'next/image';
 
 const TopStudentCard = ({ rank, name, avatarUrl }: { rank: number, name: string | null, avatarUrl: string | null }) => (
     <Card className="flex flex-col items-center justify-center p-4 shadow-md h-full">
@@ -54,6 +55,7 @@ const LiveClassCountdown = () => {
 
     useEffect(() => {
         if (loading || !liveClasses || liveClasses.docs.length === 0) {
+            setTimeLeft(null);
             return;
         }
 
@@ -62,19 +64,18 @@ const LiveClassCountdown = () => {
 
         const calculateTimeLeft = () => {
             const difference = targetTime - new Date().getTime();
-            let newTimeLeft = {};
-
             if (difference > 0) {
-                newTimeLeft = {
+                return {
                     days: Math.floor(difference / (1000 * 60 * 60 * 24)),
                     hours: Math.floor((difference / (1000 * 60 * 60)) % 24),
                     minutes: Math.floor((difference / 1000 / 60) % 60),
                     seconds: Math.floor((difference / 1000) % 60),
                 };
             }
-            return newTimeLeft;
+            return null;
         };
         
+        setTimeLeft(calculateTimeLeft());
         const timer = setInterval(() => {
             setTimeLeft(calculateTimeLeft());
         }, 1000);
@@ -84,7 +85,7 @@ const LiveClassCountdown = () => {
     
     if (loading) return <Skeleton className="h-24 w-full" />;
     
-    if (!timeLeft || Object.keys(timeLeft).length === 0) {
+    if (!timeLeft) {
         return (
             <div className="text-center">
                 <h3 className="font-semibold mb-2">No upcoming live classes.</h3>
@@ -112,6 +113,8 @@ export default function DashboardPage() {
     const [topStudents, loading, error] = useCollection(
         query(collection(firestore, 'top_students'), orderBy('addedAt', 'desc'), limit(10))
     );
+    const [config, configLoading, configError] = useDocumentData(doc(firestore, 'app_config', 'dashboard'));
+
 
     const topSectionItems = [
       { label: "Today's Course", icon: BookOpen, href: "/dashboard/courses", color: "bg-red-400 text-white" },
@@ -124,11 +127,9 @@ export default function DashboardPage() {
       { label: "Paid Courses", icon: Wallet, href: "/dashboard/courses", color: "bg-indigo-500" },
       { label: "Test Series", icon: FileText, href: "/dashboard/ai-test", color: "bg-red-500" },
       { label: "Free Classes", icon: PlayCircle, href: "/dashboard/courses", color: "bg-orange-500" },
-      { label: "Previous Year Papers", icon: BookCopy, href: "/dashboard/papers", color: "bg-sky-500" },
+      { label: "Previous Papers", icon: BookCopy, href: "/dashboard/papers", color: "bg-sky-500" },
       { label: "Current Affairs", icon: Globe, href: "#", color: "bg-teal-500" },
       { label: "Quiz & Games", icon: Puzzle, href: "#", color: "bg-yellow-500" },
-      { label: "Our Books Notes PDF", icon: Scroll, href: "#", color: "bg-emerald-500" },
-      { label: "Job Alerts", icon: Briefcase, href: "#", color: "bg-amber-600" },
     ];
     
   return (
@@ -153,11 +154,11 @@ export default function DashboardPage() {
       {/* Quick Access Section */}
       <div>
         <h2 className="text-lg font-bold mb-3">Quick Access</h2>
-        <div className="grid grid-cols-4 gap-4">
+        <div className="grid grid-cols-3 gap-4">
           {quickAccessItems.map((item) => (
-            <Link href={item.href} key={item.label}>
+            <Link href={item.href} key={item.label} className="aspect-square">
               <Card className={`h-full transform-gpu transition-transform duration-200 ease-in-out hover:-translate-y-1 hover:shadow-xl ${item.color} text-white rounded-xl`}>
-                <CardContent className="flex flex-col items-center justify-center gap-2 p-3 text-center aspect-square">
+                <CardContent className="flex flex-col items-center justify-center gap-2 p-3 text-center h-full">
                   <item.icon className="h-6 w-6" />
                   <span className="text-xs font-medium text-center">{item.label}</span>
                 </CardContent>
