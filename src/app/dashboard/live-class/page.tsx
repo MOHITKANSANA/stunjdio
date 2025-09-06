@@ -51,7 +51,7 @@ const Countdown = ({ targetDate }: { targetDate: Date }) => {
             setTimeLeft(calculateTimeLeft());
         }, 1000);
         return () => clearTimeout(timer);
-    }, [timeLeft, calculateTimeLeft]);
+    }, [calculateTimeLeft]);
 
     if (!Object.keys(timeLeft).length) {
         return <Badge>Starting soon...</Badge>;
