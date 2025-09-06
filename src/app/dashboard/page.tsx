@@ -41,7 +41,7 @@ const NextLiveClassCard = () => {
     const [now, setNow] = useState(new Date());
 
     useEffect(() => {
-        const timer = setInterval(() => setNow(new Date()), 1000);
+        const timer = setInterval(() => setNow(new Date()), 1000 * 60); // Update every minute
         return () => clearInterval(timer);
     }, []);
     
@@ -116,7 +116,7 @@ export default function DashboardPage() {
             {topSectionItems.map((item) => (
                 <Link href={item.href} key={item.label}>
                     <Card className={`transform-gpu transition-transform duration-200 ease-in-out hover:-translate-y-1 hover:shadow-xl h-full rounded-xl ${item.color}`}>
-                        <CardContent className="flex flex-col items-start justify-between gap-2 p-4 aspect-square md:aspect-auto">
+                        <CardContent className="flex flex-col items-start justify-between gap-2 p-4 aspect-square">
                             <div className="p-2 bg-white/30 rounded-full">
                                 <item.icon className="h-6 w-6" />
                             </div>
@@ -132,9 +132,9 @@ export default function DashboardPage() {
         <h2 className="text-lg font-bold mb-3">Quick Access</h2>
         <div className="grid grid-cols-3 gap-4">
           {quickAccessItems.map((item) => (
-            <Link href={item.href} key={item.label} className="aspect-square">
-              <Card className={`h-full transform-gpu transition-transform duration-200 ease-in-out hover:-translate-y-1 hover:shadow-xl ${item.color} text-white rounded-xl`}>
-                <CardContent className="flex flex-col items-center justify-center gap-2 p-3 text-center h-full">
+            <Link href={item.href} key={item.label}>
+              <Card className={`transform-gpu transition-transform duration-200 ease-in-out hover:-translate-y-1 hover:shadow-xl ${item.color} text-white rounded-xl aspect-square`}>
+                <CardContent className="flex flex-col items-center justify-center gap-2 p-2 text-center h-full">
                   <item.icon className="h-6 w-6" />
                   <span className="text-xs font-medium text-center">{item.label}</span>
                 </CardContent>

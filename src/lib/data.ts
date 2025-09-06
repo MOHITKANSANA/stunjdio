@@ -1,6 +1,6 @@
 
 import type { LucideIcon } from 'lucide-react';
-import { Book, BrainCircuit, Calculator, FlaskConical, Globe, Wallet, FileText, GraduationCap, Newspaper, Trophy, Scroll, Briefcase } from 'lucide-react';
+import { Book, BrainCircuit, Calculator, FlaskConical, Globe, Wallet, FileText, GraduationCap, Newspaper, Trophy, Scroll, Briefcase, PlayCircle, BookCopy, Puzzle } from 'lucide-react';
 
 export interface Course {
   title: string;
@@ -9,6 +9,7 @@ export interface Course {
   icon: LucideIcon;
 }
 
+// This is now just an example, the actual data comes from Firestore.
 export const courses: Course[] = [
   { title: "Algebra Fundamentals", category: "Maths", description: "Master the basics of algebra.", icon: Calculator },
   { title: "World History", category: "GK", description: "Explore major historical events.", icon: Globe },
