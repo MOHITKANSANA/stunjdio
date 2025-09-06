@@ -9,14 +9,27 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
-import { IndianRupee, BookOpen, Clock, Users } from 'lucide-react';
+import { IndianRupee, BookOpen, Clock, Users, Lock } from 'lucide-react';
 import Link from 'next/link';
+import { useAuth } from '@/hooks/use-auth';
+import { useCollection } from 'react-firebase-hooks/firestore';
+import { collection, query, where } from 'firebase/firestore';
 
 export default function CourseDetailPage({ params }: { params: { courseId: string } }) {
   const { courseId } = params;
-  const [courseDoc, loading, error] = useDocument(doc(firestore, 'courses', courseId));
+  const { user, loading: authLoading } = useAuth();
+  
+  const [courseDoc, courseLoading, courseError] = useDocument(doc(firestore, 'courses', courseId));
+  
+  const enrollmentsQuery = user 
+    ? query(collection(firestore, 'enrollments'), where('userId', '==', user.uid), where('courseId', '==', courseId), where('status', '==', 'approved'))
+    : null;
+    
+  const [enrollmentDoc, enrollmentLoading, enrollmentError] = useCollection(enrollmentsQuery);
 
-  if (loading) {
+  const isEnrolled = enrollmentDoc && !enrollmentDoc.empty;
+
+  if (courseLoading || authLoading || enrollmentLoading) {
     return (
       <div className="max-w-4xl mx-auto p-4 md:p-8 space-y-6">
         <Skeleton className="h-12 w-3/4" />
@@ -34,7 +47,7 @@ export default function CourseDetailPage({ params }: { params: { courseId: strin
     );
   }
 
-  if (error || !courseDoc?.exists()) {
+  if (courseError || !courseDoc?.exists()) {
     notFound();
   }
 
@@ -60,6 +73,32 @@ export default function CourseDetailPage({ params }: { params: { courseId: strin
               <p className="text-muted-foreground whitespace-pre-wrap">{course.description}</p>
             </CardContent>
           </Card>
+          
+          <Card>
+            <CardHeader>
+              <CardTitle>Course Content</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {isEnrolled ? (
+                  <div>
+                    <p className="text-muted-foreground">Welcome! Here you will find all the course materials. (Content coming soon)</p>
+                    {/* Future content like videos, PDFs, quizzes will be listed here */}
+                  </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center text-center p-8 bg-muted/50 rounded-lg">
+                    <Lock className="h-12 w-12 text-muted-foreground mb-4" />
+                    <h3 className="text-lg font-semibold">Content Locked</h3>
+                    <p className="text-muted-foreground mt-2">
+                        Enroll in this course to access all the lessons, videos, and materials.
+                    </p>
+                    <Button asChild className="mt-4">
+                        <Link href={`/dashboard/enroll/${courseId}`}>Enroll Now</Link>
+                    </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
         </div>
 
         {/* Right Column (Enrollment Card) */}
@@ -73,9 +112,13 @@ export default function CourseDetailPage({ params }: { params: { courseId: strin
               <CardDescription>One-time payment</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <Button asChild size="lg" className="w-full text-lg">
-                 <Link href={`/dashboard/enroll/${courseId}`}>Enroll Now</Link>
-              </Button>
+              {isEnrolled ? (
+                <Button size="lg" className="w-full text-lg" disabled>Enrolled</Button>
+              ) : (
+                <Button asChild size="lg" className="w-full text-lg">
+                   <Link href={`/dashboard/enroll/${courseId}`}>Enroll Now</Link>
+                </Button>
+              )}
               <div className="space-y-3 pt-4 text-sm text-muted-foreground">
                 <div className="flex items-center gap-3">
                   <BookOpen className="h-5 w-5 text-primary" />

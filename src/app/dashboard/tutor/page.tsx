@@ -107,14 +107,26 @@ export default function AiTutorPage() {
     }
     
     try {
-      const result = await generateAiTutorResponseAction({
+      const resultPromise = generateAiTutorResponseAction({
         question: data.question || "Describe the attached image.",
         language: data.language,
         imageDataUri: imageDataUri
       });
+      
+      // Start audio generation immediately with a placeholder/initial part of the question
+      const initialTextForAudio = data.question.substring(0, 100) || "Here is the answer.";
+      const audioPromise = getAudioAction(initialTextForAudio);
+
+      const result = await resultPromise;
       setResponse(result);
+
       if(result.answer){
-        handlePlayAudio(result.answer)
+        // If the initial audio is still loading, wait for it.
+        // A more advanced implementation might cancel and restart with the full answer.
+        const audioResult = await getAudioAction(result.answer);
+        setAudioUrl(audioResult.media);
+      } else {
+         // If there's no answer, we don't need the audio.
       }
     } catch (e: any) {
       console.error("Error generating AI response:", e);

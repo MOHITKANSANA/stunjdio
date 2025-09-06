@@ -73,21 +73,12 @@ export default function EnrollPage() {
 
     setIsSubmitting(true);
     try {
-      const idToken = await user.getIdToken();
       const screenshotDataUrl = await fileToDataUrl(screenshotFile);
-      const result = await fetch('/api/enroll', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${idToken}`,
-        },
-        body: JSON.stringify({
-            courseId: courseId,
-            courseTitle: course.title,
-            screenshotDataUrl,
-        }),
-      }).then(res => res.json());
-
+      const result = await submitEnrollmentAction({
+          courseId: courseId,
+          courseTitle: course.title,
+          screenshotDataUrl,
+      });
 
       if (result.success) {
           toast({ title: 'Submitted!', description: 'Your enrollment is pending approval. We will notify you soon.' });
