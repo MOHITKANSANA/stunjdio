@@ -2,26 +2,28 @@
 'use client';
 
 import { useState, useRef, ChangeEvent } from 'react';
-import { notFound, useRouter } from 'next/navigation';
+import { notFound, useRouter, useParams } from 'next/navigation';
 import { useDocument } from 'react-firebase-hooks/firestore';
 import { doc } from 'firebase/firestore';
 import { firestore } from '@/lib/firebase';
 import { useAuth } from '@/hooks/use-auth';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Upload, IndianRupee, QrCode } from 'lucide-react';
+import { Loader2, Upload, IndianRupee, QrCode, CheckCircle, ShieldCheck, ArrowLeft } from 'lucide-react';
 import Image from 'next/image';
 import { submitEnrollmentAction } from '@/app/actions/enrollment';
+import Link from 'next/link';
 
-export default function EnrollPage({ params }: { params: { courseId: string } }) {
+export default function EnrollPage() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
+  const params = useParams();
+  const courseId = params.courseId as string;
   
-  const { courseId } = params;
   const [courseDoc, loading, error] = useDocument(doc(firestore, 'courses', courseId));
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [screenshotFile, setScreenshotFile] = useState<File | null>(null);
@@ -29,7 +31,7 @@ export default function EnrollPage({ params }: { params: { courseId: string } })
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   if (loading || authLoading) {
-    return <div className="max-w-2xl mx-auto p-8"><Skeleton className="h-96 w-full" /></div>;
+    return <div className="max-w-4xl mx-auto p-8 grid md:grid-cols-2 gap-8"><Skeleton className="h-96 w-full" /><Skeleton className="h-96 w-full" /></div>;
   }
 
   if (error || !courseDoc?.exists()) {
@@ -71,12 +73,21 @@ export default function EnrollPage({ params }: { params: { courseId: string } })
 
     setIsSubmitting(true);
     try {
+      const idToken = await user.getIdToken();
       const screenshotDataUrl = await fileToDataUrl(screenshotFile);
-      const result = await submitEnrollmentAction({
-          courseId: courseId,
-          courseTitle: course.title,
-          screenshotDataUrl,
-      });
+      const result = await fetch('/api/enroll', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${idToken}`,
+        },
+        body: JSON.stringify({
+            courseId: courseId,
+            courseTitle: course.title,
+            screenshotDataUrl,
+        }),
+      }).then(res => res.json());
+
 
       if (result.success) {
           toast({ title: 'Submitted!', description: 'Your enrollment is pending approval. We will notify you soon.' });
@@ -93,50 +104,86 @@ export default function EnrollPage({ params }: { params: { courseId: string } })
 
 
   return (
-    <div className="max-w-2xl mx-auto p-4 md:p-8">
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-3xl font-headline">Enroll in: {course.title}</CardTitle>
-          <CardDescription>Complete the payment and upload the screenshot to get access.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="p-6 border rounded-lg bg-muted/50 flex flex-col items-center text-center">
-            <h3 className="font-bold text-xl mb-2 flex items-center"><IndianRupee className="mr-1 h-5 w-5"/>Pay {course.price}</h3>
-            <p className="text-muted-foreground mb-4">Scan the QR code below with any payment app.</p>
-            <div className="relative w-52 h-52 bg-gray-200 rounded-lg flex items-center justify-center">
-               <Image src="https://picsum.photos/300/300" alt="QR Code" width={208} height={208} data-ai-hint="qr code" />
-            </div>
-          </div>
+    <div className="bg-muted/20 min-h-screen p-4 md:p-8">
+      <div className="max-w-5xl mx-auto">
+        <Button variant="ghost" asChild className="mb-4">
+            <Link href={`/dashboard/courses/${courseId}`}>
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Back to Course
+            </Link>
+        </Button>
+        <div className="grid md:grid-cols-2 gap-8 items-start">
+           <Card className="shadow-lg">
+                <CardHeader>
+                  <CardTitle className="text-2xl font-headline">Complete Your Enrollment</CardTitle>
+                  <CardDescription>You are enrolling in: <span className="font-bold text-primary">{course.title}</span></CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div>
+                    <h3 className="font-semibold text-lg mb-2">Step 1: Complete Payment</h3>
+                    <div className="p-4 border rounded-lg bg-muted/50 flex flex-col items-center text-center">
+                      <p className="text-muted-foreground mb-4">Scan the QR code below with any payment app to pay the course fee.</p>
+                       <div className="relative w-52 h-52 bg-gray-200 rounded-lg flex items-center justify-center overflow-hidden">
+                           <Image src="https://i.postimg.cc/VzTgS66F/IMG-20250630-062749.jpg" alt="QR Code" width={208} height={208} data-ai-hint="qr code" />
+                        </div>
+                    </div>
+                  </div>
+                  <div>
+                     <h3 className="font-semibold text-lg mb-2">Step 2: Upload Screenshot</h3>
+                     <CardDescription className="mb-4">After payment, upload the confirmation screenshot here.</CardDescription>
+                     
+                    <div className="space-y-4">
+                        <Button type="button" variant="outline" className="w-full" onClick={() => fileInputRef.current?.click()}>
+                           <Upload className="mr-2 h-4 w-4" />
+                           {screenshotFile ? 'Change Image' : 'Choose Image'}
+                        </Button>
+                        <input
+                            type="file"
+                            ref={fileInputRef}
+                            onChange={handleFileChange}
+                            className="hidden"
+                            accept="image/png, image/jpeg"
+                        />
+                         {previewImage && (
+                          <div className="mt-4 border p-2 rounded-lg inline-block relative bg-background">
+                            <p className="text-xs text-muted-foreground mb-2 text-center">{screenshotFile?.name}</p>
+                            <Image src={previewImage} alt="Screenshot preview" width={200} height={200} className="rounded-md object-contain" />
+                          </div>
+                        )}
+                    </div>
+                  </div>
+                </CardContent>
+                 <CardFooter>
+                    <Button onClick={handleSubmit} disabled={isSubmitting || !screenshotFile} className="w-full text-lg" size="lg">
+                        {isSubmitting ? <><Loader2 className="mr-2 h-5 w-5 animate-spin" />Submitting...</> : 'Submit for Verification'}
+                    </Button>
+                 </CardFooter>
+              </Card>
 
-          <div className="space-y-4">
-            <h3 className="font-semibold text-lg">Step 2: Upload Screenshot</h3>
-            <div className="flex items-center gap-4">
-               <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()}>
-                   <Upload className="mr-2 h-4 w-4" />
-                   Choose Image
-               </Button>
-               {screenshotFile && <p className="text-sm text-muted-foreground">{screenshotFile.name}</p>}
-                <input
-                    type="file"
-                    ref={fileInputRef}
-                    onChange={handleFileChange}
-                    className="hidden"
-                    accept="image/png, image/jpeg"
-                />
-            </div>
-            {previewImage && (
-              <div className="mt-4 border p-2 rounded-lg inline-block">
-                <Image src={previewImage} alt="Screenshot preview" width={200} height={200} className="rounded-md object-contain" />
-              </div>
-            )}
-          </div>
-          
-          <Button onClick={handleSubmit} disabled={isSubmitting || !screenshotFile} className="w-full text-lg" size="lg">
-            {isSubmitting ? <><Loader2 className="mr-2 h-5 w-5 animate-spin" />Submitting...</> : 'Submit for Verification'}
-          </Button>
-
-        </CardContent>
-      </Card>
+              <Card className="sticky top-8 shadow-lg">
+                  <CardHeader>
+                    <CardTitle className="flex items-center text-2xl">
+                        <IndianRupee className="h-6 w-6 mr-1" />
+                        {course.price ? course.price.toLocaleString() : 'Free'}
+                    </CardTitle>
+                    <CardDescription>One-time payment for lifetime access</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4 text-sm text-muted-foreground">
+                    <p>By enrolling, you'll get:</p>
+                    <ul className="space-y-3">
+                        <li className="flex items-center gap-3"><CheckCircle className="h-5 w-5 text-green-500" /><span>Full access to all course materials</span></li>
+                        <li className="flex items-center gap-3"><CheckCircle className="h-5 w-5 text-green-500" /><span>Downloadable resources & PDFs</span></li>
+                        <li className="flex items-center gap-3"><CheckCircle className="h-5 w-5 text-green-500" /><span>Access to course community</span></li>
+                        <li className="flex items-center gap-3"><CheckCircle className="h-5 w-5 text-green-500" /><span>Certificate of completion</span></li>
+                    </ul>
+                     <div className="flex items-center gap-3 pt-4 text-green-600">
+                        <ShieldCheck className="h-5 w-5" />
+                        <span className="font-semibold">Secure Payment & Verification</span>
+                     </div>
+                  </CardContent>
+              </Card>
+        </div>
+      </div>
     </div>
   );
 }
