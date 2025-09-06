@@ -239,6 +239,7 @@ export function LoginForm() {
             <span className="bg-card px-2 text-muted-foreground">Or continue with</span>
           </div>
         </div>
+        <div className="grid grid-cols-2 gap-4 w-full">
         <Button variant="outline" className="w-full" onClick={handleGoogleLogin} disabled={isLoading}>
           {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 
             <svg className="mr-2 h-4 w-4" aria-hidden="true" focusable="false" data-prefix="fab" data-icon="google" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 488 512"><path fill="currentColor" d="M488 261.8C488 403.3 391.1 504 248 504 110.8 504 0 393.2 0 256S110.8 8 248 8c66.8 0 126 23.4 172.9 61.9l-76.2 76.2C322.3 103.2 289.4 86.6 248 86.6c-94.2 0-170.8 76.6-170.8 170.8S153.8 427.4 248 427.4c53.9 0 99.4-20.4 132.3-52.6l76.2 76.2C411.3 483.8 338.5 504 248 504z"></path></svg>
@@ -246,8 +247,9 @@ export function LoginForm() {
           Google
         </Button>
         <Button variant="outline" className="w-full" onClick={() => setFormType(formType === 'phone' ? 'login' : 'phone')} disabled={isLoading}>
-          {formType === 'phone' ? 'Sign in with Email' : 'Sign in with Phone'}
+          {formType === 'phone' ? 'Use Email' : 'Use Phone'}
         </Button>
+        </div>
         <div className="text-center text-sm">
           {formType === 'login' ? (
             <>

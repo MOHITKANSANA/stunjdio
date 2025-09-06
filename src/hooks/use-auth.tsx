@@ -2,7 +2,7 @@
 "use client";
 
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { onAuthStateChanged, User, signInWithEmailAndPassword, createUserWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, signOut, RecaptchaVerifier, signInWithPhoneNumber, ConfirmationResult, UserCredential } from 'firebase/auth';
+import { onAuthStateChanged, User, signInWithEmailAndPassword, createUserWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, signOut, RecaptchaVerifier, signInWithPhoneNumber, ConfirmationResult, UserCredential, updateProfile } from 'firebase/auth';
 import { doc, setDoc, serverTimestamp, getDoc } from 'firebase/firestore';
 import { auth, firestore } from '@/lib/firebase';
 import { useRouter } from 'next/navigation';
@@ -53,9 +53,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
-      setUser(currentUser);
       if (currentUser) {
+        // Firestore might have a more up-to-date photoURL (as data URI)
+        const userRef = doc(firestore, 'users', currentUser.uid);
+        const docSnap = await getDoc(userRef);
+        if(docSnap.exists() && docSnap.data().photoURL && currentUser.photoURL !== docSnap.data().photoURL) {
+            // This is a bit of a hack to force-refresh the user object with the Firestore data
+            // It assumes the firestore data is more current.
+            await updateProfile(currentUser, { photoURL: docSnap.data().photoURL });
+        }
+        setUser(currentUser);
         await updateUserInFirestore(currentUser);
+      } else {
+        setUser(null);
       }
       setLoading(false);
     });
@@ -64,6 +74,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   
   const handleAuthSuccess = async (userCredential: UserCredential) => {
       await updateUserInFirestore(userCredential.user);
+      // Manually set user state to trigger re-render with latest data
+      setUser(userCredential.user);
       return userCredential;
   };
 

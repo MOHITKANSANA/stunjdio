@@ -23,7 +23,7 @@ export default function DashboardPage() {
     const { t } = useLanguage();
     const [dashboardConfig, loading] = useDocumentData(doc(firestore, 'app_config', 'dashboard'));
     
-    const heroImageUrl = dashboardConfig?.heroImageDataUri || "https://picsum.photos/300/200";
+    const heroImageUrl = dashboardConfig?.heroImageDataUri || "https://picsum.photos/150/100";
 
     const dashboardGridItems = [
       { label: t('courses'), icon: Book, href: "/dashboard/courses", color: "bg-blue-500" },
@@ -56,12 +56,12 @@ export default function DashboardPage() {
           )}
           <h1 className="text-3xl font-bold">Learn, Practice, Achieve!</h1>
       </div>
-      <div className="flex-1 bg-background p-4 -mt-10 rounded-t-3xl shadow-2xl overflow-y-auto">
+      <div className="flex-1 bg-background p-4 -mt-10 rounded-t-3xl shadow-2xl overflow-y-auto pb-24 md:pb-4">
         <div className="grid grid-cols-3 gap-4">
           {dashboardGridItems.map((item) => (
             <Link href={item.href} key={item.label}>
               <Card className={`h-full transform-gpu transition-transform duration-200 ease-in-out hover:-translate-y-1 hover:shadow-xl ${item.color} text-white`}>
-                <CardContent className="flex flex-col items-center justify-center gap-2 p-4 text-center">
+                <CardContent className="flex flex-col items-center justify-center gap-2 p-4 text-center aspect-square">
                   <div className="flex items-center justify-center rounded-full bg-white/20 p-3">
                       <item.icon className="h-6 w-6" />
                   </div>
