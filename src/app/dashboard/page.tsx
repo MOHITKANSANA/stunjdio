@@ -26,18 +26,18 @@ import { collection, query, orderBy, where, limit } from 'firebase/firestore';
 import { firestore } from '@/lib/firebase';
 import { Skeleton } from '@/components/ui/skeleton';
 
-const TopStudentCard = ({ rank, name, avatarUrl }: { rank: number, name: string, avatarUrl: string }) => (
+const TopStudentCard = ({ rank, name, avatarUrl }: { rank: number, name: string | null, avatarUrl: string | null }) => (
     <Card className="flex flex-col items-center justify-center p-4 shadow-md h-full">
         <div className="relative mb-2">
             <Avatar className="h-16 w-16 border-2 border-yellow-400">
-                <AvatarImage src={avatarUrl} alt={name} data-ai-hint="student" />
-                <AvatarFallback>{name.charAt(0)}</AvatarFallback>
+                <AvatarImage src={avatarUrl || undefined} alt={name || 'Student'} data-ai-hint="student" />
+                <AvatarFallback>{name ? name.charAt(0) : 'S'}</AvatarFallback>
             </Avatar>
             <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-yellow-400 text-white rounded-full h-6 w-6 flex items-center justify-center text-sm font-bold">
                 {rank}
             </div>
         </div>
-        <p className="font-semibold text-sm mt-2 text-center">{name}</p>
+        <p className="font-semibold text-sm mt-2 text-center">{name || 'Student'}</p>
     </Card>
 )
 
