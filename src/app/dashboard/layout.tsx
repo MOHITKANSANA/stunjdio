@@ -212,7 +212,7 @@ export default function DashboardLayout({
              <AppSidebar />
              <div className="flex flex-col w-full h-full overflow-hidden">
                 <AppHeader />
-                 <main className="flex-1 overflow-y-auto">
+                 <main className="flex-1 overflow-y-auto h-full">
                     <SidebarInset>
                         {children}
                     </SidebarInset>
