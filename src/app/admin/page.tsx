@@ -318,11 +318,12 @@ export default function AdminPage() {
                             {liveClassesLoading && <TableRow><TableCell><Skeleton className="h-9 w-full" /></TableCell></TableRow>}
                             {liveClassesCollection && liveClassesCollection.docs.map(doc => {
                                 const liveClass = doc.data();
+                                const startTime = liveClass.startTime?.toDate();
                                 return (
                                     <TableRow key={doc.id}>
                                         <TableCell>
                                             <p className="font-medium">{liveClass.title}</p>
-                                            <p className="text-sm text-muted-foreground">{new Date(liveClass.startTime.seconds * 1000).toLocaleString()}</p>
+                                            <p className="text-sm text-muted-foreground">{startTime ? startTime.toLocaleString() : 'Invalid Date'}</p>
                                         </TableCell>
                                         <TableCell className="text-right">
                                             <Button variant="ghost" size="icon" onClick={() => deleteLiveClass(doc.id)}><Trash2 className="h-4 w-4 text-destructive"/></Button>

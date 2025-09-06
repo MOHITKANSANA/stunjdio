@@ -76,6 +76,7 @@ export default function LiveClassPage() {
     );
 
     const getYoutubeVideoId = (url: string) => {
+        if(!url) return null;
         const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
         const match = url.match(regExp);
         return (match && match[2].length === 11) ? match[2] : null;
@@ -84,13 +85,13 @@ export default function LiveClassPage() {
     const now = new Date();
 
     const currentLiveClass = liveClasses?.docs.find(doc => {
-        const startTime = new Date(doc.data().startTime.seconds * 1000);
-        return startTime <= now;
+        const startTime = doc.data().startTime?.toDate();
+        return startTime && startTime <= now;
     });
 
     const upcomingClasses = liveClasses?.docs.filter(doc => {
-        const startTime = new Date(doc.data().startTime.seconds * 1000);
-        return startTime > now;
+        const startTime = doc.data().startTime?.toDate();
+        return startTime && startTime > now;
     });
 
     return (
@@ -139,7 +140,8 @@ export default function LiveClassPage() {
                 {upcomingClasses && upcomingClasses.length > 0 ? (
                     upcomingClasses.map(doc => {
                          const liveClass = doc.data();
-                         const startTime = new Date(liveClass.startTime.seconds * 1000);
+                         const startTime = liveClass.startTime?.toDate();
+                         if (!startTime) return null;
                          return (
                             <Card key={doc.id}>
                                 <CardHeader>
