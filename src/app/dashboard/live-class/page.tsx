@@ -1,7 +1,6 @@
 
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
 import { useCollection } from 'react-firebase-hooks/firestore';
 import { collection, query, orderBy } from 'firebase/firestore';
 import { firestore } from '@/lib/firebase';
@@ -27,49 +26,6 @@ const YouTubePlayer = ({ videoId }: { videoId: string }) => {
     );
 };
 
-const Countdown = ({ targetDate }: { targetDate: Date }) => {
-    const calculateTimeLeft = useCallback(() => {
-        const difference = +targetDate - +new Date();
-        let timeLeft: any = {};
-
-        if (difference > 0) {
-            timeLeft = {
-                days: Math.floor(difference / (1000 * 60 * 60 * 24)),
-                hours: Math.floor((difference / (1000 * 60 * 60)) % 24),
-                minutes: Math.floor((difference / 1000 / 60) % 60),
-                seconds: Math.floor((difference / 1000) % 60),
-            };
-        }
-
-        return timeLeft;
-    }, [targetDate]);
-
-    const [timeLeft, setTimeLeft] = useState(calculateTimeLeft());
-    
-    useEffect(() => {
-        const timer = setTimeout(() => {
-            setTimeLeft(calculateTimeLeft());
-        }, 1000);
-        return () => clearTimeout(timer);
-    }, [calculateTimeLeft, timeLeft]);
-
-    if (!Object.keys(timeLeft).length) {
-        return <Badge>Starting soon...</Badge>;
-    }
-
-    return (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Clock className="h-4 w-4" />
-            <span>Starts in:</span>
-            {timeLeft.days > 0 && <span>{timeLeft.days}d</span>}
-            {timeLeft.hours > 0 && <span>{timeLeft.hours}h</span>}
-            {timeLeft.minutes > 0 && <span>{timeLeft.minutes}m</span>}
-            <span>{timeLeft.seconds}s</span>
-        </div>
-    );
-};
-
-
 export default function LiveClassPage() {
     const [liveClasses, loading, error] = useCollection(
         query(collection(firestore, 'live_classes'), orderBy('startTime', 'desc'))
@@ -86,13 +42,14 @@ export default function LiveClassPage() {
 
     const currentLiveClass = liveClasses?.docs.find(doc => {
         const startTime = doc.data().startTime?.toDate();
+        // A class is "live" if it's the most recent class that has started.
         return startTime && startTime <= now;
     });
 
     const upcomingClasses = liveClasses?.docs.filter(doc => {
         const startTime = doc.data().startTime?.toDate();
         return startTime && startTime > now;
-    });
+    }).reverse(); // reverse to show nearest upcoming first
 
     return (
         <div className="max-w-4xl mx-auto space-y-8 p-4 md:p-8">
@@ -146,10 +103,12 @@ export default function LiveClassPage() {
                             <Card key={doc.id}>
                                 <CardHeader>
                                     <CardTitle>{liveClass.title}</CardTitle>
-                                    <CardDescription>{startTime.toLocaleString()}</CardDescription>
                                 </CardHeader>
                                 <CardContent>
-                                    <Countdown targetDate={startTime} />
+                                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                       <Clock className="h-4 w-4" />
+                                       <span>Starts at: {startTime.toLocaleString()}</span>
+                                    </div>
                                 </CardContent>
                             </Card>
                          )

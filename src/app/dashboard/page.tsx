@@ -17,15 +17,13 @@ import {
   ShieldQuestion
 } from 'lucide-react';
 import Link from 'next/link';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { useState, useEffect } from 'react';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel"
 import { useCollection, useDocumentData } from 'react-firebase-hooks/firestore';
 import { collection, query, orderBy, where, limit, doc } from 'firebase/firestore';
 import { firestore } from '@/lib/firebase';
 import { Skeleton } from '@/components/ui/skeleton';
-import Image from 'next/image';
 
 const TopStudentCard = ({ rank, name, avatarUrl }: { rank: number, name: string | null, avatarUrl: string | null }) => (
     <Card className="flex flex-col items-center justify-center p-4 shadow-md h-full">
@@ -42,8 +40,8 @@ const TopStudentCard = ({ rank, name, avatarUrl }: { rank: number, name: string 
     </Card>
 )
 
-const LiveClassCountdown = () => {
-    const [liveClasses, loading, error] = useCollection(
+const NextLiveClassCard = () => {
+    const [nextLiveClass, loading, error] = useCollection(
         query(
             collection(firestore, 'live_classes'), 
             where('startTime', '>', new Date()),
@@ -51,70 +49,44 @@ const LiveClassCountdown = () => {
             limit(1)
         )
     );
-    const [timeLeft, setTimeLeft] = useState<any>(null);
 
-    useEffect(() => {
-        if (loading || !liveClasses || liveClasses.docs.length === 0) {
-            setTimeLeft(null);
-            return;
-        }
-
-        const nextClass = liveClasses.docs[0].data();
-        const targetTime = nextClass.startTime.seconds * 1000;
-
-        const calculateTimeLeft = () => {
-            const difference = targetTime - new Date().getTime();
-            if (difference > 0) {
-                return {
-                    days: Math.floor(difference / (1000 * 60 * 60 * 24)),
-                    hours: Math.floor((difference / (1000 * 60 * 60)) % 24),
-                    minutes: Math.floor((difference / 1000 / 60) % 60),
-                    seconds: Math.floor((difference / 1000) % 60),
-                };
-            }
-            return null;
-        };
-        
-        setTimeLeft(calculateTimeLeft());
-        const timer = setInterval(() => {
-            setTimeLeft(calculateTimeLeft());
-        }, 1000);
-
-        return () => clearInterval(timer);
-    }, [liveClasses, loading]);
-    
     if (loading) return <Skeleton className="h-24 w-full" />;
     
-    if (!timeLeft) {
+    if (error || !nextLiveClass || nextLiveClass.docs.length === 0) {
         return (
-            <div className="text-center">
-                <h3 className="font-semibold mb-2">No upcoming live classes.</h3>
-            </div>
+             <Card className="p-4 shadow-md rounded-xl text-center">
+                <CardHeader>
+                    <CardTitle>Next Live Class</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <p>No upcoming live classes scheduled at the moment.</p>
+                </CardContent>
+            </Card>
         )
     };
+    
+    const nextClassData = nextLiveClass.docs[0].data();
+    const startTime = nextClassData.startTime.toDate();
 
     return (
-        <div className="text-center">
-            <h3 className="font-semibold mb-2">Next Live Class Starts in</h3>
-            <div className="flex justify-center items-end gap-2">
-                {timeLeft.days > 0 && <div className="text-center"><div className="font-bold text-4xl">{timeLeft.days}</div><div className="text-xs">days</div></div>}
-                <div className="text-center"><div className="font-bold text-4xl">{String(timeLeft.hours).padStart(2,'0')}</div><div className="text-xs">hour</div></div>
-                <div className="text-4xl pb-1">:</div>
-                <div className="text-center"><div className="font-bold text-4xl">{String(timeLeft.minutes).padStart(2,'0')}</div><div className="text-xs">min</div></div>
-                 <div className="text-4xl pb-1">:</div>
-                <div className="text-center"><div className="font-bold text-4xl">{String(timeLeft.seconds).padStart(2,'0')}</div><div className="text-xs">sec</div></div>
-            </div>
-        </div>
+        <Card className="p-4 shadow-md rounded-xl text-center">
+             <CardHeader>
+                <CardTitle>{nextClassData.title}</CardTitle>
+                <CardDescription>Next Live Class</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <p className="text-lg font-semibold">{startTime.toLocaleString()}</p>
+            </CardContent>
+        </Card>
     );
 };
+
 
 export default function DashboardPage() {
     
     const [topStudents, loading, error] = useCollection(
         query(collection(firestore, 'top_students'), orderBy('addedAt', 'desc'), limit(10))
     );
-    const [config, configLoading, configError] = useDocumentData(doc(firestore, 'app_config', 'dashboard'));
-
 
     const topSectionItems = [
       { label: "Today's Course", icon: BookOpen, href: "/dashboard/courses", color: "bg-red-400 text-white" },
@@ -192,10 +164,8 @@ export default function DashboardPage() {
         )}
       </div>
       
-      {/* Next Live Class Countdown */}
-      <Card className="p-4 shadow-md rounded-xl">
-        <LiveClassCountdown />
-      </Card>
+      {/* Next Live Class */}
+      <NextLiveClassCard />
 
     </div>
   );
