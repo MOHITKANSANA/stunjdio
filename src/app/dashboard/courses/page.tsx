@@ -5,9 +5,11 @@ import { useCollection } from 'react-firebase-hooks/firestore';
 import { collection, query, orderBy } from 'firebase/firestore';
 import { firestore } from '@/lib/firebase';
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from '@/components/ui/skeleton';
-import { BookOpen } from 'lucide-react';
+import { BookOpen, IndianRupee } from 'lucide-react';
+import Link from 'next/link';
+import Image from 'next/image';
 
 export default function CoursesPage() {
   const [coursesCollection, loading, error] = useCollection(
@@ -23,33 +25,37 @@ export default function CoursesPage() {
 
       {loading && (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-64 w-full" />)}
+          {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-80 w-full" />)}
         </div>
       )}
       {error && <p className="text-destructive">Error loading courses: {error.message}</p>}
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {coursesCollection && coursesCollection.docs.map((doc) => {
           const course = doc.data();
           return (
-            <Card key={doc.id} className="flex flex-col">
+            <Card key={doc.id} className="flex flex-col overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300">
+               <div className="relative h-48 w-full">
+                 <Image src={course.imageUrl || `https://picsum.photos/seed/${doc.id}/600/400`} alt={course.title} layout="fill" objectFit="cover" data-ai-hint="online course" />
+               </div>
               <CardHeader>
-                <div className="flex items-start justify-between">
-                  <div className="space-y-1">
-                    <CardTitle>{course.title}</CardTitle>
-                    <CardDescription>{course.category}</CardDescription>
-                  </div>
-                   <div className="p-3 bg-accent text-accent-foreground rounded-full">
-                      <BookOpen className="h-6 w-6" />
-                   </div>
-                </div>
+                <CardTitle className="text-xl">{course.title}</CardTitle>
+                <CardDescription>{course.category}</CardDescription>
               </CardHeader>
               <CardContent className="flex-grow">
-                <p className="text-muted-foreground">{course.description}</p>
+                <p className="text-muted-foreground line-clamp-3">{course.description}</p>
               </CardContent>
-              <div className="p-6 pt-0">
-                 <Button className="w-full">Enroll Now</Button>
-              </div>
+              <CardFooter className="flex justify-between items-center">
+                 <div className="flex items-center font-bold text-lg">
+                    <IndianRupee className="h-5 w-5 mr-1" />
+                    {course.price ? course.price.toLocaleString() : 'Free'}
+                 </div>
+                 <Button asChild>
+                    <Link href={`/dashboard/courses/${doc.id}`}>
+                        View Details
+                    </Link>
+                 </Button>
+              </CardFooter>
             </Card>
           )
         })}

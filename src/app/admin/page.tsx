@@ -7,7 +7,6 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -24,9 +23,11 @@ import { Loader2, Trash2, PlusCircle, MinusCircle } from 'lucide-react';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 
 const courseFormSchema = z.object({
-  title: z.string().min(1, 'Title is required'),
-  category: z.string().min(1, 'Category is required'),
-  description: z.string().min(1, 'Description is required'),
+  title: z.string().min(3, 'Title must be at least 3 characters'),
+  category: z.string().min(3, 'Category must be at least 3 characters'),
+  description: z.string().min(10, 'Description must be at least 10 characters'),
+  price: z.coerce.number().min(0, 'Price cannot be negative'),
+  imageUrl: z.string().url('Must be a valid image URL').optional().or(z.literal('')),
 });
 type CourseFormValues = z.infer<typeof courseFormSchema>;
 
@@ -63,7 +64,7 @@ export default function AdminPage() {
 
   const courseForm = useForm<CourseFormValues>({
     resolver: zodResolver(courseFormSchema),
-    defaultValues: { title: '', category: '', description: '' },
+    defaultValues: { title: '', category: '', description: '', price: 0, imageUrl: '' },
   });
 
   const liveClassForm = useForm<LiveClassFormValues>({
@@ -220,32 +221,26 @@ export default function AdminPage() {
             <Card>
               <CardHeader>
                 <CardTitle>Create New Course</CardTitle>
-                <CardDescription>Fill out the details below to add a new course to the catalog.</CardDescription>
+                <CardDescription>Fill out the details below to add a new course.</CardDescription>
               </CardHeader>
               <CardContent>
                 <Form {...courseForm}>
                   <form onSubmit={courseForm.handleSubmit(onCourseSubmit)} className="grid gap-6">
-                    <FormField
-                      control={courseForm.control}
-                      name="title"
-                      render={({ field }) => (
-                        <FormItem><FormLabel>Course Title</FormLabel><FormControl><Input placeholder="e.g. Algebra Fundamentals" {...field} /></FormControl><FormMessage /></FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={courseForm.control}
-                      name="category"
-                      render={({ field }) => (
-                        <FormItem><FormLabel>Category</FormLabel><FormControl><Input placeholder="e.g. Maths" {...field} /></FormControl><FormMessage /></FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={courseForm.control}
-                      name="description"
-                      render={({ field }) => (
-                        <FormItem><FormLabel>Description</FormLabel><FormControl><Textarea placeholder="A short description of the course content." className="min-h-32" {...field} /></FormControl><FormMessage /></FormItem>
-                      )}
-                    />
+                    <FormField control={courseForm.control} name="title" render={({ field }) => (
+                      <FormItem><FormLabel>Course Title</FormLabel><FormControl><Input placeholder="e.g. Algebra Fundamentals" {...field} /></FormControl><FormMessage /></FormItem>
+                    )}/>
+                    <FormField control={courseForm.control} name="category" render={({ field }) => (
+                      <FormItem><FormLabel>Category</FormLabel><FormControl><Input placeholder="e.g. Maths" {...field} /></FormControl><FormMessage /></FormItem>
+                    )}/>
+                    <FormField control={courseForm.control} name="price" render={({ field }) => (
+                        <FormItem><FormLabel>Price (INR)</FormLabel><FormControl><Input type="number" placeholder="e.g. 499" {...field} /></FormControl><FormMessage /></FormItem>
+                    )}/>
+                    <FormField control={courseForm.control} name="imageUrl" render={({ field }) => (
+                        <FormItem><FormLabel>Cover Image URL (Optional)</FormLabel><FormControl><Input placeholder="https://picsum.photos/600/400" {...field} /></FormControl><FormMessage /></FormItem>
+                    )}/>
+                    <FormField control={courseForm.control} name="description" render={({ field }) => (
+                      <FormItem><FormLabel>Description</FormLabel><FormControl><Textarea placeholder="A short description of the course content." className="min-h-32" {...field} /></FormControl><FormMessage /></FormItem>
+                    )}/>
                     <Button type="submit" disabled={courseForm.formState.isSubmitting}>
                       {courseForm.formState.isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin"/>Creating...</> : "Create Course"}
                     </Button>
@@ -285,27 +280,15 @@ export default function AdminPage() {
               <CardContent>
                 <Form {...liveClassForm}>
                   <form onSubmit={liveClassForm.handleSubmit(onLiveClassSubmit)} className="grid gap-4 mb-6">
-                    <FormField
-                      control={liveClassForm.control}
-                      name="title"
-                      render={({ field }) => (
+                    <FormField control={liveClassForm.control} name="title" render={({ field }) => (
                         <FormItem><FormLabel>Class Title</FormLabel><FormControl><Input placeholder="e.g. Maths Special Session" {...field} /></FormControl><FormMessage /></FormItem>
-                      )}
-                    />
-                     <FormField
-                      control={liveClassForm.control}
-                      name="youtubeUrl"
-                      render={({ field }) => (
+                    )}/>
+                     <FormField control={liveClassForm.control} name="youtubeUrl" render={({ field }) => (
                         <FormItem><FormLabel>YouTube URL</FormLabel><FormControl><Input placeholder="https://www.youtube.com/watch?v=..." {...field} /></FormControl><FormMessage /></FormItem>
-                      )}
-                    />
-                     <FormField
-                      control={liveClassForm.control}
-                      name="startTime"
-                      render={({ field }) => (
+                    )}/>
+                     <FormField control={liveClassForm.control} name="startTime" render={({ field }) => (
                         <FormItem><FormLabel>Start Time</FormLabel><FormControl><Input type="datetime-local" {...field} /></FormControl><FormMessage /></FormItem>
-                      )}
-                    />
+                    )}/>
                     <Button type="submit" disabled={liveClassForm.formState.isSubmitting}>
                       {liveClassForm.formState.isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin"/>Adding...</> : "Add Live Class"}
                     </Button>
