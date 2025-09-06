@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useRef, ChangeEvent } from 'react';
-import { notFound, useRouter } from 'next/navigation';
+import { notFound } from 'next/navigation';
 import { useDocument } from 'react-firebase-hooks/firestore';
 import { doc } from 'firebase/firestore';
 import { firestore } from '@/lib/firebase';
@@ -19,7 +19,6 @@ import Link from 'next/link';
 
 export default function EnrollPage({ params }: { params: { courseId: string } }) {
   const { user, loading: authLoading } = useAuth();
-  const router = useRouter();
   const { toast } = useToast();
   
   const [courseDoc, loading, error] = useDocument(doc(firestore, 'courses', params.courseId));
@@ -81,7 +80,10 @@ export default function EnrollPage({ params }: { params: { courseId: string } })
 
       if (result.success) {
           toast({ title: 'Submitted!', description: 'Your enrollment is pending approval. We will notify you soon.' });
-          router.push('/dashboard/courses');
+          // Redirect using a standard anchor or Link after success, or just let the user navigate away.
+          // For a better UX, we can replace the form with a success message.
+          // For now, let's assume the toast is enough and the user can navigate back.
+          window.location.href = '/dashboard/courses';
       } else {
           throw new Error(result.error);
       }
