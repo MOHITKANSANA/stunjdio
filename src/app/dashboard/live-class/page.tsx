@@ -46,12 +46,13 @@ export default function LiveClassPage() {
         if (!url) return null;
         let videoId: string | null = null;
         try {
-            // Regular expression to cover various YouTube URL formats
-            const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+            const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=|\/live\/)([^#\&\?]*).*/;
             const match = url.match(regExp);
 
             if (match && match[2].length === 11) {
                 videoId = match[2];
+            } else {
+                 console.error("Could not parse YouTube URL:", url);
             }
         } catch (e) {
             console.error("Error parsing YouTube URL", e);
