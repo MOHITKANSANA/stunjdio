@@ -16,13 +16,12 @@ import { useCollection } from 'react-firebase-hooks/firestore';
 import { collection, query, where } from 'firebase/firestore';
 
 export default function CourseDetailPage({ params }: { params: { courseId: string } }) {
-  const { courseId } = params;
   const { user, loading: authLoading } = useAuth();
   
-  const [courseDoc, courseLoading, courseError] = useDocument(doc(firestore, 'courses', courseId));
+  const [courseDoc, courseLoading, courseError] = useDocument(doc(firestore, 'courses', params.courseId));
   
   const enrollmentsQuery = user 
-    ? query(collection(firestore, 'enrollments'), where('userId', '==', user.uid), where('courseId', '==', courseId), where('status', '==', 'approved'))
+    ? query(collection(firestore, 'enrollments'), where('userId', '==', user.uid), where('courseId', '==', params.courseId), where('status', '==', 'approved'))
     : null;
     
   const [enrollmentDoc, enrollmentLoading, enrollmentError] = useCollection(enrollmentsQuery);
@@ -52,6 +51,7 @@ export default function CourseDetailPage({ params }: { params: { courseId: strin
   }
 
   const course = courseDoc.data();
+  const courseId = params.courseId;
 
   return (
     <div className="max-w-5xl mx-auto p-4 md:p-8">
