@@ -16,11 +16,12 @@ import { collection, query, where, orderBy } from 'firebase/firestore';
 
 export default function CourseDetailPage({ params }: { params: { courseId: string } }) {
   const { user, loading: authLoading } = useAuth();
+  const courseId = params.courseId;
   
-  const [courseDoc, courseLoading, courseError] = useDocument(doc(firestore, 'courses', params.courseId));
+  const [courseDoc, courseLoading, courseError] = useDocument(doc(firestore, 'courses', courseId));
   
   const enrollmentsQuery = user 
-    ? query(collection(firestore, 'enrollments'), where('userId', '==', user.uid), where('courseId', '==', params.courseId), where('status', '==', 'approved'))
+    ? query(collection(firestore, 'enrollments'), where('userId', '==', user.uid), where('courseId', '==', courseId), where('status', '==', 'approved'))
     : null;
     
   const [enrollmentDoc, enrollmentLoading, enrollmentError] = useCollection(enrollmentsQuery);
@@ -54,8 +55,7 @@ export default function CourseDetailPage({ params }: { params: { courseId: strin
   }
 
   const course = courseDoc.data();
-  const courseId = params.courseId;
-
+  
   // Filter live classes that belong to this course (assuming a naming convention for now)
   // A better approach would be to store a courseId in each live_class document.
   // For now, we'll show all live classes as a placeholder.
