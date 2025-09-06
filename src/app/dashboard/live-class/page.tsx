@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Skeleton } from '@/components/ui/skeleton';
 import { Video, Clock } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { useState, useEffect } from 'react';
 
 const YouTubePlayer = ({ videoId }: { videoId: string }) => {
     return (
@@ -30,6 +31,14 @@ export default function LiveClassPage() {
     const [liveClasses, loading, error] = useCollection(
         query(collection(firestore, 'live_classes'), orderBy('startTime', 'desc'))
     );
+    const [now, setNow] = useState(new Date());
+
+    useEffect(() => {
+        const timer = setInterval(() => {
+            setNow(new Date());
+        }, 1000);
+        return () => clearInterval(timer);
+    }, []);
 
     const getYoutubeVideoId = (url: string) => {
         if(!url) return null;
@@ -37,8 +46,6 @@ export default function LiveClassPage() {
         const match = url.match(regExp);
         return (match && match[2].length === 11) ? match[2] : null;
     }
-
-    const now = new Date();
 
     const currentLiveClass = liveClasses?.docs.find(doc => {
         const startTime = doc.data().startTime?.toDate();
