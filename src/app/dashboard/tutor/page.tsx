@@ -248,7 +248,7 @@ export default function AiTutorPage() {
              </div>
           </CardHeader>
           <CardContent className="space-y-6">
-            <div className="prose dark:prose-invert max-w-none text-foreground whitespace-pre-wrap leading-relaxed">
+            <div className="prose dark:prose-invert max-w-none text-foreground whitespace-pre-wrap break-words leading-relaxed">
               {response.answer}
             </div>
 

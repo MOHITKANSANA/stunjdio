@@ -46,7 +46,7 @@ const testGenerationSchema = z.object({
   examType: z.string().min(1, 'Exam type is required.'),
   language: z.string().min(1, 'Language is required.'),
   testType: z.literal('Multiple Choice'),
-  questionCount: z.coerce.number().min(3, 'Minimum 3 questions').max(10, 'Maximum 10 questions'),
+  questionCount: z.coerce.number().min(3, 'Minimum 3 questions').max(20, 'Maximum 20 questions'),
 });
 
 type TestGenerationValues = z.infer<typeof testGenerationSchema>;
@@ -115,7 +115,7 @@ export default function AiTestPage() {
     let correctAnswers = 0;
     testData.questions.forEach((q, index) => {
         const userAnswer = data.answers[index];
-        if (userAnswer && parseInt(userAnswer.selectedIndex!) === q.correctAnswerIndex) {
+        if (userAnswer && userAnswer.selectedIndex !== undefined && parseInt(userAnswer.selectedIndex) === q.correctAnswerIndex) {
             correctAnswers++;
         }
     });
@@ -351,9 +351,9 @@ export default function AiTestPage() {
                   <FormItem>
                     <FormLabel>Number of Questions</FormLabel>
                     <FormControl>
-                      <Input type="number" min="3" max="10" {...field} />
+                      <Input type="number" min="3" max="20" {...field} />
                     </FormControl>
-                     <FormDescription>Choose between 3 and 10 questions.</FormDescription>
+                     <FormDescription>Choose between 3 and 20 questions.</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
