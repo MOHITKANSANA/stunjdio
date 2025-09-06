@@ -2,18 +2,17 @@
 'use client';
 
 import { doc } from 'firebase/firestore';
-import { useDocument } from 'react-firebase-hooks/firestore';
+import { useDocument, useCollection } from 'react-firebase-hooks/firestore';
 import { firestore } from '@/lib/firebase';
 import { notFound } from 'next/navigation';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
-import { IndianRupee, BookOpen, Clock, Users, Lock } from 'lucide-react';
+import { IndianRupee, BookOpen, Clock, Users, Lock, Video, PlayCircle } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/use-auth';
-import { useCollection } from 'react-firebase-hooks/firestore';
-import { collection, query, where } from 'firebase/firestore';
+import { collection, query, where, orderBy } from 'firebase/firestore';
 
 export default function CourseDetailPage({ params }: { params: { courseId: string } }) {
   const { user, loading: authLoading } = useAuth();
@@ -26,9 +25,13 @@ export default function CourseDetailPage({ params }: { params: { courseId: strin
     
   const [enrollmentDoc, enrollmentLoading, enrollmentError] = useCollection(enrollmentsQuery);
 
+  // Query for live classes related to this course
+  const liveClassesQuery = query(collection(firestore, 'live_classes'), orderBy('startTime', 'desc'));
+  const [liveClassesCollection, liveClassesLoading, liveClassesError] = useCollection(liveClassesQuery);
+
   const isEnrolled = enrollmentDoc && !enrollmentDoc.empty;
 
-  if (courseLoading || authLoading || enrollmentLoading) {
+  if (courseLoading || authLoading || enrollmentLoading || liveClassesLoading) {
     return (
       <div className="max-w-4xl mx-auto p-4 md:p-8 space-y-6">
         <Skeleton className="h-12 w-3/4" />
@@ -52,6 +55,16 @@ export default function CourseDetailPage({ params }: { params: { courseId: strin
 
   const course = courseDoc.data();
   const courseId = params.courseId;
+
+  // Filter live classes that belong to this course (assuming a naming convention for now)
+  // A better approach would be to store a courseId in each live_class document.
+  // For now, we'll show all live classes as a placeholder.
+  const courseLiveClasses = liveClassesCollection?.docs.filter(doc => {
+    // This is a placeholder logic. In a real app, you'd link classes to courses with an ID.
+    // For now, we'll show all classes if the user is enrolled.
+    return true; 
+  });
+
 
   return (
     <div className="max-w-5xl mx-auto p-4 md:p-8">
@@ -80,9 +93,29 @@ export default function CourseDetailPage({ params }: { params: { courseId: strin
             </CardHeader>
             <CardContent>
               {isEnrolled ? (
-                  <div>
-                    <p className="text-muted-foreground">Welcome! Here you will find all the course materials. (Content coming soon)</p>
-                    {/* Future content like videos, PDFs, quizzes will be listed here */}
+                  <div className="space-y-4">
+                    {liveClassesError && <p className="text-destructive">Could not load live classes.</p>}
+                    {courseLiveClasses && courseLiveClasses.length > 0 ? (
+                      courseLiveClasses.map(doc => {
+                        const liveClass = doc.data();
+                        const startTime = liveClass.startTime.toDate();
+                        return (
+                          <div key={doc.id} className="flex items-center justify-between p-3 rounded-lg border bg-muted/50">
+                            <div>
+                               <p className="font-semibold flex items-center gap-2"><Video className="h-5 w-5 text-primary"/>{liveClass.title}</p>
+                               <p className="text-sm text-muted-foreground ml-7">{startTime.toLocaleString()}</p>
+                            </div>
+                            <Button variant="ghost" size="icon" asChild>
+                                <a href={liveClass.youtubeUrl} target="_blank" rel="noopener noreferrer">
+                                    <PlayCircle className="h-6 w-6" />
+                                </a>
+                            </Button>
+                          </div>
+                        )
+                      })
+                    ) : (
+                      <p className="text-muted-foreground">No content has been added to this course yet.</p>
+                    )}
                   </div>
               ) : (
                 <div className="flex flex-col items-center justify-center text-center p-8 bg-muted/50 rounded-lg">
