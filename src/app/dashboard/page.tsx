@@ -1,9 +1,10 @@
 
 "use client";
+import React, { useState, useEffect } from 'react';
 import {
   BookOpen,
   Video,
-  Newspaper,
+  ShieldQuestion,
   Trophy,
   Wallet,
   FileText,
@@ -11,17 +12,13 @@ import {
   BookCopy,
   Globe,
   Puzzle,
-  Scroll,
-  Briefcase,
-  User,
-  ShieldQuestion
 } from 'lucide-react';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel"
-import { useCollection, useDocumentData } from 'react-firebase-hooks/firestore';
-import { collection, query, orderBy, where, limit, doc } from 'firebase/firestore';
+import { useCollection } from 'react-firebase-hooks/firestore';
+import { collection, query, orderBy, where, limit } from 'firebase/firestore';
 import { firestore } from '@/lib/firebase';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -41,10 +38,17 @@ const TopStudentCard = ({ rank, name, avatarUrl }: { rank: number, name: string 
 )
 
 const NextLiveClassCard = () => {
+    const [now, setNow] = useState(new Date());
+
+    useEffect(() => {
+        const timer = setInterval(() => setNow(new Date()), 1000);
+        return () => clearInterval(timer);
+    }, []);
+    
     const [nextLiveClass, loading, error] = useCollection(
         query(
             collection(firestore, 'live_classes'), 
-            where('startTime', '>', new Date()),
+            where('startTime', '>', now),
             orderBy('startTime', 'asc'),
             limit(1)
         )
@@ -112,7 +116,7 @@ export default function DashboardPage() {
             {topSectionItems.map((item) => (
                 <Link href={item.href} key={item.label}>
                     <Card className={`transform-gpu transition-transform duration-200 ease-in-out hover:-translate-y-1 hover:shadow-xl h-full rounded-xl ${item.color}`}>
-                        <CardContent className="flex flex-col items-start justify-between gap-2 p-4 aspect-[3/2]">
+                        <CardContent className="flex flex-col items-start justify-between gap-2 p-4 aspect-square md:aspect-auto">
                             <div className="p-2 bg-white/30 rounded-full">
                                 <item.icon className="h-6 w-6" />
                             </div>
