@@ -42,7 +42,6 @@ const bottomNavItems = [
     { href: '/dashboard', icon: Home, label: 'home' },
     { href: '/dashboard/courses', icon: Book, label: 'courses' },
     { href: '/dashboard/ai-test', icon: CheckSquare, label: 'ai_tests' },
-    { href: '/dashboard/papers', icon: FileText, label: 'papers' },
     { href: '/dashboard/profile', icon: User, label: 'profile' },
 ];
 
@@ -148,19 +147,22 @@ const AppSidebar = () => {
 
 
 const AppHeader = () => {
+  const pathname = usePathname();
+  const isDashboard = pathname === '/dashboard';
+  
   return (
-      <header className="flex h-16 shrink-0 items-center justify-between gap-4 border-b border-border/50 px-4 md:px-6">
+      <header className={cn("flex h-16 shrink-0 items-center justify-between gap-4 px-4 md:px-6", isDashboard ? "bg-transparent absolute top-0 left-0 right-0 z-10 text-white" : "border-b border-border/50")}>
             <div className='flex items-center gap-2'>
                 <div className='md:hidden'>
                     <SidebarTrigger />
                 </div>
-                 <div className='hidden md:flex items-center gap-2'>
+                 <div className={cn("hidden md:flex items-center gap-2", isDashboard ? "text-white" : "")}>
                     <Shield className="h-7 w-7 text-primary" />
                     <span className="text-lg font-semibold font-headline">गो स्वामी डिफेस एकेडमी</span>
                  </div>
             </div>
             <div className="flex items-center gap-2">
-                <Button variant="ghost" size="icon">
+                <Button variant="ghost" size="icon" className={cn(isDashboard ? "text-white hover:bg-white/10 hover:text-white" : "")}>
                     <Bell className="h-5 w-5"/>
                     <span className="sr-only">Notifications</span>
                 </Button>
@@ -182,12 +184,12 @@ const AppBottomNav = () => {
                      key={item.label}
                      href={item.href}
                      className={cn(
-                       "flex flex-col items-center gap-1 rounded-md p-2 text-xs font-medium transition-colors hover:bg-accent hover:text-accent-foreground",
+                       "flex flex-col items-center gap-1 rounded-md p-2 text-xs font-medium transition-colors hover:bg-accent hover:text-accent-foreground w-16",
                        pathname === item.href ? "text-primary" : "text-muted-foreground"
                      )}
                    >
                       <item.icon className="h-6 w-6" />
-                      <span>{t(item.label)}</span>
+                      <span className="text-center">{t(item.label)}</span>
                    </Link>
                 ))}
               </nav>
@@ -203,6 +205,8 @@ export default function DashboardLayout({
 }) {
   const { user, loading } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
+  const isDashboard = pathname === '/dashboard';
   
   if (loading) {
     return <div className="flex h-screen w-full items-center justify-center">Loading...</div>;
@@ -217,9 +221,9 @@ export default function DashboardLayout({
       <SidebarProvider>
           <div className="flex h-screen w-full flex-col bg-background">
              <AppSidebar />
-             <div className="flex flex-col w-full">
+             <div className="flex flex-col w-full h-screen">
                 <AppHeader />
-                 <main className="flex-1 overflow-y-auto p-4 md:p-6">
+                 <main className={cn("flex-1 overflow-y-auto", !isDashboard && "p-4 md:p-6")}>
                     <SidebarInset>
                         {children}
                     </SidebarInset>

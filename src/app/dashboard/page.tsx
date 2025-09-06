@@ -4,73 +4,63 @@ import {
   BookCheck,
   Briefcase,
   CheckSquare,
-  Gamepad2,
   GraduationCap,
   Library,
   Lightbulb,
   Radio,
   ShieldQuestion,
   Star,
+  Trophy,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useLanguage } from '@/hooks/use-language';
 import { Card, CardContent } from '@/components/ui/card';
-import { useEffect, useState } from 'react';
-
-const motivationalLines = [
-  "Success is not final, failure is not fatal: it is the courage to continue that counts.",
-  "Believe you can and you're halfway there.",
-  "The only way to do great work is to love what you do.",
-  "The future belongs to those who believe in the beauty of their dreams.",
-  "Don't watch the clock; do what it does. Keep going."
-];
+import Image from 'next/image';
 
 export default function DashboardPage() {
     const { t } = useLanguage();
-    const [currentLine, setCurrentLine] = useState(t('motivational_line'));
-
-    useEffect(() => {
-        const lineKey = motivationalLines[Math.floor(Math.random() * motivationalLines.length)];
-        // Note: For a real app, you'd want to add these to your locale files.
-        // For this demo, we will just display the English version.
-        setCurrentLine(lineKey);
-    }, []);
-
 
     const dashboardGridItems = [
-      { label: t('student_portal'), icon: Briefcase, href: "/dashboard/profile" },
-      { label: t('our_courses'), icon: BookCheck, href: "/dashboard/courses" },
-      { label: t('live_classes'), icon: Radio, href: "/dashboard/live" },
-      { label: t('ai_tests'), icon: ShieldQuestion, href: "/dashboard/ai-test" },
-      { label: t('ai_tutor'), icon: GraduationCap, href: "/dashboard/tutor" },
-      { label: t('daily_passes'), icon: Library, href: "/dashboard/passes" },
-      { label: t('quiz_game'), icon: Gamepad2, href: "/dashboard/quiz" },
-      { label: t('learn_with_fun'), icon: Star, href: "/dashboard/learn" },
-      { label: t('reading_practice'), icon: Lightbulb, href: "/dashboard/practice" },
+      { label: t('our_courses'), icon: BookCheck, href: "/dashboard/courses", color: "bg-blue-500" },
+      { label: t('ai_tests'), icon: ShieldQuestion, href: "/dashboard/ai-test", color: "bg-green-500" },
+      { label: t('ai_tutor'), icon: GraduationCap, href: "/dashboard/tutor", color: "bg-orange-500" },
+      { label: t('achievements'), icon: Trophy, href: "/dashboard/profile", color: "bg-red-500" },
+      { label: t('papers'), icon: Library, href: "/dashboard/papers", color: "bg-purple-500" },
+      { label: t('resources'), icon: Lightbulb, href: "/dashboard/courses", color: "bg-teal-500" },
+      { label: t('teachers'), icon: Briefcase, href: "/admin", color: "bg-yellow-500" },
+      { label: t('live_classes'), icon: Radio, href: "/dashboard/live", color: "bg-pink-500" },
+      { label: t('settings'), icon: Star, href: "/dashboard/settings", color: "bg-indigo-500" },
     ];
     
   return (
-    <div className="space-y-6">
-      <div className="overflow-hidden rounded-lg bg-gradient-to-r from-purple-600 to-indigo-700 p-4 text-center text-primary-foreground shadow-lg">
-          <div className="relative h-6 w-full overflow-hidden">
-            <p className="absolute whitespace-nowrap text-sm font-medium animate-marquee">
-              {currentLine}
-            </p>
-          </div>
+    <div className="flex flex-col h-full">
+      <div className="relative h-[45%] bg-gradient-to-br from-purple-600 via-indigo-700 to-orange-500 p-6 text-primary-foreground flex flex-col justify-center items-center text-center">
+          <div className="absolute top-16 left-6 text-lg font-bold">EDUCATION</div>
+          <Image 
+            src="https://picsum.photos/300/200"
+            width={250}
+            height={150}
+            alt="Student studying"
+            className="mb-4 rounded-lg"
+            data-ai-hint="student studying"
+          />
+          <h1 className="text-3xl font-bold">Learn, Practice, Achieve!</h1>
       </div>
-      <div className="grid grid-cols-3 gap-4">
-        {dashboardGridItems.map((item) => (
-          <Link href={item.href} key={item.label}>
-            <Card className="h-full transform-gpu transition-transform duration-200 ease-in-out hover:-translate-y-1 hover:shadow-xl bg-card">
-              <CardContent className="flex flex-col items-center justify-center gap-2 p-4 text-center">
-                <div className="flex items-center justify-center rounded-full bg-accent p-3 text-primary">
-                    <item.icon className="h-6 w-6" />
-                </div>
-                <span className="text-xs font-medium text-center">{item.label}</span>
-              </CardContent>
-            </Card>
-          </Link>
-        ))}
+      <div className="flex-1 bg-background p-4 -mt-10 rounded-t-3xl shadow-2xl overflow-y-auto">
+        <div className="grid grid-cols-3 gap-4">
+          {dashboardGridItems.map((item) => (
+            <Link href={item.href} key={item.label}>
+              <Card className={`h-full transform-gpu transition-transform duration-200 ease-in-out hover:-translate-y-1 hover:shadow-xl ${item.color} text-white`}>
+                <CardContent className="flex flex-col items-center justify-center gap-2 p-4 text-center">
+                  <div className="flex items-center justify-center rounded-full bg-white/20 p-3">
+                      <item.icon className="h-6 w-6" />
+                  </div>
+                  <span className="text-xs font-medium text-center">{item.label}</span>
+                </CardContent>
+              </Card>
+            </Link>
+          ))}
+        </div>
       </div>
     </div>
   );
