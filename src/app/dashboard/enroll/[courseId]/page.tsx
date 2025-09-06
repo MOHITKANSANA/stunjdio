@@ -36,7 +36,6 @@ export default function EnrollPage({ params }: { params: { courseId: string } })
   }
   
   const course = courseDoc.data();
-  const courseId = params.courseId;
 
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -73,7 +72,7 @@ export default function EnrollPage({ params }: { params: { courseId: string } })
     try {
       const screenshotDataUrl = await fileToDataUrl(screenshotFile);
       const result = await submitEnrollmentAction({
-          courseId: courseId,
+          courseId: params.courseId,
           courseTitle: course.title,
           screenshotDataUrl,
       });
