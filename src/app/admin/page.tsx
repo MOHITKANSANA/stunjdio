@@ -30,6 +30,14 @@ const courseFormSchema = z.object({
 });
 type CourseFormValues = z.infer<typeof courseFormSchema>;
 
+const liveClassFormSchema = z.object({
+    title: z.string().min(1, 'Title is required'),
+    youtubeUrl: z.string().url('Must be a valid YouTube URL'),
+    startTime: z.string().refine((val) => !isNaN(Date.parse(val)), { message: 'Invalid date format' }),
+});
+type LiveClassFormValues = z.infer<typeof liveClassFormSchema>;
+
+
 function centerAspectCrop(mediaWidth: number, mediaHeight: number, aspect: number) {
   return centerCrop(
     makeAspectCrop({ unit: '%', width: 90 }, aspect, mediaWidth, mediaHeight),
@@ -58,7 +66,8 @@ export default function AdminPage() {
     defaultValues: { title: '', category: '', description: '' },
   });
 
-  const liveClassForm = useForm({
+  const liveClassForm = useForm<LiveClassFormValues>({
+    resolver: zodResolver(liveClassFormSchema),
     defaultValues: { title: '', youtubeUrl: '', startTime: '' }
   });
 
@@ -154,7 +163,7 @@ export default function AdminPage() {
   };
 
 
-  const onLiveClassSubmit = async (data: { title: string; youtubeUrl: string; startTime: string }) => {
+  const onLiveClassSubmit = async (data: LiveClassFormValues) => {
     try {
         const startTime = new Date(data.startTime);
         await addDoc(collection(firestore, 'live_classes'), {
@@ -274,14 +283,34 @@ export default function AdminPage() {
                 <CardDescription>Add, view, and manage live classes.</CardDescription>
               </CardHeader>
               <CardContent>
-                <form onSubmit={liveClassForm.handleSubmit(onLiveClassSubmit)} className="grid gap-4 mb-6">
-                  <div className="grid gap-2"><Label htmlFor="live-title">Class Title</Label><Input id="live-title" {...liveClassForm.register('title', { required: true })} placeholder="e.g. Maths Special Session"/></div>
-                  <div className="grid gap-2"><Label htmlFor="youtubeUrl">YouTube URL</Label><Input id="youtubeUrl" {...liveClassForm.register('youtubeUrl', { required: true })} placeholder="https://www.youtube.com/watch?v=..."/></div>
-                  <div className="grid gap-2"><Label htmlFor="startTime">Start Time</Label><Input id="startTime" type="datetime-local" {...liveClassForm.register('startTime', { required: true })} /></div>
-                  <Button type="submit" disabled={liveClassForm.formState.isSubmitting}>
-                    {liveClassForm.formState.isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin"/>Adding...</> : "Add Live Class"}
-                  </Button>
-                </form>
+                <Form {...liveClassForm}>
+                  <form onSubmit={liveClassForm.handleSubmit(onLiveClassSubmit)} className="grid gap-4 mb-6">
+                    <FormField
+                      control={liveClassForm.control}
+                      name="title"
+                      render={({ field }) => (
+                        <FormItem><FormLabel>Class Title</FormLabel><FormControl><Input placeholder="e.g. Maths Special Session" {...field} /></FormControl><FormMessage /></FormItem>
+                      )}
+                    />
+                     <FormField
+                      control={liveClassForm.control}
+                      name="youtubeUrl"
+                      render={({ field }) => (
+                        <FormItem><FormLabel>YouTube URL</FormLabel><FormControl><Input placeholder="https://www.youtube.com/watch?v=..." {...field} /></FormControl><FormMessage /></FormItem>
+                      )}
+                    />
+                     <FormField
+                      control={liveClassForm.control}
+                      name="startTime"
+                      render={({ field }) => (
+                        <FormItem><FormLabel>Start Time</FormLabel><FormControl><Input type="datetime-local" {...field} /></FormControl><FormMessage /></FormItem>
+                      )}
+                    />
+                    <Button type="submit" disabled={liveClassForm.formState.isSubmitting}>
+                      {liveClassForm.formState.isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin"/>Adding...</> : "Add Live Class"}
+                    </Button>
+                  </form>
+                </Form>
                 <h4 className="font-semibold mb-2">Scheduled Classes</h4>
                 <div className="max-h-60 overflow-y-auto pr-2">
                     <Table>
@@ -384,5 +413,3 @@ export default function AdminPage() {
     </div>
   );
 }
-
-    
