@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useCollection } from 'react-firebase-hooks/firestore';
 import { collection, query, orderBy } from 'firebase/firestore';
 import { firestore } from '@/lib/firebase';
@@ -28,7 +28,7 @@ const YouTubePlayer = ({ videoId }: { videoId: string }) => {
 };
 
 const Countdown = ({ targetDate }: { targetDate: Date }) => {
-    const calculateTimeLeft = () => {
+    const calculateTimeLeft = useCallback(() => {
         const difference = +targetDate - +new Date();
         let timeLeft: any = {};
 
@@ -42,7 +42,7 @@ const Countdown = ({ targetDate }: { targetDate: Date }) => {
         }
 
         return timeLeft;
-    };
+    }, [targetDate]);
 
     const [timeLeft, setTimeLeft] = useState(calculateTimeLeft());
     
@@ -51,7 +51,7 @@ const Countdown = ({ targetDate }: { targetDate: Date }) => {
             setTimeLeft(calculateTimeLeft());
         }, 1000);
         return () => clearTimeout(timer);
-    });
+    }, [timeLeft, calculateTimeLeft]);
 
     if (!Object.keys(timeLeft).length) {
         return <Badge>Starting soon...</Badge>;
