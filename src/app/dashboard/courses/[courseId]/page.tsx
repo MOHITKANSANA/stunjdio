@@ -10,6 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { IndianRupee, BookOpen, Clock, Users } from 'lucide-react';
+import Link from 'next/link';
 
 export default function CourseDetailPage({ params }: { params: { courseId: string } }) {
   const [courseDoc, loading, error] = useDocument(doc(firestore, 'courses', params.courseId));
@@ -33,7 +34,6 @@ export default function CourseDetailPage({ params }: { params: { courseId: strin
   }
 
   if (error || !courseDoc?.exists()) {
-    // This will render the not-found.tsx file if it exists, or a default Next.js 404 page
     notFound();
   }
 
@@ -72,7 +72,9 @@ export default function CourseDetailPage({ params }: { params: { courseId: strin
               <CardDescription>One-time payment</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <Button size="lg" className="w-full text-lg">Enroll Now</Button>
+              <Button asChild size="lg" className="w-full text-lg">
+                 <Link href={`/dashboard/enroll/${params.courseId}`}>Enroll Now</Link>
+              </Button>
               <div className="space-y-3 pt-4 text-sm text-muted-foreground">
                 <div className="flex items-center gap-3">
                   <BookOpen className="h-5 w-5 text-primary" />
