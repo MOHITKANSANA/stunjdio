@@ -13,7 +13,7 @@ const updateUserInFirestore = async (user: User) => {
     const userRef = doc(firestore, 'users', user.uid);
     const docSnap = await getDoc(userRef);
 
-    const userData = {
+    const userData: any = {
         uid: user.uid,
         email: user.email,
         displayName: user.displayName,

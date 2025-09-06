@@ -8,6 +8,7 @@ import {
   Briefcase,
   Radio,
   Settings,
+  ShieldQuestion,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useLanguage } from '@/hooks/use-language';
@@ -19,7 +20,7 @@ export default function DashboardPage() {
 
     const dashboardGridItems = [
       { label: t('courses'), icon: Book, href: "/dashboard/courses", color: "bg-blue-500" },
-      { label: t('ai_tests'), icon: FileText, href: "/dashboard/ai-test", color: "bg-green-500" },
+      { label: t('ai_tests'), icon: ShieldQuestion, href: "/dashboard/ai-test", color: "bg-green-500" },
       { label: t('papers'), icon: FileText, href: "/dashboard/papers", color: "bg-orange-500" },
       { label: t('achievements'), icon: Trophy, href: "/dashboard/profile", color: "bg-red-500" },
       { label: t('resources'), icon: Lightbulb, href: "/dashboard/courses", color: "bg-purple-500" },
