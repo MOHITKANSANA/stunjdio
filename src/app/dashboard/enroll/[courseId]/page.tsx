@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useRef, ChangeEvent } from 'react';
-import { notFound, useRouter, useParams } from 'next/navigation';
+import { notFound, useRouter } from 'next/navigation';
 import { useDocument } from 'react-firebase-hooks/firestore';
 import { doc } from 'firebase/firestore';
 import { firestore } from '@/lib/firebase';
@@ -17,11 +17,10 @@ import Image from 'next/image';
 import { submitEnrollmentAction } from '@/app/actions/enrollment';
 import Link from 'next/link';
 
-export default function EnrollPage() {
+export default function EnrollPage({ params }: { params: { courseId: string } }) {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
-  const params = useParams();
   const courseId = params.courseId as string;
   
   const [courseDoc, loading, error] = useDocument(doc(firestore, 'courses', courseId));
@@ -177,4 +176,5 @@ export default function EnrollPage() {
       </div>
     </div>
   );
-}
+
+    
