@@ -43,8 +43,8 @@ import { useLanguage } from '@/hooks/use-language';
 const bottomNavItems = [
     { href: '/dashboard', icon: Home, label: 'Home' },
     { href: '/dashboard/courses', icon: BookCopy, label: 'My Courses' },
-    { href: '#', icon: Video, label: 'Live Class' },
-    { href: '#', icon: Download, label: 'Downloads' },
+    { href: '/dashboard/live-class', icon: Video, label: 'Live Class' },
+    { href: '/dashboard/ai-test', icon: ShieldQuestion, label: 'AI Tests' },
     { href: '/dashboard/profile', icon: User, label: 'Profile' },
 ];
 
@@ -52,6 +52,7 @@ const sidebarNavItems = [
     { href: '/dashboard', icon: Home, label: 'home' },
     { href: '/dashboard/profile', icon: User, label: 'profile' },
     { href: '/dashboard/courses', icon: Book, label: 'courses' },
+    { href: '/dashboard/live-class', icon: Video, label: 'live_classes' },
     { href: '/dashboard/tutor', icon: GraduationCap, label: 'ai_tutor' },
     { href: '/dashboard/ai-test', icon: ShieldQuestion, label: 'ai_tests' },
     { href: '/dashboard/papers', icon: FileText, label: 'papers' },
@@ -175,12 +176,12 @@ const AppBottomNav = () => {
                      key={item.label}
                      href={item.href}
                      className={cn(
-                       "flex flex-col items-center gap-1 rounded-md p-2 text-xs font-medium transition-colors hover:bg-accent hover:text-accent-foreground w-16",
+                       "flex flex-col items-center justify-center gap-1 rounded-md p-2 text-xs font-medium transition-colors hover:bg-accent hover:text-accent-foreground w-16 h-14",
                        pathname === item.href ? "text-red-500" : "text-muted-foreground"
                      )}
                    >
                       <item.icon className="h-6 w-6" />
-                      <span className="text-center">{item.label}</span>
+                      <span className="text-center text-[10px] leading-tight">{item.label}</span>
                    </Link>
                 ))}
               </nav>

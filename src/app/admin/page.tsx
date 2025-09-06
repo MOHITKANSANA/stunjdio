@@ -2,6 +2,7 @@
 'use client';
 
 import { useState, useRef } from 'react';
+import { useForm, Controller } from 'react-hook-form';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,13 +12,14 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { useCollection } from 'react-firebase-hooks/firestore';
-import { collection, query, orderBy, doc, setDoc } from 'firebase/firestore';
+import { collection, query, orderBy, doc, setDoc, addDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
 import { firestore } from '@/lib/firebase';
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import ReactCrop, { type Crop, centerCrop, makeAspectCrop } from 'react-image-crop';
 import 'react-image-crop/dist/ReactCrop.css';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Trash2, PlusCircle, MinusCircle } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
 
 function centerAspectCrop(mediaWidth: number, mediaHeight: number, aspect: number) {
   return centerCrop(
@@ -28,10 +30,12 @@ function centerAspectCrop(mediaWidth: number, mediaHeight: number, aspect: numbe
 }
 
 export default function AdminPage() {
-  const [value, loading, error] = useCollection(query(collection(firestore, 'users'), orderBy('lastLogin', 'desc')));
+  const [usersCollection, usersLoading, usersError] = useCollection(query(collection(firestore, 'users'), orderBy('lastLogin', 'desc')));
+  const [liveClassesCollection, liveClassesLoading, liveClassesError] = useCollection(query(collection(firestore, 'live_classes'), orderBy('startTime', 'desc')));
+  const [topStudentsCollection, topStudentsLoading, topStudentsError] = useCollection(collection(firestore, 'top_students'));
+
   const { toast } = useToast();
   
-  // State for image upload and crop
   const [imgSrc, setImgSrc] = useState('');
   const [crop, setCrop] = useState<Crop>();
   const [completedCrop, setCompletedCrop] = useState<Crop>();
@@ -39,6 +43,10 @@ export default function AdminPage() {
   const [isUploading, setIsUploading] = useState(false);
   const imgRef = useRef<HTMLImageElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const liveClassForm = useForm({
+    defaultValues: { title: '', youtubeUrl: '', startTime: '' }
+  });
 
   const getInitials = (name: string | null | undefined) => {
     if (!name) return "S";
@@ -51,7 +59,7 @@ export default function AdminPage() {
 
   const onFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
-      setCrop(undefined); // Makes crop preview update between images.
+      setCrop(undefined);
       const reader = new FileReader();
       reader.addEventListener('load', () => setImgSrc(reader.result?.toString() || ''));
       reader.readAsDataURL(e.target.files[0]);
@@ -99,7 +107,7 @@ export default function AdminPage() {
       canvas.height
     );
 
-    const base64Image = canvas.toDataURL('image/jpeg', 0.9); // Adjust quality as needed
+    const base64Image = canvas.toDataURL('image/jpeg', 0.9);
       
     try {
       const configDocRef = doc(firestore, 'app_config', 'dashboard');
@@ -117,88 +125,210 @@ export default function AdminPage() {
     }
   };
 
+  const onLiveClassSubmit = async (data: { title: string; youtubeUrl: string; startTime: string }) => {
+    try {
+        const startTime = new Date(data.startTime);
+        await addDoc(collection(firestore, 'live_classes'), {
+            title: data.title,
+            youtubeUrl: data.youtubeUrl,
+            startTime: startTime,
+            createdAt: serverTimestamp(),
+        });
+        toast({ title: 'Success', description: 'Live class added.' });
+        liveClassForm.reset();
+    } catch (error) {
+        console.error("Error adding live class: ", error);
+        toast({ variant: 'destructive', title: 'Error', description: 'Could not add live class.' });
+    }
+  };
+
+  const deleteLiveClass = async (id: string) => {
+    if(window.confirm('Are you sure you want to delete this class?')) {
+        await deleteDoc(doc(firestore, 'live_classes', id));
+        toast({ description: 'Live class deleted.' });
+    }
+  }
+
+  const isTopStudent = (userId: string) => {
+    return topStudentsCollection?.docs.some(doc => doc.id === userId);
+  }
+
+  const toggleTopStudent = async (user: any) => {
+    const userDocRef = doc(firestore, 'top_students', user.uid);
+    if(isTopStudent(user.uid)) {
+        await deleteDoc(userDocRef);
+        toast({ description: `${user.displayName} removed from top students.` });
+    } else {
+        if(topStudentsCollection && topStudentsCollection.docs.length >= 10) {
+            toast({ variant: 'destructive', title: 'Limit Reached', description: 'You can only have 10 top students.' });
+            return;
+        }
+        await setDoc(userDocRef, {
+            name: user.displayName,
+            avatarUrl: user.photoURL,
+            addedAt: serverTimestamp(),
+        });
+        toast({ title: 'Success', description: `${user.displayName} added to top students.` });
+    }
+  }
+
   return (
     <div className="mx-auto grid w-full max-w-6xl gap-6">
       <h1 className="text-3xl font-semibold font-headline">Administration</h1>
-      <div className="grid md:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Create New Course</CardTitle>
-            <CardDescription>Fill out the details below to add a new course to the catalog.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form className="grid gap-6">
-              <div className="grid gap-3"><Label htmlFor="title">Course Title</Label><Input id="title" type="text" className="w-full" placeholder="e.g. Algebra Fundamentals"/></div>
-              <div className="grid gap-3"><Label htmlFor="category">Category</Label><Input id="category" type="text" className="w-full" placeholder="e.g. Maths"/></div>
-              <div className="grid gap-3"><Label htmlFor="description">Description</Label><Textarea id="description" placeholder="A short description of the course content." className="min-h-32"/></div>
-              <Button type="submit">Create Course</Button>
-            </form>
-          </CardContent>
-        </Card>
+      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+        
+        {/* Column 1 */}
+        <div className="lg:col-span-1 flex flex-col gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Create New Course</CardTitle>
+                <CardDescription>Fill out the details below to add a new course to the catalog.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <form className="grid gap-6">
+                  <div className="grid gap-3"><Label htmlFor="title">Course Title</Label><Input id="title" type="text" className="w-full" placeholder="e.g. Algebra Fundamentals"/></div>
+                  <div className="grid gap-3"><Label htmlFor="category">Category</Label><Input id="category" type="text" className="w-full" placeholder="e.g. Maths"/></div>
+                  <div className="grid gap-3"><Label htmlFor="description">Description</Label><Textarea id="description" placeholder="A short description of the course content." className="min-h-32"/></div>
+                  <Button type="submit">Create Course</Button>
+                </form>
+              </CardContent>
+            </Card>
 
-        <div className="flex flex-col gap-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Update Dashboard Image</CardTitle>
-              <CardDescription>Upload and crop the hero image for the dashboard.</CardDescription>
-            </CardHeader>
-            <CardContent className="grid gap-4">
-               <Input ref={fileInputRef} type="file" accept="image/*" onChange={onFileSelect} />
-               {imgSrc && (
-                <div className="flex flex-col items-center gap-4">
-                  <ReactCrop
-                    crop={crop}
-                    onChange={(_, percentCrop) => setCrop(percentCrop)}
-                    onComplete={(c) => setCompletedCrop(c)}
-                    aspect={aspect}
-                    className="max-h-[400px]"
-                  >
-                    <img
-                      ref={imgRef}
-                      alt="Crop me"
-                      src={imgSrc}
-                      onLoad={onImageLoad}
-                      className="max-h-[400px]"
-                    />
-                  </ReactCrop>
-                  <Button onClick={handleSaveImage} disabled={!completedCrop || isUploading}>
-                    {isUploading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving...</> : "Save Image"}
+            <Card>
+              <CardHeader>
+                <CardTitle>Update Dashboard Image</CardTitle>
+                <CardDescription>Upload and crop the hero image for the dashboard.</CardDescription>
+              </CardHeader>
+              <CardContent className="grid gap-4">
+                 <Input ref={fileInputRef} type="file" accept="image/*" onChange={onFileSelect} />
+                 {imgSrc && (
+                  <div className="flex flex-col items-center gap-4">
+                    <ReactCrop crop={crop} onChange={(_, percentCrop) => setCrop(percentCrop)} onComplete={(c) => setCompletedCrop(c)} aspect={aspect} className="max-h-[400px]">
+                      <img ref={imgRef} alt="Crop me" src={imgSrc} onLoad={onImageLoad} className="max-h-[400px]"/>
+                    </ReactCrop>
+                    <Button onClick={handleSaveImage} disabled={!completedCrop || isUploading}>
+                      {isUploading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving...</> : "Save Image"}
+                    </Button>
+                  </div>
+                 )}
+              </CardContent>
+            </Card>
+        </div>
+
+        {/* Column 2 */}
+        <div className="lg:col-span-1 flex flex-col gap-6">
+           <Card>
+              <CardHeader>
+                <CardTitle>Live Class Management</CardTitle>
+                <CardDescription>Add, view, and manage live classes.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={liveClassForm.handleSubmit(onLiveClassSubmit)} className="grid gap-4 mb-6">
+                  <div className="grid gap-2"><Label htmlFor="live-title">Class Title</Label><Input id="live-title" {...liveClassForm.register('title', { required: true })} placeholder="e.g. Maths Special Session"/></div>
+                  <div className="grid gap-2"><Label htmlFor="youtubeUrl">YouTube URL</Label><Input id="youtubeUrl" {...liveClassForm.register('youtubeUrl', { required: true })} placeholder="https://www.youtube.com/watch?v=..."/></div>
+                  <div className="grid gap-2"><Label htmlFor="startTime">Start Time</Label><Input id="startTime" type="datetime-local" {...liveClassForm.register('startTime', { required: true })} /></div>
+                  <Button type="submit" disabled={liveClassForm.formState.isSubmitting}>
+                    {liveClassForm.formState.isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin"/>Adding...</> : "Add Live Class"}
                   </Button>
+                </form>
+                <h4 className="font-semibold mb-2">Scheduled Classes</h4>
+                <div className="max-h-60 overflow-y-auto pr-2">
+                    <Table>
+                        <TableBody>
+                            {liveClassesLoading && <TableRow><TableCell><Skeleton className="h-9 w-full" /></TableCell></TableRow>}
+                            {liveClassesCollection && liveClassesCollection.docs.map(doc => {
+                                const liveClass = doc.data();
+                                return (
+                                    <TableRow key={doc.id}>
+                                        <TableCell>
+                                            <p className="font-medium">{liveClass.title}</p>
+                                            <p className="text-sm text-muted-foreground">{new Date(liveClass.startTime.seconds * 1000).toLocaleString()}</p>
+                                        </TableCell>
+                                        <TableCell className="text-right">
+                                            <Button variant="ghost" size="icon" onClick={() => deleteLiveClass(doc.id)}><Trash2 className="h-4 w-4 text-destructive"/></Button>
+                                        </TableCell>
+                                    </TableRow>
+                                )
+                            })}
+                        </TableBody>
+                    </Table>
                 </div>
-               )}
-            </CardContent>
-          </Card>
-          
+              </CardContent>
+            </Card>
+
+            <Card>
+                <CardHeader>
+                    <CardTitle>Top 10 Students</CardTitle>
+                    <CardDescription>Select up to 10 students to feature on the dashboard.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                     {topStudentsError && <p className="text-destructive">Error: {topStudentsError.message}</p>}
+                     <div className="max-h-96 overflow-y-auto">
+                        <Table>
+                             <TableHeader><TableRow><TableHead>Student</TableHead><TableHead className="text-right">Action</TableHead></TableRow></TableHeader>
+                            <TableBody>
+                                {usersLoading && <TableRow><TableCell><Skeleton className="h-9 w-full"/></TableCell><TableCell><Skeleton className="h-9 w-9 ml-auto"/></TableCell></TableRow>}
+                                {usersCollection && usersCollection.docs.map(doc => {
+                                    const user = doc.data();
+                                    const isSelected = isTopStudent(doc.id);
+                                    return (
+                                        <TableRow key={doc.id}>
+                                            <TableCell>
+                                                <div className="flex items-center gap-3">
+                                                    <Avatar className="h-9 w-9"><AvatarImage src={user.photoURL || undefined} alt={user.displayName} /><AvatarFallback>{getInitials(user.displayName)}</AvatarFallback></Avatar>
+                                                    <div><p className="font-medium">{user.displayName}</p><p className="text-sm text-muted-foreground">{user.email}</p></div>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell className="text-right">
+                                                <Button variant="outline" size="icon" onClick={() => toggleTopStudent({uid: doc.id, ...user})}>
+                                                    {isSelected ? <MinusCircle className="h-4 w-4 text-red-500"/> : <PlusCircle className="h-4 w-4 text-green-500"/>}
+                                                </Button>
+                                            </TableCell>
+                                        </TableRow>
+                                    )
+                                })}
+                            </TableBody>
+                        </Table>
+                     </div>
+                </CardContent>
+            </Card>
+        </div>
+        
+        {/* Column 3 */}
+        <div className="lg:col-span-1 flex flex-col gap-6">
           <Card>
             <CardHeader>
               <CardTitle>User Management</CardTitle>
               <CardDescription>View and manage users who have logged into the app.</CardDescription>
             </CardHeader>
             <CardContent>
-              {error && <p className="text-destructive">Error: {error.message}</p>}
-              <Table>
-                <TableHeader><TableRow><TableHead>User</TableHead><TableHead>Last Login</TableHead></TableRow></TableHeader>
-                <TableBody>
-                  {loading && (<><TableRow><TableCell><Skeleton className="h-9 w-full" /></TableCell><TableCell><Skeleton className="h-9 w-full" /></TableCell></TableRow><TableRow><TableCell><Skeleton className="h-9 w-full" /></TableCell><TableCell><Skeleton className="h-9 w-full" /></TableCell></TableRow></>)}
-                  {value && value.docs.map((doc) => {
-                    const user = doc.data();
-                    return (
-                      <TableRow key={doc.id}>
-                        <TableCell>
-                          <div className="flex items-center gap-3">
-                            <Avatar className="h-9 w-9"><AvatarImage src={user.photoURL || undefined} alt={user.displayName} data-ai-hint="student" /><AvatarFallback>{getInitials(user.displayName)}</AvatarFallback></Avatar>
-                            <div className="font-medium"><p>{user.displayName}</p><p className="text-sm text-muted-foreground">{user.email}</p></div>
-                          </div>
-                        </TableCell>
-                        <TableCell><Badge variant="outline">{user.lastLogin && user.lastLogin.seconds ? new Date(user.lastLogin.seconds * 1000).toLocaleDateString() : 'N/A'}</Badge></TableCell>
-                      </TableRow>
-                    )
-                  })}
-                </TableBody>
-              </Table>
+              {usersError && <p className="text-destructive">Error: {usersError.message}</p>}
+              <div className="max-h-[800px] overflow-y-auto">
+                <Table>
+                  <TableHeader><TableRow><TableHead>User</TableHead><TableHead>Last Login</TableHead></TableRow></TableHeader>
+                  <TableBody>
+                    {usersLoading && (<><TableRow><TableCell><Skeleton className="h-9 w-full" /></TableCell><TableCell><Skeleton className="h-9 w-full" /></TableCell></TableRow><TableRow><TableCell><Skeleton className="h-9 w-full" /></TableCell><TableCell><Skeleton className="h-9 w-full" /></TableCell></TableRow></>)}
+                    {usersCollection && usersCollection.docs.map((doc) => {
+                      const user = doc.data();
+                      return (
+                        <TableRow key={doc.id}>
+                          <TableCell>
+                            <div className="flex items-center gap-3">
+                              <Avatar className="h-9 w-9"><AvatarImage src={user.photoURL || undefined} alt={user.displayName} data-ai-hint="student" /><AvatarFallback>{getInitials(user.displayName)}</AvatarFallback></Avatar>
+                              <div className="font-medium"><p>{user.displayName}</p><p className="text-sm text-muted-foreground">{user.email}</p></div>
+                            </div>
+                          </TableCell>
+                          <TableCell><Badge variant="outline">{user.lastLogin && user.lastLogin.seconds ? new Date(user.lastLogin.seconds * 1000).toLocaleDateString() : 'N/A'}</Badge></TableCell>
+                        </TableRow>
+                      )
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
             </CardContent>
           </Card>
         </div>
+
       </div>
     </div>
   );
