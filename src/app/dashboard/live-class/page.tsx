@@ -40,11 +40,31 @@ export default function LiveClassPage() {
         return () => clearInterval(timer);
     }, []);
 
-    const getYoutubeVideoId = (url: string) => {
-        if(!url) return null;
-        const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
-        const match = url.match(regExp);
-        return (match && match[2].length === 11) ? match[2] : null;
+    const getYoutubeVideoId = (url: string): string | null => {
+        if (!url) return null;
+        let videoId: string | null = null;
+        try {
+            const urlObj = new URL(url);
+            if (urlObj.hostname === 'youtu.be') {
+                videoId = urlObj.pathname.slice(1);
+            } else if (urlObj.hostname === 'www.youtube.com' || urlObj.hostname === 'youtube.com') {
+                if (urlObj.pathname === '/watch') {
+                    videoId = urlObj.searchParams.get('v');
+                } else if (urlObj.pathname.startsWith('/embed/')) {
+                    videoId = urlObj.pathname.split('/')[2];
+                }
+            }
+        } catch (e) {
+             // Fallback for non-URL strings or other formats
+            const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+            const match = url.match(regExp);
+            if (match && match[2].length === 11) {
+                return match[2];
+            }
+            return null;
+        }
+        
+        return videoId && videoId.length === 11 ? videoId : null;
     }
 
     const currentLiveClass = liveClasses?.docs.find(doc => {
