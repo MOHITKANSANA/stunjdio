@@ -21,7 +21,8 @@ export default function EnrollPage({ params }: { params: { courseId: string } })
   const router = useRouter();
   const { toast } = useToast();
   
-  const [courseDoc, loading, error] = useDocument(doc(firestore, 'courses', params.courseId));
+  const { courseId } = params;
+  const [courseDoc, loading, error] = useDocument(doc(firestore, 'courses', courseId));
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [screenshotFile, setScreenshotFile] = useState<File | null>(null);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
@@ -72,7 +73,7 @@ export default function EnrollPage({ params }: { params: { courseId: string } })
     try {
       const screenshotDataUrl = await fileToDataUrl(screenshotFile);
       const result = await submitEnrollmentAction({
-          courseId: params.courseId,
+          courseId: courseId,
           courseTitle: course.title,
           screenshotDataUrl,
       });
