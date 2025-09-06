@@ -14,11 +14,13 @@ import {
   ShieldQuestion,
   LogOut,
   UserCog,
+  BookCopy,
+  Download,
+  Video,
 } from 'lucide-react';
 
 import { useAuth } from '@/hooks/use-auth';
 import { useRouter } from 'next/navigation';
-import { UserNav } from '@/components/user-nav';
 import {
   Sidebar,
   SidebarProvider,
@@ -39,10 +41,11 @@ import { Button } from '@/components/ui/button';
 import { useLanguage } from '@/hooks/use-language';
 
 const bottomNavItems = [
-    { href: '/dashboard', icon: Home, label: 'home' },
-    { href: '/dashboard/courses', icon: Book, label: 'courses' },
-    { href: '/dashboard/tutor', icon: GraduationCap, label: 'ai_tutor' },
-    { href: '/dashboard/profile', icon: User, label: 'profile' },
+    { href: '/dashboard', icon: Home, label: 'Home' },
+    { href: '/dashboard/courses', icon: BookCopy, label: 'My Courses' },
+    { href: '#', icon: Video, label: 'Live Class' },
+    { href: '#', icon: Download, label: 'Downloads' },
+    { href: '/dashboard/profile', icon: User, label: 'Profile' },
 ];
 
 const sidebarNavItems = [
@@ -96,11 +99,11 @@ const AppSidebar = () => {
 
     return (
         <Sidebar>
-            <SidebarContent className="bg-gradient-to-b from-purple-600 via-indigo-700 to-orange-500 text-white border-none">
+            <SidebarContent className="bg-gradient-to-b from-red-500 to-orange-500 text-white border-none">
                 <SidebarHeader>
                      <div className='flex items-center gap-2'>
                         <Shield className="h-7 w-7 text-white" />
-                        <span className="text-lg font-semibold font-headline">गो स्वामी डिफेस एकेडमी</span>
+                        <span className="text-lg font-semibold font-headline">GoSwami Defence Academy</span>
                     </div>
                 </SidebarHeader>
                 <SidebarMenu>
@@ -147,26 +150,15 @@ const AppSidebar = () => {
 
 
 const AppHeader = () => {
-  const pathname = usePathname();
-  const isDashboard = pathname === '/dashboard';
-  
   return (
-      <header className={cn("flex h-16 shrink-0 items-center justify-between gap-4 px-4 md:px-6", isDashboard ? "bg-transparent absolute top-0 left-0 right-0 z-10 text-white" : "border-b border-border/50")}>
+      <header className={cn("flex h-16 shrink-0 items-center justify-between gap-4 px-4 md:px-6 bg-red-500 text-white")}>
             <div className='flex items-center gap-2'>
                 <div className='md:hidden'>
                     <SidebarTrigger />
                 </div>
-                 <div className={cn("hidden md:flex items-center gap-2", isDashboard ? "text-white" : "")}>
-                    <Shield className="h-7 w-7" />
-                    <span className="text-lg font-semibold font-headline">गो स्वामी डिफेस एकेडमी</span>
+                 <div className="flex items-center gap-2 text-lg font-semibold font-headline">
+                    GoSwami Defence Academy
                  </div>
-            </div>
-            <div className="flex items-center gap-2">
-                <Button variant="ghost" size="icon" className={cn(isDashboard ? "text-white hover:bg-white/10 hover:text-white" : "")}>
-                    <Bell className="h-5 w-5"/>
-                    <span className="sr-only">Notifications</span>
-                </Button>
-                <UserNav />
             </div>
         </header>
   )
@@ -174,10 +166,9 @@ const AppHeader = () => {
 
 const AppBottomNav = () => {
     const pathname = usePathname();
-    const { t } = useLanguage();
 
     return (
-         <footer className="sticky bottom-0 z-10 border-t border-border/50 bg-background/95 backdrop-blur-sm md:hidden">
+         <footer className="sticky bottom-0 z-10 border-t border-border/50 bg-background/95 backdrop-blur-sm md:hidden shadow-[0_-2px_10px_rgba(0,0,0,0.1)]">
               <nav className="flex items-center justify-around p-2">
                 {bottomNavItems.map((item) => (
                    <Link 
@@ -185,11 +176,11 @@ const AppBottomNav = () => {
                      href={item.href}
                      className={cn(
                        "flex flex-col items-center gap-1 rounded-md p-2 text-xs font-medium transition-colors hover:bg-accent hover:text-accent-foreground w-16",
-                       pathname === item.href ? "text-primary" : "text-muted-foreground"
+                       pathname === item.href ? "text-red-500" : "text-muted-foreground"
                      )}
                    >
                       <item.icon className="h-6 w-6" />
-                      <span className="text-center">{t(item.label)}</span>
+                      <span className="text-center">{item.label}</span>
                    </Link>
                 ))}
               </nav>
@@ -205,8 +196,6 @@ export default function DashboardLayout({
 }) {
   const { user, loading } = useAuth();
   const router = useRouter();
-  const pathname = usePathname();
-  const isDashboard = pathname === '/dashboard';
   
   if (loading) {
     return <div className="flex h-screen w-full items-center justify-center">Loading...</div>;
@@ -219,11 +208,11 @@ export default function DashboardLayout({
 
   return (
       <SidebarProvider>
-          <div className="flex h-screen w-full flex-col bg-background">
+          <div className="flex h-screen w-full flex-col bg-gray-50 dark:bg-gray-950">
              <AppSidebar />
              <div className="flex flex-col w-full h-full overflow-hidden">
                 <AppHeader />
-                 <main className={cn("flex-1 overflow-y-auto", !isDashboard && "p-4 md:p-6")}>
+                 <main className="flex-1 overflow-y-auto">
                     <SidebarInset>
                         {children}
                     </SidebarInset>
