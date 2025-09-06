@@ -134,7 +134,7 @@ export default function AdminPage() {
                           </div>
                         </TableCell>
                         <TableCell>
-                           <Badge variant="outline">{user.lastLogin ? new Date(user.lastLogin.seconds * 1000).toLocaleDateString() : 'N/A'}</Badge>
+                           <Badge variant="outline">{user.lastLogin && user.lastLogin.seconds ? new Date(user.lastLogin.seconds * 1000).toLocaleDateString() : 'N/A'}</Badge>
                         </TableCell>
                       </TableRow>
                   )
