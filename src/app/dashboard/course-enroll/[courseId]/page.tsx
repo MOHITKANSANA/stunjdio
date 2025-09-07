@@ -11,13 +11,13 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Upload, IndianRupee, QrCode, CheckCircle, ShieldCheck, ArrowLeft } from 'lucide-react';
+import { Loader2, Upload, IndianRupee, ShieldCheck, ArrowLeft } from 'lucide-react';
 import Image from 'next/image';
 import { submitEnrollmentAction } from '@/app/actions/enrollment';
 import Link from 'next/link';
 
-// This is the Client Component that handles all the interactive logic.
-function EnrollmentForm({ courseId }: { courseId: string }) {
+export default function CourseEnrollPage({ params }: { params: { courseId: string } }) {
+  const courseId = params.courseId;
   const { user, loading: authLoading } = useAuth();
   const { toast } = useToast();
   const router = useRouter();
@@ -167,10 +167,10 @@ function EnrollmentForm({ courseId }: { courseId: string }) {
                   <CardContent className="space-y-4 text-sm text-muted-foreground">
                     <p>By enrolling, you'll get:</p>
                     <ul className="space-y-3">
-                        <li className="flex items-center gap-3"><CheckCircle className="h-5 w-5 text-green-500" /><span>Full access to all course materials</span></li>
-                        <li className="flex items-center gap-3"><CheckCircle className="h-5 w-5 text-green-500" /><span>Downloadable resources & PDFs</span></li>
-                        <li className="flex items-center gap-3"><CheckCircle className="h-5 w-5 text-green-500" /><span>Access to course community</span></li>
-                        <li className="flex items-center gap-3"><CheckCircle className="h-5 w-5 text-green-500" /><span>Certificate of completion</span></li>
+                        <li className="flex items-center gap-3"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5 text-green-500"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg><span>Full access to all course materials</span></li>
+                        <li className="flex items-center gap-3"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5 text-green-500"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg><span>Downloadable resources & PDFs</span></li>
+                        <li className="flex items-center gap-3"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5 text-green-500"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg><span>Access to course community</span></li>
+                        <li className="flex items-center gap-3"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5 text-green-500"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg><span>Certificate of completion</span></li>
                     </ul>
                      <div className="flex items-center gap-3 pt-4 text-green-600">
                         <ShieldCheck className="h-5 w-5" />
@@ -184,9 +184,4 @@ function EnrollmentForm({ courseId }: { courseId: string }) {
   );
 }
 
-// This is the main page component. It is a Server Component.
-// Its only job is to get the courseId from the URL params and pass it to the Client Component.
-export default function CourseEnrollPage({ params }: { params: { courseId: string } }) {
-  // It passes the courseId to the client component that handles all the logic.
-  return <EnrollmentForm courseId={params.courseId} />;
-}
+    
