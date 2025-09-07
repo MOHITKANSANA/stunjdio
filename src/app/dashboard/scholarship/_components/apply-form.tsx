@@ -17,16 +17,18 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useCollection } from 'react-firebase-hooks/firestore';
 
-const personalDetailsSchema = z.object({
+const applyFormSchema = z.object({
+    // Personal Details
     name: z.string().min(2, 'Name is required.'),
     email: z.string().email(),
     phone: z.string().min(10, 'Enter a valid phone number.'),
     address: z.string().min(5, 'Address is required.'),
-});
-
-const scholarshipChoiceSchema = z.object({
+    // Scholarship Choice
     scholarshipType: z.string().min(1, 'Please select a scholarship type.'),
     courseId: z.string().optional(),
+    // Uploads
+    photo: z.instanceof(File).optional(),
+    signature: z.instanceof(File).optional(),
 }).refine(data => {
     if (data.scholarshipType === 'Specific Course' && !data.courseId) {
         return false;
@@ -37,14 +39,8 @@ const scholarshipChoiceSchema = z.object({
     path: ['courseId'],
 });
 
-const uploadsSchema = z.object({
-    photo: z.instanceof(File).optional(),
-    signature: z.instanceof(File).optional(),
-});
 
-const combinedSchema = personalDetailsSchema.merge(scholarshipChoiceSchema).merge(uploadsSchema);
-
-type ApplyFormValues = z.infer<typeof combinedSchema>;
+type ApplyFormValues = z.infer<typeof applyFormSchema>;
 
 const STEPS = {
   PERSONAL_DETAILS: 1,
@@ -75,7 +71,7 @@ export function ApplyForm() {
     );
     
     const form = useForm<ApplyFormValues>({
-        resolver: zodResolver(combinedSchema),
+        resolver: zodResolver(applyFormSchema),
         defaultValues: {
             name: user?.displayName || '',
             email: user?.email || '',
@@ -93,6 +89,8 @@ export function ApplyForm() {
             isValid = await form.trigger(['name', 'email', 'phone', 'address']);
         } else if (step === STEPS.SCHOLARSHIP_CHOICE) {
             isValid = await form.trigger(['scholarshipType', 'courseId']);
+        } else if (step === STEPS.UPLOADS) {
+            isValid = await form.trigger(['photo', 'signature']);
         }
         
         if (isValid) {
@@ -116,6 +114,7 @@ export function ApplyForm() {
             return;
         }
         try {
+            // Generate a 5-digit number
             const appNumber = String(Math.floor(10000 + Math.random() * 90000));
             
             const photoUrl = data.photo ? await fileToDataUrl(data.photo) : null;
@@ -170,7 +169,7 @@ export function ApplyForm() {
                 </div>
                 <Button onClick={() => setStep(STEPS.PERSONAL_DETAILS)}>Apply Again</Button>
             </div>
-        )
+        );
     }
 
     return (
@@ -242,7 +241,7 @@ export function ApplyForm() {
                                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                                     <FormControl><SelectTrigger>
                                         <SelectValue placeholder="Select a course" />
-                                    </SelectTrigger></FormControl>
+                                    </Trigger></FormControl>
                                     <SelectContent>
                                         {coursesLoading && <p className='p-2 text-xs text-muted-foreground'>Loading courses...</p>}
                                         {coursesCollection?.docs.map(doc => (
@@ -282,10 +281,9 @@ export function ApplyForm() {
                     {step > STEPS.PERSONAL_DETAILS && (
                         <Button type="button" variant="outline" onClick={handleBack}>Back</Button>
                     )}
-                    {step < STEPS.UPLOADS && (
+                    {step < STEPS.UPLOADS ? (
                         <Button type="button" onClick={handleNext} className="ml-auto">Next</Button>
-                    )}
-                     {step === STEPS.UPLOADS && (
+                    ) : (
                         <Button type="submit" disabled={form.formState.isSubmitting} className="ml-auto">
                             {form.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                             Submit Application
@@ -294,5 +292,5 @@ export function ApplyForm() {
                 </CardFooter>
             </form>
         </Form>
-    )
+    );
 }
