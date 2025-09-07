@@ -16,8 +16,9 @@ import { collection, query, where, orderBy } from 'firebase/firestore';
 
 export default function CourseDetailPage({ params }: { params: { courseId: string } }) {
   const { user, loading: authLoading } = useAuth();
-  const courseId = params.courseId;
+  const courseId = params.courseId; // Safely extract courseId
   
+  // Use the extracted courseId variable in hooks and JSX
   const [courseDoc, courseLoading, courseError] = useDocument(doc(firestore, 'courses', courseId));
   
   const enrollmentsQuery = user 
@@ -26,7 +27,6 @@ export default function CourseDetailPage({ params }: { params: { courseId: strin
     
   const [enrollmentDoc, enrollmentLoading, enrollmentError] = useCollection(enrollmentsQuery);
 
-  // Query for live classes related to this course
   const liveClassesQuery = query(collection(firestore, 'live_classes'), orderBy('startTime', 'desc'));
   const [liveClassesCollection, liveClassesLoading, liveClassesError] = useCollection(liveClassesQuery);
 
@@ -56,12 +56,7 @@ export default function CourseDetailPage({ params }: { params: { courseId: strin
 
   const course = courseDoc.data();
   
-  // Filter live classes that belong to this course (assuming a naming convention for now)
-  // A better approach would be to store a courseId in each live_class document.
-  // For now, we'll show all live classes as a placeholder.
   const courseLiveClasses = liveClassesCollection?.docs.filter(doc => {
-    // This is a placeholder logic. In a real app, you'd link classes to courses with an ID.
-    // For now, we'll show all classes if the user is enrolled.
     return true; 
   });
 
@@ -69,7 +64,6 @@ export default function CourseDetailPage({ params }: { params: { courseId: strin
   return (
     <div className="max-w-5xl mx-auto p-4 md:p-8">
       <div className="grid md:grid-cols-5 gap-8">
-        {/* Left Column (Main Content) */}
         <div className="md:col-span-3 space-y-6">
           <div>
             <p className="text-primary font-semibold mb-1">{course.category}</p>
@@ -134,7 +128,6 @@ export default function CourseDetailPage({ params }: { params: { courseId: strin
 
         </div>
 
-        {/* Right Column (Enrollment Card) */}
         <div className="md:col-span-2">
           <Card className="sticky top-8 shadow-xl">
             <CardHeader>

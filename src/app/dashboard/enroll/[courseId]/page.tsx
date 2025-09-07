@@ -9,7 +9,6 @@ import { firestore } from '@/lib/firebase';
 import { useAuth } from '@/hooks/use-auth';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Upload, IndianRupee, QrCode, CheckCircle, ShieldCheck, ArrowLeft } from 'lucide-react';
@@ -79,6 +78,7 @@ function EnrollmentForm({ courseId }: { courseId: string }) {
 
       if (result.success) {
           toast({ title: 'Submitted!', description: 'Your enrollment is pending approval. We will notify you soon.' });
+          // Redirect using window.location to ensure a full page reload, which can solve some Next.js caching issues.
           window.location.href = `/dashboard/courses/${courseId}`;
       } else {
           throw new Error(result.error);
@@ -177,7 +177,9 @@ function EnrollmentForm({ courseId }: { courseId: string }) {
 }
 
 
+// This is the main page component. It's kept simple to avoid server/client conflicts.
 export default function EnrollPage({ params }: { params: { courseId: string } }) {
   const { courseId } = params;
+  // It passes the courseId to the client component that handles all the logic.
   return <EnrollmentForm courseId={courseId} />;
 }
