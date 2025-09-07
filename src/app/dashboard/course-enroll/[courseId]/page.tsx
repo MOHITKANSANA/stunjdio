@@ -1,34 +1,24 @@
 
-import { doc, getDoc, type DocumentData } from 'firebase/firestore';
-import { firestore } from '@/lib/firebase';
-import { notFound } from 'next/navigation';
-import { EnrollmentForm } from '@/components/enrollment-form';
+'use client';
 
-async function getCourseData(courseId: string): Promise<{ id: string; data: DocumentData } | null> {
-    const courseRef = doc(firestore, 'courses', courseId);
-    const courseSnap = await getDoc(courseRef);
+// This file is no longer in use and can be safely deleted.
+// The new enrollment flow uses the /dashboard/payment-verification page.
 
-    if (!courseSnap.exists()) {
-        return null;
-    }
-    return { id: courseSnap.id, data: courseSnap.data() };
-}
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 
+export default function DeprecatedEnrollPage({ params }: { params: { courseId: string } }) {
+  const router = useRouter();
 
-// This is a Server Component. It fetches the initial, non-real-time data.
-export default async function CourseEnrollPage({ params }: { params: { courseId: string } }) {
-  const courseId = params.courseId;
+  useEffect(() => {
+    // Redirect to the new payment verification page, passing the courseId
+    router.replace(`/dashboard/payment-verification?courseId=${params.courseId}`);
+  }, [router, params.courseId]);
 
-  if (!courseId) {
-    notFound();
-  }
-
-  const courseDetails = await getCourseData(courseId);
-
-  if (!courseDetails) {
-    notFound();
-  }
-  
-  // Pass the static data and courseId to the Client Component.
-  return <EnrollmentForm courseId={courseId} course={courseDetails.data} />;
+  // Render a loading state or null while redirecting
+  return (
+    <div className="flex h-screen w-full items-center justify-center">
+      <p>Redirecting to our new enrollment page...</p>
+    </div>
+  );
 }

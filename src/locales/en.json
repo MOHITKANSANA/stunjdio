@@ -1,3 +1,4 @@
+
 {
   "home": "Home",
   "courses": "Courses",
@@ -45,5 +46,6 @@
   "english_vocabulary_test": "English Vocabulary Test",
   "achievements": "Achievements",
   "resources": "Resources",
-  "teachers": "Teachers"
+  "teachers": "Teachers",
+  "payment_verification": "Payment Verification"
 }

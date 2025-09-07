@@ -10,24 +10,16 @@ import { revalidatePath } from 'next/cache';
 // due to large document sizes. The standard practice is to use Firebase Storage for files.
 
 interface EnrollmentInput {
-  courseId: string;
+  enrollmentType: string;
+  courseId: string | null;
   courseTitle: string;
   screenshotDataUrl: string; // This will now be saved directly to Firestore
 }
 
-export async function submitEnrollmentAction(input: EnrollmentInput): Promise<{ success: boolean; error?: string }> {
-  const { courseId, courseTitle, screenshotDataUrl } from input;
+export async function submitEnrollmentAction(input: EnrollmentInput, user: { uid: string, email: string | null, displayName: string | null }): Promise<{ success: boolean; error?: string }> {
+  const { enrollmentType, courseId, courseTitle, screenshotDataUrl } = input;
 
-  // This is a placeholder for a real auth solution.
-  // In a real app, you would use a session management library or verify a token.
-  // For now, we will proceed assuming a user is logged in.
-  const mockUser = {
-      uid: new Date().getTime().toString(), // semi-unique
-      email: "student@example.com",
-      name: "Student User"
-  };
-
-  if (!mockUser) {
+  if (!user) {
       return { success: false, error: 'You must be logged in to enroll.' };
   }
 
@@ -39,11 +31,12 @@ export async function submitEnrollmentAction(input: EnrollmentInput): Promise<{ 
   try {
     // 1. Create enrollment document in Firestore with the screenshot data URL
     await addDoc(collection(firestore, 'enrollments'), {
+      enrollmentType,
       courseId,
       courseTitle,
-      userId: mockUser.uid,
-      userEmail: mockUser.email,
-      userDisplayName: mockUser.name,
+      userId: user.uid,
+      userEmail: user.email,
+      userDisplayName: user.displayName,
       screenshotDataUrl, // Saving the base64 data URL directly
       status: 'pending', // initial status
       createdAt: serverTimestamp(),

@@ -17,6 +17,7 @@ import {
   BookCopy,
   Download,
   Video,
+  Banknote,
 } from 'lucide-react';
 
 import { useAuth } from '@/hooks/use-auth';
@@ -51,6 +52,7 @@ const sidebarNavItems = [
     { href: '/dashboard', icon: Home, label: 'home' },
     { href: '/dashboard/profile', icon: User, label: 'profile' },
     { href: '/dashboard/courses', icon: Book, label: 'courses' },
+    { href: '/dashboard/payment-verification', icon: Banknote, label: 'payment_verification' },
     { href: '/dashboard/live-class', icon: Video, label: 'live_classes' },
     { href: '/dashboard/tutor', icon: GraduationCap, label: 'ai_tutor' },
     { href: '/dashboard/ai-test', icon: ShieldQuestion, label: 'ai_tests' },

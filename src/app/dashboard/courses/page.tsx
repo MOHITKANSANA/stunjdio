@@ -51,7 +51,7 @@ export default function CoursesPage() {
               </CardContent>
               <CardFooter className="flex flex-col sm:flex-row gap-2 items-stretch">
                  <Button asChild className="flex-1">
-                    <Link href={`/dashboard/course-enroll/${doc.id}`}>
+                    <Link href={`/dashboard/payment-verification?courseId=${doc.id}`}>
                         Enroll Now
                     </Link>
                  </Button>

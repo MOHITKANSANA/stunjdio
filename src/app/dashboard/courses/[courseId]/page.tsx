@@ -120,7 +120,7 @@ export default function CourseDetailPage({ params }: { params: { courseId: strin
                         Enroll in this course to access all the lessons, videos, and materials.
                     </p>
                     <Button asChild className="mt-4">
-                        <Link href={`/dashboard/course-enroll/${courseId}`}>Enroll Now</Link>
+                        <Link href={`/dashboard/payment-verification?courseId=${courseId}`}>Enroll Now</Link>
                     </Button>
                 </div>
               )}
@@ -143,7 +143,7 @@ export default function CourseDetailPage({ params }: { params: { courseId: strin
                 <Button size="lg" className="w-full text-lg" disabled>Enrolled</Button>
               ) : (
                 <Button asChild size="lg" className="w-full text-lg">
-                   <Link href={`/dashboard/course-enroll/${courseId}`}>Enroll Now</Link>
+                   <Link href={`/dashboard/payment-verification?courseId=${courseId}`}>Enroll Now</Link>
                 </Button>
               )}
               <div className="space-y-3 pt-4 text-sm text-muted-foreground">
