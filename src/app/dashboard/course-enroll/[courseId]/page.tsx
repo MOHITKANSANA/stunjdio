@@ -9,11 +9,14 @@ import { useRouter } from 'next/navigation';
 
 export default function DeprecatedEnrollPage({ params }: { params: { courseId: string } }) {
   const router = useRouter();
+  const courseId = params.courseId;
 
   useEffect(() => {
     // Redirect to the new payment verification page, passing the courseId
-    router.replace(`/dashboard/payment-verification?courseId=${params.courseId}`);
-  }, [router, params.courseId]);
+    if (courseId) {
+      router.replace(`/dashboard/payment-verification?courseId=${courseId}`);
+    }
+  }, [router, courseId]);
 
   // Render a loading state or null while redirecting
   return (
