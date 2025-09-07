@@ -25,7 +25,7 @@ export default function CoursesPage() {
 
       {loading && (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-80 w-full" />)}
+          {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-96 w-full" />)}
         </div>
       )}
       {error && <p className="text-destructive">Error loading courses: {error.message}</p>}
@@ -44,13 +44,18 @@ export default function CoursesPage() {
               </CardHeader>
               <CardContent className="flex-grow">
                 <p className="text-muted-foreground line-clamp-3">{course.description}</p>
-              </CardContent>
-              <CardFooter className="flex justify-between items-center">
-                 <div className="flex items-center font-bold text-lg">
+                 <div className="flex items-center font-bold text-lg mt-4">
                     <IndianRupee className="h-5 w-5 mr-1" />
                     {course.price ? course.price.toLocaleString() : 'Free'}
                  </div>
-                 <Button asChild>
+              </CardContent>
+              <CardFooter className="flex flex-col sm:flex-row gap-2 items-stretch">
+                 <Button asChild className="flex-1">
+                    <Link href={`/dashboard/enroll/${doc.id}`}>
+                        Enroll Now
+                    </Link>
+                 </Button>
+                 <Button asChild variant="outline" className="flex-1">
                     <Link href={`/dashboard/courses/${doc.id}`}>
                         View Details
                     </Link>
