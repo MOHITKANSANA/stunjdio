@@ -17,11 +17,11 @@ import Image from 'next/image';
 import { submitEnrollmentAction } from '@/app/actions/enrollment';
 import Link from 'next/link';
 
-export default function EnrollPage({ params }: { params: { courseId: string } }) {
+function EnrollmentForm({ courseId }: { courseId: string }) {
   const { user, loading: authLoading } = useAuth();
   const { toast } = useToast();
   
-  const [courseDoc, loading, error] = useDocument(doc(firestore, 'courses', params.courseId));
+  const [courseDoc, loading, error] = useDocument(doc(firestore, 'courses', courseId));
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [screenshotFile, setScreenshotFile] = useState<File | null>(null);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
@@ -36,7 +36,6 @@ export default function EnrollPage({ params }: { params: { courseId: string } })
   }
   
   const course = courseDoc.data();
-  const courseId = params.courseId;
 
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -80,10 +79,7 @@ export default function EnrollPage({ params }: { params: { courseId: string } })
 
       if (result.success) {
           toast({ title: 'Submitted!', description: 'Your enrollment is pending approval. We will notify you soon.' });
-          // Redirect using a standard anchor or Link after success, or just let the user navigate away.
-          // For a better UX, we can replace the form with a success message.
-          // For now, let's assume the toast is enough and the user can navigate back.
-          window.location.href = '/dashboard/courses';
+          window.location.href = `/dashboard/courses/${courseId}`;
       } else {
           throw new Error(result.error);
       }
@@ -178,4 +174,10 @@ export default function EnrollPage({ params }: { params: { courseId: string } })
       </div>
     </div>
   );
+}
+
+
+export default function EnrollPage({ params }: { params: { courseId: string } }) {
+  const { courseId } = params;
+  return <EnrollmentForm courseId={courseId} />;
 }
