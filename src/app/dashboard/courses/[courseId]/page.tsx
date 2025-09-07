@@ -9,19 +9,29 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
-import { IndianRupee, BookOpen, Clock, Users, Lock, Video, PlayCircle } from 'lucide-react';
+import { IndianRupee, BookOpen, Clock, Users, Lock, Video, PlayCircle, FileText, StickyNote } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/use-auth';
 import { collection, query, where, orderBy } from 'firebase/firestore';
-import { useEffect, useState } from 'react';
+
+const ContentIcon = ({ type }: { type: string }) => {
+    switch (type) {
+        case 'video': return <Video className="h-5 w-5 text-primary"/>;
+        case 'pdf': return <FileText className="h-5 w-5 text-primary"/>;
+        case 'note': return <StickyNote className="h-5 w-5 text-primary"/>;
+        default: return <BookOpen className="h-5 w-5 text-primary"/>;
+    }
+}
 
 export default function CourseDetailPage({ params }: { params: { courseId: string } }) {
   const { user, loading: authLoading } = useAuth();
   const courseId = params.courseId;
   
   const [courseDoc, courseLoading, courseError] = useDocument(doc(firestore, 'courses', courseId));
+  const [courseContentCollection, courseContentLoading, courseContentError] = useCollection(
+    query(collection(firestore, 'courses', courseId, 'content'), orderBy('createdAt', 'asc'))
+  );
   
-  // The query for enrollments. It depends on the user's UID.
   const enrollmentsQuery = user 
     ? query(
         collection(firestore, 'enrollments'), 
@@ -33,13 +43,9 @@ export default function CourseDetailPage({ params }: { params: { courseId: strin
     
   const [enrollmentDocs, enrollmentLoading, enrollmentError] = useCollection(enrollmentsQuery);
 
-  const liveClassesQuery = query(collection(firestore, 'live_classes'), orderBy('startTime', 'desc'));
-  const [liveClassesCollection, liveClassesLoading, liveClassesError] = useCollection(liveClassesQuery);
-  
-  // The state `isEnrolled` is derived from the result of the enrollments query.
   const isEnrolled = !!enrollmentDocs && !enrollmentDocs.empty;
 
-  if (courseLoading || authLoading || enrollmentLoading || liveClassesLoading) {
+  if (courseLoading || authLoading || enrollmentLoading || courseContentLoading) {
     return (
       <div className="max-w-4xl mx-auto p-4 md:p-8 space-y-6">
         <Skeleton className="h-12 w-3/4" />
@@ -62,13 +68,6 @@ export default function CourseDetailPage({ params }: { params: { courseId: strin
   }
 
   const course = courseDoc.data();
-  
-  const courseLiveClasses = liveClassesCollection?.docs.filter(doc => {
-    // In a real app, you would filter classes based on the courseId
-    // For now, we show all live classes as course content.
-    return true; 
-  });
-
 
   return (
     <div className="max-w-5xl mx-auto p-4 md:p-8">
@@ -97,19 +96,18 @@ export default function CourseDetailPage({ params }: { params: { courseId: strin
             <CardContent>
               {isEnrolled ? (
                   <div className="space-y-4">
-                    {liveClassesError && <p className="text-destructive">Could not load live classes.</p>}
-                    {courseLiveClasses && courseLiveClasses.length > 0 ? (
-                      courseLiveClasses.map(doc => {
-                        const liveClass = doc.data();
-                        const startTime = liveClass.startTime.toDate();
+                    {courseContentError && <p className="text-destructive">Could not load course content.</p>}
+                    {courseContentCollection && courseContentCollection.docs.length > 0 ? (
+                      courseContentCollection.docs.map(doc => {
+                        const content = doc.data();
                         return (
                           <div key={doc.id} className="flex items-center justify-between p-3 rounded-lg border bg-muted/50">
-                            <div>
-                               <p className="font-semibold flex items-center gap-2"><Video className="h-5 w-5 text-primary"/>{liveClass.title}</p>
-                               <p className="text-sm text-muted-foreground ml-7">{startTime.toLocaleString()}</p>
+                            <div className="flex items-center gap-3">
+                               <ContentIcon type={content.type} />
+                               <p className="font-semibold">{content.title}</p>
                             </div>
                             <Button variant="ghost" size="icon" asChild>
-                                <a href={liveClass.youtubeUrl} target="_blank" rel="noopener noreferrer">
+                                <a href={content.url} target="_blank" rel="noopener noreferrer">
                                     <PlayCircle className="h-6 w-6" />
                                 </a>
                             </Button>

@@ -17,11 +17,12 @@ import { firestore } from '@/lib/firebase';
 import { getStorage, ref, uploadString, getDownloadURL } from "firebase/storage";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Trash2, Check, X, Upload } from 'lucide-react';
+import { Loader2, Trash2, Check, X, Upload, Video, FileText, StickyNote } from 'lucide-react';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const courseFormSchema = z.object({
   title: z.string().min(3, 'Title must be at least 3 characters'),
@@ -44,6 +45,14 @@ const qrCodeFormSchema = z.object({
 });
 type QrCodeFormValues = z.infer<typeof qrCodeFormSchema>;
 
+const courseContentSchema = z.object({
+    courseId: z.string().min(1, "Please select a course."),
+    contentType: z.enum(['video', 'pdf', 'note']),
+    title: z.string().min(3, 'Content title is required.'),
+    url: z.string().url('A valid URL is required.'),
+});
+type CourseContentValues = z.infer<typeof courseContentSchema>;
+
 const fileToDataUrl = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -56,6 +65,7 @@ const fileToDataUrl = (file: File): Promise<string> => {
 export default function AdminPage() {
   const [enrollmentsCollection, enrollmentsLoading, enrollmentsError] = useCollection(query(collection(firestore, 'enrollments'), orderBy('createdAt', 'desc')));
   const [liveClassesCollection, liveClassesLoading, liveClassesError] = useCollection(query(collection(firestore, 'live_classes'), orderBy('startTime', 'desc')));
+  const [coursesCollection, coursesLoading, coursesError] = useCollection(query(collection(firestore, 'courses'), orderBy('title', 'asc')));
   const [qrCodeDoc] = useCollection(collection(firestore, 'settings'));
   const qrCodeUrl = qrCodeDoc?.docs.find(d => d.id === 'paymentQrCode')?.data().url;
 
@@ -64,6 +74,7 @@ export default function AdminPage() {
   const courseForm = useForm<CourseFormValues>({ resolver: zodResolver(courseFormSchema) });
   const liveClassForm = useForm<LiveClassFormValues>({ resolver: zodResolver(liveClassFormSchema) });
   const qrCodeForm = useForm<QrCodeFormValues>({ resolver: zodResolver(qrCodeFormSchema) });
+  const courseContentForm = useForm<CourseContentValues>({ resolver: zodResolver(courseContentSchema) });
 
   const handleEnrollmentAction = async (id: string, newStatus: 'approved' | 'rejected') => {
     try {
@@ -121,6 +132,23 @@ export default function AdminPage() {
     } catch (error) {
         console.error("Error adding live class: ", error);
         toast({ variant: 'destructive', title: 'Error', description: 'Could not add live class.' });
+    }
+  };
+
+  const onCourseContentSubmit = async (data: CourseContentValues) => {
+    try {
+        const contentCollectionRef = collection(firestore, 'courses', data.courseId, 'content');
+        await addDoc(contentCollectionRef, {
+            type: data.contentType,
+            title: data.title,
+            url: data.url,
+            createdAt: serverTimestamp(),
+        });
+        toast({ title: 'Success', description: 'Content added to course.' });
+        courseContentForm.reset();
+    } catch (error) {
+        console.error("Error adding course content: ", error);
+        toast({ variant: 'destructive', title: 'Error', description: 'Could not add content.' });
     }
   };
 
@@ -217,29 +245,55 @@ export default function AdminPage() {
               </form></Form></CardContent>
             </Card>
 
-            <Card>
-              <CardHeader><CardTitle>Live Class Management</CardTitle><CardDescription>Add, view, and manage live classes.</CardDescription></CardHeader>
-              <CardContent><Form {...liveClassForm}><form onSubmit={liveClassForm.handleSubmit(onLiveClassSubmit)} className="grid gap-4 mb-6">
-                  <FormField control={liveClassForm.control} name="title" render={({ field }) => (<FormItem><FormLabel>Class Title</FormLabel><FormControl><Input placeholder="e.g. Maths Special Session" {...field} /></FormControl><FormMessage /></FormItem>)}/>
-                  <FormField control={liveClassForm.control} name="youtubeUrl" render={({ field }) => (<FormItem><FormLabel>YouTube URL</FormLabel><FormControl><Input placeholder="https://www.youtube.com/watch?v=..." {...field} /></FormControl><FormMessage /></FormItem>)}/>
-                  <FormField control={liveClassForm.control} name="startTime" render={({ field }) => (<FormItem><FormLabel>Start Time</FormLabel><FormControl><Input type="datetime-local" {...field} /></FormControl><FormMessage /></FormItem>)}/>
-                  <Button type="submit" disabled={liveClassForm.formState.isSubmitting}>{liveClassForm.formState.isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin"/>Adding...</> : "Add Live Class"}</Button>
-              </form></Form>
-              <h4 className="font-semibold mb-2">Scheduled Classes</h4>
-              <div className="max-h-60 overflow-y-auto pr-2"><Table><TableBody>
-                  {liveClassesLoading && <TableRow><TableCell><Skeleton className="h-9 w-full" /></TableCell></TableRow>}
-                  {liveClassesCollection?.docs.map(doc => {
-                      const liveClass = doc.data();
-                      const startTime = liveClass.startTime?.toDate();
-                      return (<TableRow key={doc.id}><TableCell>
-                          <p className="font-medium">{liveClass.title}</p>
-                          <p className="text-sm text-muted-foreground">{startTime ? startTime.toLocaleString() : 'Invalid Date'}</p>
-                      </TableCell><TableCell className="text-right">
-                          <Button variant="ghost" size="icon" onClick={() => deleteLiveClass(doc.id)}><Trash2 className="h-4 w-4 text-destructive"/></Button>
-                      </TableCell></TableRow>)
-                  })}
-              </TableBody></Table></div></CardContent>
-            </Card>
+            <div className="space-y-6">
+                <Card>
+                    <CardHeader><CardTitle>Manage Course Content</CardTitle><CardDescription>Add videos, PDFs, and notes to your courses.</CardDescription></CardHeader>
+                    <CardContent>
+                        <Form {...courseContentForm}><form onSubmit={courseContentForm.handleSubmit(onCourseContentSubmit)} className="grid gap-4">
+                            <FormField control={courseContentForm.control} name="courseId" render={({ field }) => (<FormItem><FormLabel>Select Course</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}>
+                                <FormControl><SelectTrigger><SelectValue placeholder="Choose a course" /></SelectTrigger></FormControl>
+                                <SelectContent>{coursesCollection?.docs.map(doc => (<SelectItem key={doc.id} value={doc.id}>{doc.data().title}</SelectItem>))}</SelectContent>
+                            </Select><FormMessage /></FormItem>)}/>
+                             <FormField control={courseContentForm.control} name="contentType" render={({ field }) => (<FormItem><FormLabel>Content Type</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}>
+                                <FormControl><SelectTrigger><SelectValue placeholder="Choose a content type" /></SelectTrigger></FormControl>
+                                <SelectContent>
+                                    <SelectItem value="video"><div className="flex items-center"><Video className="mr-2 h-4 w-4" />Video (YouTube)</div></SelectItem>
+                                    <SelectItem value="pdf"><div className="flex items-center"><FileText className="mr-2 h-4 w-4" />PDF Document</div></SelectItem>
+                                    <SelectItem value="note"><div className="flex items-center"><StickyNote className="mr-2 h-4 w-4" />Note</div></SelectItem>
+                                </SelectContent>
+                            </Select><FormMessage /></FormItem>)}/>
+                            <FormField control={courseContentForm.control} name="title" render={({ field }) => (<FormItem><FormLabel>Content Title</FormLabel><FormControl><Input placeholder="e.g. Chapter 1: Introduction" {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                            <FormField control={courseContentForm.control} name="url" render={({ field }) => (<FormItem><FormLabel>URL</FormLabel><FormControl><Input placeholder="https://youtube.com/watch?v=... or https://..." {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                             <Button type="submit" disabled={courseContentForm.formState.isSubmitting}>{courseContentForm.formState.isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin"/>Adding...</> : "Add Content"}</Button>
+                        </form></Form>
+                    </CardContent>
+                </Card>
+
+                 <Card>
+                  <CardHeader><CardTitle>Live Class Management</CardTitle><CardDescription>Add, view, and manage live classes.</CardDescription></CardHeader>
+                  <CardContent><Form {...liveClassForm}><form onSubmit={liveClassForm.handleSubmit(onLiveClassSubmit)} className="grid gap-4 mb-6">
+                      <FormField control={liveClassForm.control} name="title" render={({ field }) => (<FormItem><FormLabel>Class Title</FormLabel><FormControl><Input placeholder="e.g. Maths Special Session" {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                      <FormField control={liveClassForm.control} name="youtubeUrl" render={({ field }) => (<FormItem><FormLabel>YouTube URL</FormLabel><FormControl><Input placeholder="https://www.youtube.com/watch?v=..." {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                      <FormField control={liveClassForm.control} name="startTime" render={({ field }) => (<FormItem><FormLabel>Start Time</FormLabel><FormControl><Input type="datetime-local" {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                      <Button type="submit" disabled={liveClassForm.formState.isSubmitting}>{liveClassForm.formState.isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin"/>Adding...</> : "Add Live Class"}</Button>
+                  </form></Form>
+                  <h4 className="font-semibold mb-2">Scheduled Classes</h4>
+                  <div className="max-h-60 overflow-y-auto pr-2"><Table><TableBody>
+                      {liveClassesLoading && <TableRow><TableCell><Skeleton className="h-9 w-full" /></TableCell></TableRow>}
+                      {liveClassesCollection?.docs.map(doc => {
+                          const liveClass = doc.data();
+                          const startTime = liveClass.startTime?.toDate();
+                          return (<TableRow key={doc.id}><TableCell>
+                              <p className="font-medium">{liveClass.title}</p>
+                              <p className="text-sm text-muted-foreground">{startTime ? startTime.toLocaleString() : 'Invalid Date'}</p>
+                          </TableCell><TableCell className="text-right">
+                              <Button variant="ghost" size="icon" onClick={() => deleteLiveClass(doc.id)}><Trash2 className="h-4 w-4 text-destructive"/></Button>
+                          </TableCell></TableRow>)
+                      })}
+                  </TableBody></Table></div></CardContent>
+                </Card>
+            </div>
+           
           </div>
         </TabsContent>
         <TabsContent value="settings">
