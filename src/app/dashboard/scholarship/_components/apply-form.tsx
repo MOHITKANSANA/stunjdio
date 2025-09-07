@@ -78,7 +78,8 @@ export function ApplyForm() {
             phone: '',
             address: '',
             scholarshipType: '',
-        }
+        },
+        mode: 'onChange'
     });
 
     const scholarshipType = form.watch('scholarshipType');
@@ -90,7 +91,9 @@ export function ApplyForm() {
         } else if (step === STEPS.SCHOLARSHIP_CHOICE) {
             isValid = await form.trigger(['scholarshipType', 'courseId']);
         } else if (step === STEPS.UPLOADS) {
-            isValid = await form.trigger(['photo', 'signature']);
+            // This step is optional, so we can consider it valid.
+            // If there were required fields, we'd trigger validation.
+            isValid = true;
         }
         
         if (isValid) {
@@ -260,17 +263,31 @@ export function ApplyForm() {
                 {step === STEPS.UPLOADS && (
                      <CardContent className="space-y-4">
                         <CardTitle>Step 3: Uploads (Optional)</CardTitle>
-                        <FormField control={form.control} name="photo" render={({ field }) => (
+                        <FormField control={form.control} name="photo" render={({ field: { onChange, value, ...rest } }) => (
                             <FormItem>
                                 <FormLabel>Your Photo</FormLabel>
-                                <FormControl><Input type="file" accept="image/*" onChange={(e) => field.onChange(e.target.files?.[0])} /></FormControl>
+                                <FormControl>
+                                    <Input 
+                                        type="file" 
+                                        accept="image/*" 
+                                        onChange={(e) => onChange(e.target.files?.[0])}
+                                        {...rest} 
+                                    />
+                                </FormControl>
                                 <FormMessage />
                             </FormItem>
                         )} />
-                         <FormField control={form.control} name="signature" render={({ field }) => (
+                         <FormField control={form.control} name="signature" render={({ field: { onChange, value, ...rest } }) => (
                             <FormItem>
                                 <FormLabel>Your Signature</FormLabel>
-                                <FormControl><Input type="file" accept="image/*" onChange={(e) => field.onChange(e.target.files?.[0])} /></FormControl>
+                                <FormControl>
+                                    <Input 
+                                        type="file" 
+                                        accept="image/*" 
+                                        onChange={(e) => onChange(e.target.files?.[0])}
+                                        {...rest} 
+                                    />
+                                </FormControl>
                                 <FormMessage />
                             </FormItem>
                         )} />
