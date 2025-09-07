@@ -16,9 +16,8 @@ import { collection, query, where, orderBy } from 'firebase/firestore';
 
 export default function CourseDetailPage({ params }: { params: { courseId: string } }) {
   const { user, loading: authLoading } = useAuth();
-  const courseId = params.courseId; // Safely extract courseId
+  const courseId = params.courseId;
   
-  // Use the extracted courseId variable in hooks and JSX
   const [courseDoc, courseLoading, courseError] = useDocument(doc(firestore, 'courses', courseId));
   
   const enrollmentsQuery = user 
@@ -121,7 +120,7 @@ export default function CourseDetailPage({ params }: { params: { courseId: strin
                         Enroll in this course to access all the lessons, videos, and materials.
                     </p>
                     <Button asChild className="mt-4">
-                        <Link href={`/dashboard/enroll/${courseId}`}>Enroll Now</Link>
+                        <Link href={`/dashboard/course-enroll/${courseId}`}>Enroll Now</Link>
                     </Button>
                 </div>
               )}
@@ -144,7 +143,7 @@ export default function CourseDetailPage({ params }: { params: { courseId: strin
                 <Button size="lg" className="w-full text-lg" disabled>Enrolled</Button>
               ) : (
                 <Button asChild size="lg" className="w-full text-lg">
-                   <Link href={`/dashboard/enroll/${courseId}`}>Enroll Now</Link>
+                   <Link href={`/dashboard/course-enroll/${courseId}`}>Enroll Now</Link>
                 </Button>
               )}
               <div className="space-y-3 pt-4 text-sm text-muted-foreground">

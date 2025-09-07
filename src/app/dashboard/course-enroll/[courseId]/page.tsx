@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useRef, ChangeEvent } from 'react';
-import { notFound } from 'next/navigation';
+import { notFound, useRouter } from 'next/navigation';
 import { useDocument } from 'react-firebase-hooks/firestore';
 import { doc } from 'firebase/firestore';
 import { firestore } from '@/lib/firebase';
@@ -16,9 +16,11 @@ import Image from 'next/image';
 import { submitEnrollmentAction } from '@/app/actions/enrollment';
 import Link from 'next/link';
 
+// This is the Client Component that handles all the interactive logic.
 function EnrollmentForm({ courseId }: { courseId: string }) {
   const { user, loading: authLoading } = useAuth();
   const { toast } = useToast();
+  const router = useRouter();
   
   const [courseDoc, loading, error] = useDocument(doc(firestore, 'courses', courseId));
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -27,7 +29,14 @@ function EnrollmentForm({ courseId }: { courseId: string }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   if (loading || authLoading) {
-    return <div className="max-w-4xl mx-auto p-8 grid md:grid-cols-2 gap-8"><Skeleton className="h-96 w-full" /><Skeleton className="h-96 w-full" /></div>;
+    return (
+        <div className="max-w-5xl mx-auto p-4 md:p-8">
+            <div className="grid md:grid-cols-2 gap-8 items-start">
+                <Skeleton className="h-96 w-full" />
+                <Skeleton className="h-80 w-full" />
+            </div>
+        </div>
+    );
   }
 
   if (error || !courseDoc?.exists()) {
@@ -78,8 +87,7 @@ function EnrollmentForm({ courseId }: { courseId: string }) {
 
       if (result.success) {
           toast({ title: 'Submitted!', description: 'Your enrollment is pending approval. We will notify you soon.' });
-          // Redirect using window.location to ensure a full page reload, which can solve some Next.js caching issues.
-          window.location.href = `/dashboard/courses/${courseId}`;
+          router.push(`/dashboard/courses/${courseId}`);
       } else {
           throw new Error(result.error || 'An unknown error occurred.');
       }
@@ -176,9 +184,9 @@ function EnrollmentForm({ courseId }: { courseId: string }) {
   );
 }
 
-// This is the main page component. It's kept simple to avoid server/client conflicts.
-export default function EnrollPage({ params }: { params: { courseId: string } }) {
-  const { courseId } = params;
+// This is the main page component. It is a Server Component.
+// Its only job is to get the courseId from the URL params and pass it to the Client Component.
+export default function CourseEnrollPage({ params }: { params: { courseId: string } }) {
   // It passes the courseId to the client component that handles all the logic.
-  return <EnrollmentForm courseId={courseId} />;
+  return <EnrollmentForm courseId={params.courseId} />;
 }
