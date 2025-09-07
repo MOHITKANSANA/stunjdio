@@ -13,6 +13,9 @@ import Image from 'next/image';
 import { submitEnrollmentAction } from '@/app/actions/enrollment';
 import Link from 'next/link';
 import { Skeleton } from './ui/skeleton';
+import { useCollection } from 'react-firebase-hooks/firestore';
+import { collection } from 'firebase/firestore';
+import { firestore } from '@/lib/firebase';
 
 
 interface EnrollmentFormProps {
@@ -30,6 +33,10 @@ export function EnrollmentForm({ courseId, course }: EnrollmentFormProps) {
   const [screenshotFile, setScreenshotFile] = useState<File | null>(null);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  const [qrCodeDoc] = useCollection(collection(firestore, 'settings'));
+  const qrCodeUrl = qrCodeDoc?.docs.find(d => d.id === 'paymentQrCode')?.data().url;
+
 
   if (authLoading) {
     return (
@@ -77,10 +84,11 @@ export function EnrollmentForm({ courseId, course }: EnrollmentFormProps) {
     try {
       const screenshotDataUrl = await fileToDataUrl(screenshotFile);
       const result = await submitEnrollmentAction({
+          enrollmentType: 'Course Enrollment',
           courseId: courseId,
           courseTitle: course.title,
           screenshotDataUrl,
-      });
+      }, user);
 
       if (result.success) {
           toast({ title: 'Submitted!', description: 'Your enrollment is pending approval. We will notify you soon.' });
@@ -117,7 +125,11 @@ export function EnrollmentForm({ courseId, course }: EnrollmentFormProps) {
                     <div className="p-4 border rounded-lg bg-muted/50 flex flex-col items-center text-center">
                       <p className="text-muted-foreground mb-4">Scan the QR code below with any payment app to pay the course fee.</p>
                        <div className="relative w-52 h-52 bg-gray-200 rounded-lg flex items-center justify-center overflow-hidden">
-                           <Image src="https://i.postimg.cc/VzTgS66F/IMG-20250630-062749.jpg" alt="QR Code" width={208} height={208} data-ai-hint="qr code" />
+                           {qrCodeUrl ? (
+                                <Image src={qrCodeUrl} alt="QR Code" width={208} height={208} data-ai-hint="qr code" />
+                           ) : (
+                                <Skeleton className="w-full h-full" />
+                           )}
                         </div>
                     </div>
                   </div>
