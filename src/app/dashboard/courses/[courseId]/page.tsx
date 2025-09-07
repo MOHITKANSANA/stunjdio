@@ -1,7 +1,7 @@
 
 'use client';
 
-import { doc } from 'firebase/firestore';
+import { doc, getDoc } from 'firebase/firestore';
 import { useDocument, useCollection } from 'react-firebase-hooks/firestore';
 import { firestore } from '@/lib/firebase';
 import { notFound } from 'next/navigation';
@@ -13,6 +13,7 @@ import { IndianRupee, BookOpen, Clock, Users, Lock, Video, PlayCircle } from 'lu
 import Link from 'next/link';
 import { useAuth } from '@/hooks/use-auth';
 import { collection, query, where, orderBy } from 'firebase/firestore';
+import { useEffect, useState } from 'react';
 
 export default function CourseDetailPage({ params }: { params: { courseId: string } }) {
   const { user, loading: authLoading } = useAuth();
@@ -20,16 +21,23 @@ export default function CourseDetailPage({ params }: { params: { courseId: strin
   
   const [courseDoc, courseLoading, courseError] = useDocument(doc(firestore, 'courses', courseId));
   
+  // The query for enrollments. It depends on the user's UID.
   const enrollmentsQuery = user 
-    ? query(collection(firestore, 'enrollments'), where('userId', '==', user.uid), where('courseId', '==', courseId), where('status', '==', 'approved'))
+    ? query(
+        collection(firestore, 'enrollments'), 
+        where('userId', '==', user.uid), 
+        where('courseId', '==', courseId), 
+        where('status', '==', 'approved')
+      )
     : null;
     
-  const [enrollmentDoc, enrollmentLoading, enrollmentError] = useCollection(enrollmentsQuery);
+  const [enrollmentDocs, enrollmentLoading, enrollmentError] = useCollection(enrollmentsQuery);
 
   const liveClassesQuery = query(collection(firestore, 'live_classes'), orderBy('startTime', 'desc'));
   const [liveClassesCollection, liveClassesLoading, liveClassesError] = useCollection(liveClassesQuery);
-
-  const isEnrolled = enrollmentDoc && !enrollmentDoc.empty;
+  
+  // The state `isEnrolled` is derived from the result of the enrollments query.
+  const isEnrolled = !!enrollmentDocs && !enrollmentDocs.empty;
 
   if (courseLoading || authLoading || enrollmentLoading || liveClassesLoading) {
     return (

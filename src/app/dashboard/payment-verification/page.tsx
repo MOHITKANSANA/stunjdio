@@ -3,7 +3,7 @@
 
 import { useState, useRef, type ChangeEvent, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useForm, Controller } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useAuth } from '@/hooks/use-auth';
@@ -34,7 +34,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Upload, Banknote, ShieldCheck } from 'lucide-react';
 import Image from 'next/image';
-import { addDoc, collection, serverTimestamp, query, orderBy } from 'firebase/firestore';
+import { addDoc, collection, serverTimestamp, query, orderBy, getDocs, where, doc } from 'firebase/firestore';
 import { firestore } from '@/lib/firebase';
 import { useCollection } from 'react-firebase-hooks/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -69,6 +69,9 @@ function PaymentVerificationPageContent() {
   const [coursesCollection, coursesLoading, coursesError] = useCollection(
     query(collection(firestore, 'courses'), orderBy('title', 'asc'))
   );
+  const [qrCodeDoc] = useCollection(collection(firestore, 'settings'));
+  const qrCodeUrl = qrCodeDoc?.docs.find(d => d.id === 'paymentQrCode')?.data().url;
+
 
   const form = useForm<VerificationFormValues>({
     resolver: zodResolver(verificationFormSchema),
@@ -256,7 +259,11 @@ function PaymentVerificationPageContent() {
                 <div className="p-4 border rounded-lg bg-muted/50 flex flex-col items-center text-center">
                   <p className="text-muted-foreground mb-4">You can scan the QR code below with any payment app.</p>
                   <div className="relative w-52 h-52 bg-gray-200 rounded-lg flex items-center justify-center overflow-hidden">
-                    <Image src="https://i.postimg.cc/VzTgS66F/IMG-20250630-062749.jpg" alt="QR Code" width={208} height={208} data-ai-hint="qr code" />
+                    {qrCodeUrl ? (
+                         <Image src={qrCodeUrl} alt="QR Code" width={208} height={208} data-ai-hint="qr code" />
+                    ) : (
+                         <Skeleton className="w-full h-full" />
+                    )}
                   </div>
                 </div>
 
@@ -280,7 +287,7 @@ function PaymentVerificationPageContent() {
 
 export default function PaymentVerificationPage() {
     return (
-        <Suspense fallback={<div>Loading...</div>}>
+        <Suspense fallback={<div className="flex h-screen w-full items-center justify-center">Loading...</div>}>
             <PaymentVerificationPageContent />
         </Suspense>
     )

@@ -18,6 +18,7 @@ import {
   Download,
   Video,
   Banknote,
+  Award,
 } from 'lucide-react';
 
 import { useAuth } from '@/hooks/use-auth';
@@ -53,6 +54,7 @@ const sidebarNavItems = [
     { href: '/dashboard/profile', icon: User, label: 'profile' },
     { href: '/dashboard/courses', icon: Book, label: 'courses' },
     { href: '/dashboard/payment-verification', icon: Banknote, label: 'payment_verification' },
+    { href: '/dashboard/scholarship', icon: Award, label: 'scholarship' },
     { href: '/dashboard/live-class', icon: Video, label: 'live_classes' },
     { href: '/dashboard/tutor', icon: GraduationCap, label: 'ai_tutor' },
     { href: '/dashboard/ai-test', icon: ShieldQuestion, label: 'ai_tests' },
@@ -62,7 +64,7 @@ const sidebarNavItems = [
 const SidebarMenuItemWithHandler = ({ href, icon: Icon, label, closeSidebar }: { href: string; icon: React.ElementType; label: string; closeSidebar: () => void; }) => {
     const pathname = usePathname();
     const { t } = useLanguage();
-    const isActive = pathname === href;
+    const isActive = pathname.startsWith(href) && (href !== '/dashboard' || pathname === '/dashboard');
 
     return (
         <SidebarMenuItem>

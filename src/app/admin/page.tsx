@@ -10,26 +10,25 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { useCollection } from 'react-firebase-hooks/firestore';
-import { collection, query, orderBy, doc, setDoc, addDoc, deleteDoc, serverTimestamp, updateDoc } from 'firebase/firestore';
+import { collection, query, orderBy, doc, updateDoc, addDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
 import { firestore } from '@/lib/firebase';
+import { getStorage, ref, uploadString, getDownloadURL } from "firebase/storage";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
-import ReactCrop, { type Crop, centerCrop, makeAspectCrop } from 'react-image-crop';
-import 'react-image-crop/dist/ReactCrop.css';
-import { Loader2, Trash2, PlusCircle, MinusCircle, Check, X } from 'lucide-react';
+import { Loader2, Trash2, Check, X, Upload } from 'lucide-react';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import Image from 'next/image';
 import Link from 'next/link';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 const courseFormSchema = z.object({
   title: z.string().min(3, 'Title must be at least 3 characters'),
   category: z.string().min(3, 'Category must be at least 3 characters'),
   description: z.string().min(10, 'Description must be at least 10 characters'),
   price: z.coerce.number().min(0, 'Price cannot be negative'),
-  imageUrl: z.string().url('Must be a valid image URL').optional().or(z.literal('')),
+  imageFile: z.instanceof(File).optional(),
 });
 type CourseFormValues = z.infer<typeof courseFormSchema>;
 
@@ -40,73 +39,64 @@ const liveClassFormSchema = z.object({
 });
 type LiveClassFormValues = z.infer<typeof liveClassFormSchema>;
 
-function centerAspectCrop(mediaWidth: number, mediaHeight: number, aspect: number) {
-  return centerCrop(
-    makeAspectCrop({ unit: '%', width: 90 }, aspect, mediaWidth, mediaHeight),
-    mediaWidth,
-    mediaHeight,
-  );
-}
+const qrCodeFormSchema = z.object({
+    imageFile: z.instanceof(File, { message: 'Please upload an image file.' }),
+});
+type QrCodeFormValues = z.infer<typeof qrCodeFormSchema>;
+
+const fileToDataUrl = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+};
 
 export default function AdminPage() {
   const [enrollmentsCollection, enrollmentsLoading, enrollmentsError] = useCollection(query(collection(firestore, 'enrollments'), orderBy('createdAt', 'desc')));
-  const [usersCollection, usersLoading, usersError] = useCollection(query(collection(firestore, 'users'), orderBy('lastLogin', 'desc')));
   const [liveClassesCollection, liveClassesLoading, liveClassesError] = useCollection(query(collection(firestore, 'live_classes'), orderBy('startTime', 'desc')));
-  const [topStudentsCollection, topStudentsLoading, topStudentsError] = useCollection(collection(firestore, 'top_students'));
+  const [qrCodeDoc] = useCollection(collection(firestore, 'settings'));
+  const qrCodeUrl = qrCodeDoc?.docs.find(d => d.id === 'paymentQrCode')?.data().url;
 
   const { toast } = useToast();
   
-  const [imgSrc, setImgSrc] = useState('');
-  const [crop, setCrop] = useState<Crop>();
-  const [completedCrop, setCompletedCrop] = useState<Crop>();
-  const [aspect, setAspect] = useState<number | undefined>(150 / 100);
-  const [isUploading, setIsUploading] = useState(false);
-  const imgRef = useRef<HTMLImageElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const courseForm = useForm<CourseFormValues>({ resolver: zodResolver(courseFormSchema) });
+  const liveClassForm = useForm<LiveClassFormValues>({ resolver: zodResolver(liveClassFormSchema) });
+  const qrCodeForm = useForm<QrCodeFormValues>({ resolver: zodResolver(qrCodeFormSchema) });
 
-  const courseForm = useForm<CourseFormValues>({
-    resolver: zodResolver(courseFormSchema),
-    defaultValues: { title: '', category: '', description: '', price: 0, imageUrl: '' },
-  });
-
-  const liveClassForm = useForm<LiveClassFormValues>({
-    resolver: zodResolver(liveClassFormSchema),
-    defaultValues: { title: '', youtubeUrl: '', startTime: '' }
-  });
-
-  const getInitials = (name: string | null | undefined) => {
-    if (!name) return "S";
-    const names = name.split(' ');
-    if (names.length > 1 && names[1]) {
-      return names[0].charAt(0) + names[names.length - 1].charAt(0);
-    }
-    return name.charAt(0);
-  }
-
-  const onFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
-      setCrop(undefined);
-      const reader = new FileReader();
-      reader.addEventListener('load', () => setImgSrc(reader.result?.toString() || ''));
-      reader.readAsDataURL(e.target.files[0]);
+  const handleEnrollmentAction = async (id: string, newStatus: 'approved' | 'rejected') => {
+    try {
+      const enrollmentRef = doc(firestore, 'enrollments', id);
+      await updateDoc(enrollmentRef, { status: newStatus });
+      toast({ title: 'Success', description: `Enrollment has been ${newStatus}.` });
+    } catch (error) {
+      console.error("Error updating enrollment: ", error);
+      toast({ variant: 'destructive', title: 'Error', description: 'Could not update enrollment status.' });
     }
   };
-
-  function onImageLoad(e: React.SyntheticEvent<HTMLImageElement>) {
-    if (aspect) {
-      const { width, height } = e.currentTarget;
-      setCrop(centerAspectCrop(width, height, aspect));
-    }
-  }
-
-  const handleSaveImage = async () => {
-    // Implementation for saving dashboard image
+  
+  const uploadImage = async (file: File, path: string): Promise<string> => {
+    const storage = getStorage();
+    const storageRef = ref(storage, path);
+    const dataUrl = await fileToDataUrl(file);
+    await uploadString(storageRef, dataUrl, 'data_url');
+    return getDownloadURL(storageRef);
   };
 
   const onCourseSubmit = async (data: CourseFormValues) => {
     try {
+      let imageUrl = 'https://picsum.photos/600/400';
+      if (data.imageFile) {
+        imageUrl = await uploadImage(data.imageFile, `courses/${Date.now()}-${data.imageFile.name}`);
+      }
+      
       await addDoc(collection(firestore, 'courses'), {
-        ...data,
+        title: data.title,
+        category: data.category,
+        description: data.description,
+        price: data.price,
+        imageUrl: imageUrl,
         createdAt: serverTimestamp(),
       });
       toast({ title: 'Success', description: 'Course created successfully.' });
@@ -116,7 +106,6 @@ export default function AdminPage() {
       toast({ variant: 'destructive', title: 'Error', description: 'Could not create course.' });
     }
   };
-
 
   const onLiveClassSubmit = async (data: LiveClassFormValues) => {
     try {
@@ -141,79 +130,38 @@ export default function AdminPage() {
         toast({ description: 'Live class deleted.' });
     }
   }
-
-  const isTopStudent = (userId: string) => {
-    return topStudentsCollection?.docs.some(doc => doc.id === userId);
-  }
-
-  const toggleTopStudent = async (user: any) => {
-    // Implementation for toggling top student
-  }
-
-  const handleEnrollmentAction = async (id: string, newStatus: 'approved' | 'rejected') => {
+  
+  const onQrCodeSubmit = async (data: QrCodeFormValues) => {
     try {
-      const enrollmentRef = doc(firestore, 'enrollments', id);
-      await updateDoc(enrollmentRef, { status: newStatus });
-      toast({ title: 'Success', description: `Enrollment has been ${newStatus}.` });
+      const imageUrl = await uploadImage(data.imageFile, `settings/qr-code.jpg`);
+      const settingsRef = doc(firestore, 'settings', 'paymentQrCode');
+      await updateDoc(settingsRef, { url: imageUrl }, { merge: true });
+      toast({ title: 'Success', description: 'QR Code updated.' });
+      qrCodeForm.reset();
     } catch (error) {
-      console.error("Error updating enrollment: ", error);
-      toast({ variant: 'destructive', title: 'Error', description: 'Could not update enrollment status.' });
+       console.error("Error updating QR code: ", error);
+       toast({ variant: 'destructive', title: 'Error', description: 'Could not update QR code.' });
     }
   };
 
+
   return (
-    <div className="mx-auto grid w-full max-w-6xl gap-6">
+    <div className="mx-auto grid w-full max-w-7xl gap-6">
       <h1 className="text-3xl font-semibold font-headline">Administration</h1>
-      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-        
-        {/* Column 1 */}
-        <div className="lg:col-span-1 flex flex-col gap-6">
-            <Card>
-              <CardHeader><CardTitle>Create New Course</CardTitle><CardDescription>Fill out the details below to add a new course.</CardDescription></CardHeader>
-              <CardContent><Form {...courseForm}><form onSubmit={courseForm.handleSubmit(onCourseSubmit)} className="grid gap-6">
-                  <FormField control={courseForm.control} name="title" render={({ field }) => (<FormItem><FormLabel>Course Title</FormLabel><FormControl><Input placeholder="e.g. Algebra Fundamentals" {...field} /></FormControl><FormMessage /></FormItem>)}/>
-                  <FormField control={courseForm.control} name="category" render={({ field }) => (<FormItem><FormLabel>Category</FormLabel><FormControl><Input placeholder="e.g. Maths" {...field} /></FormControl><FormMessage /></FormItem>)}/>
-                  <FormField control={courseForm.control} name="price" render={({ field }) => (<FormItem><FormLabel>Price (INR)</FormLabel><FormControl><Input type="number" placeholder="e.g. 499" {...field} /></FormControl><FormMessage /></FormItem>)}/>
-                  <FormField control={courseForm.control} name="imageUrl" render={({ field }) => (<FormItem><FormLabel>Cover Image URL (Optional)</FormLabel><FormControl><Input placeholder="https://picsum.photos/600/400" {...field} /></FormControl><FormMessage /></FormItem>)}/>
-                  <FormField control={courseForm.control} name="description" render={({ field }) => (<FormItem><FormLabel>Description</FormLabel><FormControl><Textarea placeholder="A short description of the course content." className="min-h-32" {...field} /></FormControl><FormMessage /></FormItem>)}/>
-                  <Button type="submit" disabled={courseForm.formState.isSubmitting}>{courseForm.formState.isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin"/>Creating...</> : "Create Course"}</Button>
-              </form></Form></CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader><CardTitle>Live Class Management</CardTitle><CardDescription>Add, view, and manage live classes.</CardDescription></CardHeader>
-              <CardContent><Form {...liveClassForm}><form onSubmit={liveClassForm.handleSubmit(onLiveClassSubmit)} className="grid gap-4 mb-6">
-                  <FormField control={liveClassForm.control} name="title" render={({ field }) => (<FormItem><FormLabel>Class Title</FormLabel><FormControl><Input placeholder="e.g. Maths Special Session" {...field} /></FormControl><FormMessage /></FormItem>)}/>
-                  <FormField control={liveClassForm.control} name="youtubeUrl" render={({ field }) => (<FormItem><FormLabel>YouTube URL</FormLabel><FormControl><Input placeholder="https://www.youtube.com/watch?v=..." {...field} /></FormControl><FormMessage /></FormItem>)}/>
-                  <FormField control={liveClassForm.control} name="startTime" render={({ field }) => (<FormItem><FormLabel>Start Time</FormLabel><FormControl><Input type="datetime-local" {...field} /></FormControl><FormMessage /></FormItem>)}/>
-                  <Button type="submit" disabled={liveClassForm.formState.isSubmitting}>{liveClassForm.formState.isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin"/>Adding...</> : "Add Live Class"}</Button>
-              </form></Form>
-              <h4 className="font-semibold mb-2">Scheduled Classes</h4>
-              <div className="max-h-60 overflow-y-auto pr-2"><Table><TableBody>
-                  {liveClassesLoading && <TableRow><TableCell><Skeleton className="h-9 w-full" /></TableCell></TableRow>}
-                  {liveClassesCollection?.docs.map(doc => {
-                      const liveClass = doc.data();
-                      const startTime = liveClass.startTime?.toDate();
-                      return (<TableRow key={doc.id}><TableCell>
-                          <p className="font-medium">{liveClass.title}</p>
-                          <p className="text-sm text-muted-foreground">{startTime ? startTime.toLocaleString() : 'Invalid Date'}</p>
-                      </TableCell><TableCell className="text-right">
-                          <Button variant="ghost" size="icon" onClick={() => deleteLiveClass(doc.id)}><Trash2 className="h-4 w-4 text-destructive"/></Button>
-                      </TableCell></TableRow>)
-                  })}
-              </TableBody></Table></div></CardContent>
-            </Card>
-        </div>
-
-        {/* Column 2 */}
-        <div className="lg:col-span-2 flex flex-col gap-6">
-          <Card className="lg:col-span-2">
+      <Tabs defaultValue="enrollments">
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="enrollments">Enrollments</TabsTrigger>
+          <TabsTrigger value="content">Content Management</TabsTrigger>
+          <TabsTrigger value="settings">Settings</TabsTrigger>
+        </TabsList>
+        <TabsContent value="enrollments">
+           <Card>
             <CardHeader><CardTitle>Enrollment Requests</CardTitle><CardDescription>Review and approve student course enrollments.</CardDescription></CardHeader>
             <CardContent>
               {enrollmentsError && <p className="text-destructive">Error: {enrollmentsError.message}</p>}
               <div className="max-h-[800px] overflow-y-auto">
                 <Table>
-                  <TableHeader><TableRow><TableHead>Student</TableHead><TableHead>Course</TableHead><TableHead>Screenshot</TableHead><TableHead>Status</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
+                  <TableHeader><TableRow><TableHead>Student</TableHead><TableHead>Request</TableHead><TableHead>Screenshot</TableHead><TableHead>Status</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
                   <TableBody>
                     {enrollmentsLoading && Array.from({ length: 3 }).map((_, i) => (
                       <TableRow key={i}><TableCell colSpan={5}><Skeleton className="h-12 w-full" /></TableCell></TableRow>
@@ -246,8 +194,90 @@ export default function AdminPage() {
               </div>
             </CardContent>
           </Card>
-        </div>
-      </div>
+        </TabsContent>
+        <TabsContent value="content">
+          <div className="grid md:grid-cols-2 gap-6">
+             <Card>
+              <CardHeader><CardTitle>Create New Course</CardTitle><CardDescription>Fill out the details below to add a new course.</CardDescription></CardHeader>
+              <CardContent><Form {...courseForm}><form onSubmit={courseForm.handleSubmit(onCourseSubmit)} className="grid gap-6">
+                  <FormField control={courseForm.control} name="title" render={({ field }) => (<FormItem><FormLabel>Course Title</FormLabel><FormControl><Input placeholder="e.g. Algebra Fundamentals" {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                  <FormField control={courseForm.control} name="category" render={({ field }) => (<FormItem><FormLabel>Category</FormLabel><FormControl><Input placeholder="e.g. Maths" {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                  <FormField control={courseForm.control} name="price" render={({ field }) => (<FormItem><FormLabel>Price (INR)</FormLabel><FormControl><Input type="number" placeholder="e.g. 499" {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                  <FormField control={courseForm.control} name="imageFile" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Cover Image</FormLabel>
+                      <FormControl>
+                        <Input type="file" accept="image/*" onChange={(e) => field.onChange(e.target.files?.[0])} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}/>
+                  <FormField control={courseForm.control} name="description" render={({ field }) => (<FormItem><FormLabel>Description</FormLabel><FormControl><Textarea placeholder="A short description of the course content." className="min-h-32" {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                  <Button type="submit" disabled={courseForm.formState.isSubmitting}>{courseForm.formState.isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin"/>Creating...</> : "Create Course"}</Button>
+              </form></Form></CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader><CardTitle>Live Class Management</CardTitle><CardDescription>Add, view, and manage live classes.</CardDescription></CardHeader>
+              <CardContent><Form {...liveClassForm}><form onSubmit={liveClassForm.handleSubmit(onLiveClassSubmit)} className="grid gap-4 mb-6">
+                  <FormField control={liveClassForm.control} name="title" render={({ field }) => (<FormItem><FormLabel>Class Title</FormLabel><FormControl><Input placeholder="e.g. Maths Special Session" {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                  <FormField control={liveClassForm.control} name="youtubeUrl" render={({ field }) => (<FormItem><FormLabel>YouTube URL</FormLabel><FormControl><Input placeholder="https://www.youtube.com/watch?v=..." {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                  <FormField control={liveClassForm.control} name="startTime" render={({ field }) => (<FormItem><FormLabel>Start Time</FormLabel><FormControl><Input type="datetime-local" {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                  <Button type="submit" disabled={liveClassForm.formState.isSubmitting}>{liveClassForm.formState.isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin"/>Adding...</> : "Add Live Class"}</Button>
+              </form></Form>
+              <h4 className="font-semibold mb-2">Scheduled Classes</h4>
+              <div className="max-h-60 overflow-y-auto pr-2"><Table><TableBody>
+                  {liveClassesLoading && <TableRow><TableCell><Skeleton className="h-9 w-full" /></TableCell></TableRow>}
+                  {liveClassesCollection?.docs.map(doc => {
+                      const liveClass = doc.data();
+                      const startTime = liveClass.startTime?.toDate();
+                      return (<TableRow key={doc.id}><TableCell>
+                          <p className="font-medium">{liveClass.title}</p>
+                          <p className="text-sm text-muted-foreground">{startTime ? startTime.toLocaleString() : 'Invalid Date'}</p>
+                      </TableCell><TableCell className="text-right">
+                          <Button variant="ghost" size="icon" onClick={() => deleteLiveClass(doc.id)}><Trash2 className="h-4 w-4 text-destructive"/></Button>
+                      </TableCell></TableRow>)
+                  })}
+              </TableBody></Table></div></CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+        <TabsContent value="settings">
+          <Card>
+            <CardHeader><CardTitle>Payment QR Code</CardTitle><CardDescription>Upload or update the QR code for payments.</CardDescription></CardHeader>
+            <CardContent className="grid md:grid-cols-2 gap-6 items-start">
+              <Form {...qrCodeForm}>
+                <form onSubmit={qrCodeForm.handleSubmit(onQrCodeSubmit)} className="space-y-4">
+                   <FormField
+                    control={qrCodeForm.control}
+                    name="imageFile"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>New QR Code Image</FormLabel>
+                        <FormControl>
+                          <Input type="file" accept="image/*" onChange={(e) => field.onChange(e.target.files?.[0])} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <Button type="submit" disabled={qrCodeForm.formState.isSubmitting}>
+                    {qrCodeForm.formState.isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin"/>Uploading...</> : <><Upload className="mr-2 h-4 w-4"/>Upload QR Code</>}
+                  </Button>
+                </form>
+              </Form>
+              <div>
+                <h4 className="font-semibold mb-2">Current QR Code</h4>
+                {qrCodeUrl ? (
+                  <Image src={qrCodeUrl} alt="Payment QR Code" width={200} height={200} className="rounded-md border p-2" />
+                ) : (
+                  <p className="text-muted-foreground">No QR code uploaded yet.</p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
