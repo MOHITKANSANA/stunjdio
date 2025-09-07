@@ -16,12 +16,11 @@ import { collection, query, where, orderBy } from 'firebase/firestore';
 
 export default function CourseDetailPage({ params }: { params: { courseId: string } }) {
   const { user, loading: authLoading } = useAuth();
-  const courseId = params.courseId;
   
-  const [courseDoc, courseLoading, courseError] = useDocument(doc(firestore, 'courses', courseId));
+  const [courseDoc, courseLoading, courseError] = useDocument(doc(firestore, 'courses', params.courseId));
   
   const enrollmentsQuery = user 
-    ? query(collection(firestore, 'enrollments'), where('userId', '==', user.uid), where('courseId', '==', courseId), where('status', '==', 'approved'))
+    ? query(collection(firestore, 'enrollments'), where('userId', '==', user.uid), where('courseId', '==', params.courseId), where('status', '==', 'approved'))
     : null;
     
   const [enrollmentDoc, enrollmentLoading, enrollmentError] = useCollection(enrollmentsQuery);
@@ -76,7 +75,7 @@ export default function CourseDetailPage({ params }: { params: { courseId: strin
             <h1 className="text-4xl font-bold font-headline">{course.title}</h1>
           </div>
           <div className="relative h-80 w-full rounded-lg overflow-hidden shadow-lg">
-            <Image src={course.imageUrl || `https://picsum.photos/seed/${courseId}/800/600`} alt={course.title} layout="fill" objectFit="cover" data-ai-hint="online learning" />
+            <Image src={course.imageUrl || `https://picsum.photos/seed/${params.courseId}/800/600`} alt={course.title} layout="fill" objectFit="cover" data-ai-hint="online learning" />
           </div>
           <Card>
             <CardHeader>
@@ -125,7 +124,7 @@ export default function CourseDetailPage({ params }: { params: { courseId: strin
                         Enroll in this course to access all the lessons, videos, and materials.
                     </p>
                     <Button asChild className="mt-4">
-                        <Link href={`/dashboard/enroll/${courseId}`}>Enroll Now</Link>
+                        <Link href={`/dashboard/enroll/${params.courseId}`}>Enroll Now</Link>
                     </Button>
                 </div>
               )}
@@ -149,7 +148,7 @@ export default function CourseDetailPage({ params }: { params: { courseId: strin
                 <Button size="lg" className="w-full text-lg" disabled>Enrolled</Button>
               ) : (
                 <Button asChild size="lg" className="w-full text-lg">
-                   <Link href={`/dashboard/enroll/${courseId}`}>Enroll Now</Link>
+                   <Link href={`/dashboard/enroll/${params.courseId}`}>Enroll Now</Link>
                 </Button>
               )}
               <div className="space-y-3 pt-4 text-sm text-muted-foreground">
