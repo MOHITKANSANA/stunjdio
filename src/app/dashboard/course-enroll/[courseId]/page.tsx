@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useRef, ChangeEvent } from 'react';
+import { useState, useRef, type ChangeEvent } from 'react';
 import { notFound, useRouter } from 'next/navigation';
 import { useDocument } from 'react-firebase-hooks/firestore';
 import { doc } from 'firebase/firestore';
