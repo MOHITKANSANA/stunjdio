@@ -81,7 +81,7 @@ function EnrollmentForm({ courseId }: { courseId: string }) {
           // Redirect using window.location to ensure a full page reload, which can solve some Next.js caching issues.
           window.location.href = `/dashboard/courses/${courseId}`;
       } else {
-          throw new Error(result.error);
+          throw new Error(result.error || 'An unknown error occurred.');
       }
     } catch (e: any) {
       toast({ variant: 'destructive', title: 'Submission Failed', description: e.message || 'An unknown error occurred.' });
@@ -175,7 +175,6 @@ function EnrollmentForm({ courseId }: { courseId: string }) {
     </div>
   );
 }
-
 
 // This is the main page component. It's kept simple to avoid server/client conflicts.
 export default function EnrollPage({ params }: { params: { courseId: string } }) {
