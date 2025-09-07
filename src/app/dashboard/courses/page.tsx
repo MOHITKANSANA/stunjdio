@@ -7,7 +7,7 @@ import { firestore } from '@/lib/firebase';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from '@/components/ui/skeleton';
-import { BookOpen, IndianRupee } from 'lucide-react';
+import { IndianRupee } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
 

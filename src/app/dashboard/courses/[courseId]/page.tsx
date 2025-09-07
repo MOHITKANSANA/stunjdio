@@ -57,6 +57,8 @@ export default function CourseDetailPage({ params }: { params: { courseId: strin
   const course = courseDoc.data();
   
   const courseLiveClasses = liveClassesCollection?.docs.filter(doc => {
+    // In a real app, you would filter classes based on the courseId
+    // For now, we show all live classes as course content.
     return true; 
   });
 
