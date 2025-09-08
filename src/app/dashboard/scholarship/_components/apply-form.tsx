@@ -42,7 +42,7 @@ const uploadsSchema = z.object({
     signature: z.instanceof(File).optional(),
 });
 
-const applyFormSchema = z.intersection(personalDetailsSchema, z.intersection(scholarshipChoiceSchema, uploadsSchema));
+const applyFormSchema = personalDetailsSchema.merge(scholarshipChoiceSchema).merge(uploadsSchema);
 
 
 type ApplyFormValues = z.infer<typeof applyFormSchema>;
@@ -98,6 +98,7 @@ export function ApplyForm() {
         } else if (step === STEPS.SCHOLARSHIP_CHOICE) {
             isValid = await form.trigger(['scholarshipType', 'courseId']);
         } else if (step === STEPS.UPLOADS) {
+            // Uploads are optional, so we can always proceed.
             isValid = true;
         }
         
