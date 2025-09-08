@@ -98,7 +98,6 @@ export function ApplyForm() {
         } else if (step === STEPS.SCHOLARSHIP_CHOICE) {
             isValid = await form.trigger(['scholarshipType', 'courseId']);
         } else if (step === STEPS.UPLOADS) {
-            // Uploads are optional, so we can always proceed
             isValid = true;
         }
         
@@ -123,7 +122,6 @@ export function ApplyForm() {
             return;
         }
         try {
-            // Generate a random 5-digit number for the application
             const appNumber = String(Math.floor(10000 + Math.random() * 90000));
             
             const photoUrl = data.photo ? await fileToDataUrl(data.photo) : null;
@@ -373,3 +371,5 @@ export function ApplyForm() {
       </Card>
     );
 }
+
+    
