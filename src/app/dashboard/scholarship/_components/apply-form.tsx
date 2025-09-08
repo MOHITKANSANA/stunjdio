@@ -187,167 +187,117 @@ export function ApplyForm() {
         );
     }
     
-    return (
-      <Card>
-        <CardHeader>
-          {step === STEPS.PERSONAL_DETAILS && (
-            <>
-              <CardTitle>Step 1: Personal Details</CardTitle>
-              <CardDescription>Please fill in your personal information.</CardDescription>
-            </>
-          )}
-          {step === STEPS.SCHOLARSHIP_CHOICE && (
-            <>
-              <CardTitle>Step 2: Scholarship Choice</CardTitle>
-              <CardDescription>Tell us what you would like to avail for free.</CardDescription>
-            </>
-          )}
-          {step === STEPS.UPLOADS && (
-            <>
-              <CardTitle>Step 3: Uploads (Optional)</CardTitle>
-              <CardDescription>You can upload your photo and signature if you wish.</CardDescription>
-            </>
-          )}
-          {step === STEPS.CONFIRMATION_REVIEW && (
-            <>
-              <CardTitle>Step 4: Review and Confirm</CardTitle>
-              <CardDescription>Please review your details before submitting.</CardDescription>
-            </>
-          )}
-        </CardHeader>
-        <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)}>
-                <CardContent className="space-y-4">
-                    {step === STEPS.PERSONAL_DETAILS && (
-                        <>
-                            <FormField control={form.control} name="name" render={({ field }) => (
+    const renderStepContent = () => {
+        switch (step) {
+            case STEPS.PERSONAL_DETAILS:
+                return (
+                    <>
+                        <FormField control={form.control} name="name" render={({ field }) => (
+                            <FormItem><FormLabel>Full Name</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+                        )} />
+                        <FormField control={form.control} name="email" render={({ field }) => (
+                            <FormItem><FormLabel>Email Address</FormLabel><FormControl><Input type="email" {...field} /></FormControl><FormMessage /></FormItem>
+                        )} />
+                        <FormField control={form.control} name="phone" render={({ field }) => (
+                            <FormItem><FormLabel>Phone Number</FormLabel><FormControl><Input type="tel" {...field} /></FormControl><FormMessage /></FormItem>
+                        )} />
+                        <FormField control={form.control} name="address" render={({ field }) => (
+                            <FormItem><FormLabel>Full Address</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+                        )} />
+                    </>
+                );
+            case STEPS.SCHOLARSHIP_CHOICE:
+                return (
+                    <>
+                        <FormField control={form.control} name="scholarshipType" render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Scholarship For</FormLabel>
+                                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                    <FormControl><SelectTrigger><SelectValue placeholder="Select an option" /></SelectTrigger></FormControl>
+                                    <SelectContent>
+                                        <SelectItem value="Full App Access">Full App Access</SelectItem>
+                                        <SelectItem value="Specific Course">Specific Course</SelectItem>
+                                        <SelectItem value="Test Series">Test Series</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                                <FormMessage />
+                            </FormItem>
+                        )} />
+                        {scholarshipType === 'Specific Course' && (
+                            <FormField control={form.control} name="courseId" render={({ field }) => (
                                 <FormItem>
-                                    <FormLabel>Full Name</FormLabel>
-                                    <FormControl><Input {...field} /></FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )} />
-                            <FormField control={form.control} name="email" render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Email Address</FormLabel>
-                                    <FormControl><Input type="email" {...field} /></FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )} />
-                            <FormField control={form.control} name="phone" render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Phone Number</FormLabel>
-                                    <FormControl><Input type="tel" {...field} /></FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )} />
-                            <FormField control={form.control} name="address" render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Full Address</FormLabel>
-                                    <FormControl><Input {...field} /></FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )} />
-                        </>
-                    )}
-
-                    {step === STEPS.SCHOLARSHIP_CHOICE && (
-                        <>
-                            <FormField
-                                control={form.control}
-                                name="scholarshipType"
-                                render={({ field }) => (
-                                    <FormItem>
-                                    <FormLabel>Scholarship For</FormLabel>
+                                    <FormLabel>Select Course</FormLabel>
                                     <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                        <FormControl><SelectTrigger><SelectValue placeholder="Select an option" /></SelectTrigger></FormControl>
-                                        <SelectContent>
-                                            <SelectItem value="Full App Access">Full App Access</SelectItem>
-                                            <SelectItem value="Specific Course">Specific Course</SelectItem>
-                                            <SelectItem value="Test Series">Test Series</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                    <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-                            {scholarshipType === 'Specific Course' && (
-                                <FormField
-                                    control={form.control}
-                                    name="courseId"
-                                    render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Select Course</FormLabel>
-                                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                        <FormControl><SelectTrigger>
-                                            <SelectValue placeholder="Select a course" />
-                                        </Trigger></FormControl>
+                                        <FormControl><SelectTrigger><SelectValue placeholder="Select a course" /></SelectTrigger></FormControl>
                                         <SelectContent>
                                             {coursesLoading && <p className='p-2 text-xs text-muted-foreground'>Loading courses...</p>}
                                             {coursesCollection?.docs.map(doc => (
                                                 <SelectItem key={doc.id} value={doc.id}>{doc.data().title}</SelectItem>
                                             ))}
                                         </SelectContent>
-                                        </Select>
-                                        <FormMessage />
-                                    </FormItem>
-                                    )}
-                                />
-                            )}
-                        </>
-                    )}
+                                    </Select>
+                                    <FormMessage />
+                                </FormItem>
+                            )} />
+                        )}
+                    </>
+                );
+            case STEPS.UPLOADS:
+                return (
+                    <>
+                        <FormField control={form.control} name="photo" render={({ field: { onChange, value, ...rest } }) => (
+                            <FormItem>
+                                <FormLabel>Your Photo</FormLabel>
+                                <FormControl><Input type="file" accept="image/*" onChange={(e) => onChange(e.target.files?.[0])} {...rest} /></FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )} />
+                        <FormField control={form.control} name="signature" render={({ field: { onChange, value, ...rest } }) => (
+                            <FormItem>
+                                <FormLabel>Your Signature</FormLabel>
+                                <FormControl><Input type="file" accept="image/*" onChange={(e) => onChange(e.target.files?.[0])} {...rest} /></FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )} />
+                    </>
+                );
+            case STEPS.CONFIRMATION_REVIEW:
+                return (
+                    <div className="space-y-4 rounded-lg border p-4">
+                        <h4 className="font-semibold">Personal Details</h4>
+                        <p><span className="font-medium">Name:</span> {formData.name}</p>
+                        <p><span className="font-medium">Email:</span> {formData.email}</p>
+                        <p><span className="font-medium">Phone:</span> {formData.phone}</p>
+                        <p><span className="font-medium">Address:</span> {formData.address}</p>
+                        <hr />
+                        <h4 className="font-semibold">Scholarship Details</h4>
+                        <p><span className="font-medium">Type:</span> {formData.scholarshipType}</p>
+                        {formData.scholarshipType === 'Specific Course' && (
+                            <p><span className="font-medium">Course:</span> {getCourseTitle(formData.courseId)}</p>
+                        )}
+                        <hr />
+                        <h4 className="font-semibold">Uploads</h4>
+                        <p><span className="font-medium">Photo:</span> {formData.photo?.name || 'Not provided'}</p>
+                        <p><span className="font-medium">Signature:</span> {formData.signature?.name || 'Not provided'}</p>
+                    </div>
+                );
+            default:
+                return null;
+        }
+    };
 
-                    {step === STEPS.UPLOADS && (
-                        <>
-                            <FormField control={form.control} name="photo" render={({ field: { onChange, value, ...rest } }) => (
-                                <FormItem>
-                                    <FormLabel>Your Photo</FormLabel>
-                                    <FormControl>
-                                        <Input 
-                                            type="file" 
-                                            accept="image/*" 
-                                            onChange={(e) => onChange(e.target.files?.[0])}
-                                            {...rest} 
-                                        />
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )} />
-                            <FormField control={form.control} name="signature" render={({ field: { onChange, value, ...rest } }) => (
-                                <FormItem>
-                                    <FormLabel>Your Signature</FormLabel>
-                                    <FormControl>
-                                        <Input 
-                                            type="file" 
-                                            accept="image/*" 
-                                            onChange={(e) => onChange(e.target.files?.[0])}
-                                            {...rest} 
-                                        />
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )} />
-                        </>
-                    )}
-                    {step === STEPS.CONFIRMATION_REVIEW && (
-                        <div className="space-y-4 rounded-lg border p-4">
-                            <h4 className="font-semibold">Personal Details</h4>
-                            <p><span className="font-medium">Name:</span> {formData.name}</p>
-                            <p><span className="font-medium">Email:</span> {formData.email}</p>
-                            <p><span className="font-medium">Phone:</span> {formData.phone}</p>
-                            <p><span className="font-medium">Address:</span> {formData.address}</p>
-                            <hr />
-                            <h4 className="font-semibold">Scholarship Details</h4>
-                            <p><span className="font-medium">Type:</span> {formData.scholarshipType}</p>
-                            {formData.scholarshipType === 'Specific Course' && (
-                                <p><span className="font-medium">Course:</span> {getCourseTitle(formData.courseId)}</p>
-                            )}
-                            <hr />
-                             <h4 className="font-semibold">Uploads</h4>
-                             <p><span className="font-medium">Photo:</span> {formData.photo?.name || 'Not provided'}</p>
-                             <p><span className="font-medium">Signature:</span> {formData.signature?.name || 'Not provided'}</p>
-                        </div>
-                    )}
+    return (
+      <Card>
+        <CardHeader>
+            {step === STEPS.PERSONAL_DETAILS && <><CardTitle>Step 1: Personal Details</CardTitle><CardDescription>Please fill in your personal information.</CardDescription></>}
+            {step === STEPS.SCHOLARSHIP_CHOICE && <><CardTitle>Step 2: Scholarship Choice</CardTitle><CardDescription>Tell us what you would like to avail for free.</CardDescription></>}
+            {step === STEPS.UPLOADS && <><CardTitle>Step 3: Uploads (Optional)</CardTitle><CardDescription>You can upload your photo and signature if you wish.</CardDescription></>}
+            {step === STEPS.CONFIRMATION_REVIEW && <><CardTitle>Step 4: Review and Confirm</CardTitle><CardDescription>Please review your details before submitting.</CardDescription></>}
+        </CardHeader>
+        <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)}>
+                <CardContent className="space-y-4">
+                    {renderStepContent()}
                 </CardContent>
                 <CardFooter className="flex justify-between pt-6">
                     <div>
