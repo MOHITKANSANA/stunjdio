@@ -108,7 +108,7 @@ export function ApplyForm() {
 
     const handleBack = () => {
         setStep(prev => prev - 1);
-    }
+    };
     
     const getCourseTitle = (courseId: string | undefined) => {
         if (!courseId) return '';
@@ -150,7 +150,7 @@ export function ApplyForm() {
             console.error("Application submission error:", error);
             toast({ variant: 'destructive', title: 'Error', description: 'Could not submit application.' });
         }
-    }
+    };
 
     const copyToClipboard = () => {
         if(applicationNumber) {
@@ -158,7 +158,7 @@ export function ApplyForm() {
             setIsCopied(true);
             setTimeout(() => setIsCopied(false), 2000);
         }
-    }
+    };
 
     if (step === STEPS.SUCCESS) {
         return (
@@ -371,5 +371,3 @@ export function ApplyForm() {
       </Card>
     );
 }
-
-    
