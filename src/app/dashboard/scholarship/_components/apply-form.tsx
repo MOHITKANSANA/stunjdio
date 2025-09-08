@@ -51,7 +51,8 @@ const STEPS = {
   PERSONAL_DETAILS: 1,
   SCHOLARSHIP_CHOICE: 2,
   UPLOADS: 3,
-  CONFIRMATION: 4,
+  CONFIRMATION_REVIEW: 4,
+  SUCCESS: 5,
 };
 
 const fileToDataUrl = (file: File): Promise<string> => {
@@ -88,6 +89,7 @@ export function ApplyForm() {
     });
 
     const scholarshipType = form.watch('scholarshipType');
+    const formData = form.watch();
 
     const handleNext = async () => {
         let isValid = false;
@@ -96,7 +98,8 @@ export function ApplyForm() {
         } else if (step === STEPS.SCHOLARSHIP_CHOICE) {
             isValid = await form.trigger(['scholarshipType', 'courseId']);
         } else if (step === STEPS.UPLOADS) {
-            isValid = await form.trigger(['photo', 'signature']);
+            // Uploads are optional, so we can always proceed
+            isValid = true;
         }
         
         if (isValid) {
@@ -120,7 +123,7 @@ export function ApplyForm() {
             return;
         }
         try {
-            // Generate a random 5-digit number
+            // Generate a random 5-digit number for the application
             const appNumber = String(Math.floor(10000 + Math.random() * 90000));
             
             const photoUrl = data.photo ? await fileToDataUrl(data.photo) : null;
@@ -143,7 +146,7 @@ export function ApplyForm() {
             });
             
             setApplicationNumber(appNumber);
-            setStep(STEPS.CONFIRMATION);
+            setStep(STEPS.SUCCESS);
 
         } catch (error) {
             console.error("Application submission error:", error);
@@ -159,7 +162,7 @@ export function ApplyForm() {
         }
     }
 
-    if (step === STEPS.CONFIRMATION) {
+    if (step === STEPS.SUCCESS) {
         return (
             <Card>
                 <CardHeader>
@@ -185,7 +188,7 @@ export function ApplyForm() {
             </Card>
         );
     }
-
+    
     return (
       <Card>
         <CardHeader>
@@ -205,6 +208,12 @@ export function ApplyForm() {
             <>
               <CardTitle>Step 3: Uploads (Optional)</CardTitle>
               <CardDescription>You can upload your photo and signature if you wish.</CardDescription>
+            </>
+          )}
+          {step === STEPS.CONFIRMATION_REVIEW && (
+            <>
+              <CardTitle>Step 4: Review and Confirm</CardTitle>
+              <CardDescription>Please review your details before submitting.</CardDescription>
             </>
           )}
         </CardHeader>
@@ -322,6 +331,25 @@ export function ApplyForm() {
                             )} />
                         </>
                     )}
+                    {step === STEPS.CONFIRMATION_REVIEW && (
+                        <div className="space-y-4 rounded-lg border p-4">
+                            <h4 className="font-semibold">Personal Details</h4>
+                            <p><span className="font-medium">Name:</span> {formData.name}</p>
+                            <p><span className="font-medium">Email:</span> {formData.email}</p>
+                            <p><span className="font-medium">Phone:</span> {formData.phone}</p>
+                            <p><span className="font-medium">Address:</span> {formData.address}</p>
+                            <hr />
+                            <h4 className="font-semibold">Scholarship Details</h4>
+                            <p><span className="font-medium">Type:</span> {formData.scholarshipType}</p>
+                            {formData.scholarshipType === 'Specific Course' && (
+                                <p><span className="font-medium">Course:</span> {getCourseTitle(formData.courseId)}</p>
+                            )}
+                            <hr />
+                             <h4 className="font-semibold">Uploads</h4>
+                             <p><span className="font-medium">Photo:</span> {formData.photo?.name || 'Not provided'}</p>
+                             <p><span className="font-medium">Signature:</span> {formData.signature?.name || 'Not provided'}</p>
+                        </div>
+                    )}
                 </CardContent>
                 <CardFooter className="flex justify-between pt-6">
                     <div>
@@ -330,7 +358,7 @@ export function ApplyForm() {
                         )}
                     </div>
                     <div>
-                        {step < STEPS.UPLOADS ? (
+                        {step < STEPS.CONFIRMATION_REVIEW ? (
                             <Button type="button" onClick={handleNext}>Next</Button>
                         ) : (
                             <Button type="submit" disabled={form.formState.isSubmitting}>
