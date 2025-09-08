@@ -12,12 +12,12 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { useCollection } from 'react-firebase-hooks/firestore';
-import { collection, query, orderBy, doc, updateDoc, addDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, query, orderBy, doc, updateDoc, addDoc, deleteDoc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { firestore } from '@/lib/firebase';
 import { getStorage, ref, uploadString, getDownloadURL } from "firebase/storage";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Trash2, Check, X, Upload, Video, FileText, StickyNote } from 'lucide-react';
+import { Loader2, Trash2, Check, X, Upload, Video, FileText, StickyNote, PlusCircle, Save } from 'lucide-react';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -53,6 +53,19 @@ const courseContentSchema = z.object({
 });
 type CourseContentValues = z.infer<typeof courseContentSchema>;
 
+const scholarshipSettingsSchema = z.object({
+    startDate: z.string().refine(val => !isNaN(Date.parse(val)), { message: 'Invalid date' }),
+    endDate: z.string().refine(val => !isNaN(Date.parse(val)), { message: 'Invalid date' }),
+});
+type ScholarshipSettingsValues = z.infer<typeof scholarshipSettingsSchema>;
+
+const scholarshipQuestionSchema = z.object({
+    text: z.string().min(5, 'Question text is required'),
+    options: z.array(z.string().min(1)).length(4, 'There must be 4 options'),
+    correctAnswer: z.string().min(1, 'Please select the correct answer'),
+});
+type ScholarshipQuestionValues = z.infer<typeof scholarshipQuestionSchema>;
+
 const fileToDataUrl = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -63,11 +76,17 @@ const fileToDataUrl = (file: File): Promise<string> => {
 };
 
 export default function AdminPage() {
-  const [enrollmentsCollection, enrollmentsLoading, enrollmentsError] = useCollection(query(collection(firestore, 'enrollments'), orderBy('createdAt', 'desc')));
-  const [liveClassesCollection, liveClassesLoading, liveClassesError] = useCollection(query(collection(firestore, 'live_classes'), orderBy('startTime', 'desc')));
-  const [coursesCollection, coursesLoading, coursesError] = useCollection(query(collection(firestore, 'courses'), orderBy('title', 'asc')));
+  const [enrollmentsCollection, enrollmentsLoading] = useCollection(query(collection(firestore, 'enrollments'), orderBy('createdAt', 'desc')));
+  const [liveClassesCollection, liveClassesLoading] = useCollection(query(collection(firestore, 'live_classes'), orderBy('startTime', 'desc')));
+  const [coursesCollection] = useCollection(query(collection(firestore, 'courses'), orderBy('title', 'asc')));
   const [qrCodeDoc] = useCollection(collection(firestore, 'settings'));
+  const [scholarshipSettingsDoc, scholarshipSettingsLoading] = useCollection(collection(firestore, 'settings'));
+  const [scholarshipQuestionsCollection, scholarshipQuestionsLoading] = useCollection(query(collection(firestore, 'scholarshipTest'), orderBy('createdAt', 'asc')));
+  const [scholarshipApplicants, scholarshipApplicantsLoading] = useCollection(query(collection(firestore, 'scholarshipApplications'), orderBy('appliedAt', 'desc')));
+
   const qrCodeUrl = qrCodeDoc?.docs.find(d => d.id === 'paymentQrCode')?.data().url;
+  const scholarshipSettings = scholarshipSettingsDoc?.docs.find(d => d.id === 'scholarship')?.data();
+
 
   const { toast } = useToast();
   
@@ -75,14 +94,21 @@ export default function AdminPage() {
   const liveClassForm = useForm<LiveClassFormValues>({ resolver: zodResolver(liveClassFormSchema) });
   const qrCodeForm = useForm<QrCodeFormValues>({ resolver: zodResolver(qrCodeFormSchema) });
   const courseContentForm = useForm<CourseContentValues>({ resolver: zodResolver(courseContentSchema) });
+  const scholarshipSettingsForm = useForm<ScholarshipSettingsValues>({
+    resolver: zodResolver(scholarshipSettingsSchema),
+    values: {
+      startDate: scholarshipSettings?.startDate?.toDate()?.toISOString().substring(0, 16) || '',
+      endDate: scholarshipSettings?.endDate?.toDate()?.toISOString().substring(0, 16) || '',
+    },
+  });
+  const scholarshipQuestionForm = useForm<ScholarshipQuestionValues>({ resolver: zodResolver(scholarshipQuestionSchema) });
+
 
   const handleEnrollmentAction = async (id: string, newStatus: 'approved' | 'rejected') => {
     try {
-      const enrollmentRef = doc(firestore, 'enrollments', id);
-      await updateDoc(enrollmentRef, { status: newStatus });
+      await updateDoc(doc(firestore, 'enrollments', id), { status: newStatus });
       toast({ title: 'Success', description: `Enrollment has been ${newStatus}.` });
     } catch (error) {
-      console.error("Error updating enrollment: ", error);
       toast({ variant: 'destructive', title: 'Error', description: 'Could not update enrollment status.' });
     }
   };
@@ -102,52 +128,30 @@ export default function AdminPage() {
         imageUrl = await uploadImage(data.imageFile, `courses/${Date.now()}-${data.imageFile.name}`);
       }
       
-      await addDoc(collection(firestore, 'courses'), {
-        title: data.title,
-        category: data.category,
-        description: data.description,
-        price: data.price,
-        imageUrl: imageUrl,
-        createdAt: serverTimestamp(),
-      });
+      await addDoc(collection(firestore, 'courses'), { ...data, imageUrl, createdAt: serverTimestamp() });
       toast({ title: 'Success', description: 'Course created successfully.' });
       courseForm.reset();
     } catch (error) {
-      console.error("Error creating course: ", error);
       toast({ variant: 'destructive', title: 'Error', description: 'Could not create course.' });
     }
   };
 
   const onLiveClassSubmit = async (data: LiveClassFormValues) => {
     try {
-        const startTime = new Date(data.startTime);
-        await addDoc(collection(firestore, 'live_classes'), {
-            title: data.title,
-            youtubeUrl: data.youtubeUrl,
-            startTime: startTime,
-            createdAt: serverTimestamp(),
-        });
+        await addDoc(collection(firestore, 'live_classes'), { ...data, startTime: new Date(data.startTime), createdAt: serverTimestamp() });
         toast({ title: 'Success', description: 'Live class added.' });
         liveClassForm.reset();
     } catch (error) {
-        console.error("Error adding live class: ", error);
         toast({ variant: 'destructive', title: 'Error', description: 'Could not add live class.' });
     }
   };
 
   const onCourseContentSubmit = async (data: CourseContentValues) => {
     try {
-        const contentCollectionRef = collection(firestore, 'courses', data.courseId, 'content');
-        await addDoc(contentCollectionRef, {
-            type: data.contentType,
-            title: data.title,
-            url: data.url,
-            createdAt: serverTimestamp(),
-        });
+        await addDoc(collection(firestore, 'courses', data.courseId, 'content'), { type: data.contentType, title: data.title, url: data.url, createdAt: serverTimestamp() });
         toast({ title: 'Success', description: 'Content added to course.' });
         courseContentForm.reset();
     } catch (error) {
-        console.error("Error adding course content: ", error);
         toast({ variant: 'destructive', title: 'Error', description: 'Could not add content.' });
     }
   };
@@ -162,31 +166,66 @@ export default function AdminPage() {
   const onQrCodeSubmit = async (data: QrCodeFormValues) => {
     try {
       const imageUrl = await uploadImage(data.imageFile, `settings/qr-code.jpg`);
-      const settingsRef = doc(firestore, 'settings', 'paymentQrCode');
-      await updateDoc(settingsRef, { url: imageUrl }, { merge: true });
+      await setDoc(doc(firestore, 'settings', 'paymentQrCode'), { url: imageUrl });
       toast({ title: 'Success', description: 'QR Code updated.' });
       qrCodeForm.reset();
     } catch (error) {
-       console.error("Error updating QR code: ", error);
        toast({ variant: 'destructive', title: 'Error', description: 'Could not update QR code.' });
     }
   };
 
+  const onScholarshipSettingsSubmit = async (data: ScholarshipSettingsValues) => {
+    try {
+      await setDoc(doc(firestore, 'settings', 'scholarship'), {
+        startDate: new Date(data.startDate),
+        endDate: new Date(data.endDate),
+      });
+      toast({ title: 'Success', description: 'Scholarship settings saved.' });
+    } catch (error) {
+      toast({ variant: 'destructive', title: 'Error', description: 'Could not save settings.' });
+    }
+  };
+
+  const onScholarshipQuestionSubmit = async (data: ScholarshipQuestionValues) => {
+    try {
+      await addDoc(collection(firestore, 'scholarshipTest'), { ...data, createdAt: serverTimestamp() });
+      toast({ title: 'Success', description: 'Question added.' });
+      scholarshipQuestionForm.reset();
+    } catch (error) {
+      toast({ variant: 'destructive', title: 'Error', description: 'Could not add question.' });
+    }
+  };
+
+  const deleteScholarshipQuestion = async (id: string) => {
+    if (window.confirm('Are you sure you want to delete this question?')) {
+      await deleteDoc(doc(firestore, 'scholarshipTest', id));
+      toast({ description: 'Question deleted.' });
+    }
+  };
+  
+  const handleScholarshipApplicantAction = async (id: string, newStatus: 'approved' | 'rejected') => {
+    try {
+      await updateDoc(doc(firestore, 'scholarshipApplications', id), { status: newStatus });
+      toast({ title: 'Success', description: `Applicant has been ${newStatus}.` });
+    } catch (error) {
+      toast({ variant: 'destructive', title: 'Error', description: 'Could not update applicant status.' });
+    }
+  };
 
   return (
     <div className="mx-auto grid w-full max-w-7xl gap-6">
       <h1 className="text-3xl font-semibold font-headline">Administration</h1>
       <Tabs defaultValue="enrollments">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="enrollments">Enrollments</TabsTrigger>
           <TabsTrigger value="content">Content Management</TabsTrigger>
+          <TabsTrigger value="scholarship">Scholarship</TabsTrigger>
           <TabsTrigger value="settings">Settings</TabsTrigger>
         </TabsList>
         <TabsContent value="enrollments">
            <Card>
             <CardHeader><CardTitle>Enrollment Requests</CardTitle><CardDescription>Review and approve student course enrollments.</CardDescription></CardHeader>
             <CardContent>
-              {enrollmentsError && <p className="text-destructive">Error: {enrollmentsError.message}</p>}
               <div className="max-h-[800px] overflow-y-auto">
                 <Table>
                   <TableHeader><TableRow><TableHead>Student</TableHead><TableHead>Request</TableHead><TableHead>Screenshot</TableHead><TableHead>Status</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
@@ -232,13 +271,7 @@ export default function AdminPage() {
                   <FormField control={courseForm.control} name="category" render={({ field }) => (<FormItem><FormLabel>Category</FormLabel><FormControl><Input placeholder="e.g. Maths" {...field} /></FormControl><FormMessage /></FormItem>)}/>
                   <FormField control={courseForm.control} name="price" render={({ field }) => (<FormItem><FormLabel>Price (INR)</FormLabel><FormControl><Input type="number" placeholder="e.g. 499" {...field} /></FormControl><FormMessage /></FormItem>)}/>
                   <FormField control={courseForm.control} name="imageFile" render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Cover Image</FormLabel>
-                      <FormControl>
-                        <Input type="file" accept="image/*" onChange={(e) => field.onChange(e.target.files?.[0])} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
+                    <FormItem><FormLabel>Cover Image</FormLabel><FormControl><Input type="file" accept="image/*" onChange={(e) => field.onChange(e.target.files?.[0])} /></FormControl><FormMessage /></FormItem>
                   )}/>
                   <FormField control={courseForm.control} name="description" render={({ field }) => (<FormItem><FormLabel>Description</FormLabel><FormControl><Textarea placeholder="A short description of the course content." className="min-h-32" {...field} /></FormControl><FormMessage /></FormItem>)}/>
                   <Button type="submit" disabled={courseForm.formState.isSubmitting}>{courseForm.formState.isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin"/>Creating...</> : "Create Course"}</Button>
@@ -296,25 +329,94 @@ export default function AdminPage() {
            
           </div>
         </TabsContent>
+        <TabsContent value="scholarship">
+            <div className="grid md:grid-cols-2 gap-6 items-start">
+                <div className="space-y-6">
+                    <Card>
+                        <CardHeader><CardTitle>Scholarship Settings</CardTitle><CardDescription>Set the application start and end dates.</CardDescription></CardHeader>
+                        <CardContent>
+                            <Form {...scholarshipSettingsForm}><form onSubmit={scholarshipSettingsForm.handleSubmit(onScholarshipSettingsSubmit)} className="grid gap-4">
+                                <FormField control={scholarshipSettingsForm.control} name="startDate" render={({ field }) => (<FormItem><FormLabel>Application Start Date</FormLabel><FormControl><Input type="datetime-local" {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                                <FormField control={scholarshipSettingsForm.control} name="endDate" render={({ field }) => (<FormItem><FormLabel>Application End Date</FormLabel><FormControl><Input type="datetime-local" {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                                <Button type="submit" disabled={scholarshipSettingsForm.formState.isSubmitting}><Save className="mr-2"/>{scholarshipSettingsForm.formState.isSubmitting ? 'Saving...' : 'Save Settings'}</Button>
+                            </form></Form>
+                        </CardContent>
+                    </Card>
+                     <Card>
+                        <CardHeader><CardTitle>Scholarship Test Questions</CardTitle><CardDescription>Manage the questions for the online test.</CardDescription></CardHeader>
+                        <CardContent>
+                             <Form {...scholarshipQuestionForm}><form onSubmit={scholarshipQuestionForm.handleSubmit(onScholarshipQuestionSubmit)} className="grid gap-4 mb-6">
+                                <FormField control={scholarshipQuestionForm.control} name="text" render={({ field }) => (<FormItem><FormLabel>Question</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                                <FormField control={scholarshipQuestionForm.control} name="options.0" render={({ field }) => (<FormItem><FormLabel>Option 1</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                                <FormField control={scholarshipQuestionForm.control} name="options.1" render={({ field }) => (<FormItem><FormLabel>Option 2</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                                <FormField control={scholarshipQuestionForm.control} name="options.2" render={({ field }) => (<FormItem><FormLabel>Option 3</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                                <FormField control={scholarshipQuestionForm.control} name="options.3" render={({ field }) => (<FormItem><FormLabel>Option 4</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                                 <FormField control={scholarshipQuestionForm.control} name="correctAnswer" render={({ field }) => (<FormItem><FormLabel>Correct Answer</FormLabel>
+                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                        <FormControl><SelectTrigger><SelectValue placeholder="Select the correct option" /></SelectTrigger></FormControl>
+                                        <SelectContent>
+                                            {scholarshipQuestionForm.watch('options')?.map((opt, i) => opt && (<SelectItem key={i} value={opt}>Option {i + 1}: {opt}</SelectItem>))}
+                                        </SelectContent>
+                                    </Select><FormMessage /></FormItem>
+                                )}/>
+                                <Button type="submit" disabled={scholarshipQuestionForm.formState.isSubmitting}><PlusCircle className="mr-2"/>{scholarshipQuestionForm.formState.isSubmitting ? 'Adding...' : 'Add Question'}</Button>
+                            </form></Form>
+                            <h4 className="font-semibold mb-2">Current Questions</h4>
+                            <div className="max-h-60 overflow-y-auto pr-2 space-y-2">
+                                {scholarshipQuestionsLoading && <Skeleton className="h-9 w-full" />}
+                                {scholarshipQuestionsCollection?.docs.map((doc, i) => (
+                                    <div key={doc.id} className="text-sm p-2 border rounded flex justify-between items-center">
+                                        <span>{i+1}. {doc.data().text}</span>
+                                        <Button variant="ghost" size="icon" onClick={() => deleteScholarshipQuestion(doc.id)}><Trash2 className="h-4 w-4 text-destructive"/></Button>
+                                    </div>
+                                ))}
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>
+                 <Card>
+                    <CardHeader><CardTitle>Scholarship Applicants</CardTitle><CardDescription>Review and manage scholarship applications.</CardDescription></CardHeader>
+                    <CardContent>
+                         <div className="max-h-[800px] overflow-y-auto">
+                            <Table>
+                                <TableHeader><TableRow><TableHead>Applicant</TableHead><TableHead>App#</TableHead><TableHead>Type</TableHead><TableHead>Status</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
+                                <TableBody>
+                                    {scholarshipApplicantsLoading && <TableRow><TableCell colSpan={5}><Skeleton className="h-12 w-full"/></TableCell></TableRow>}
+                                    {scholarshipApplicants?.docs.map(doc => {
+                                        const app = doc.data();
+                                        return (
+                                            <TableRow key={doc.id}>
+                                                <TableCell><div className="font-medium">{app.name}</div><div className="text-sm text-muted-foreground">{app.email}</div></TableCell>
+                                                <TableCell>{app.applicationNumber}</TableCell>
+                                                <TableCell>{app.scholarshipType}</TableCell>
+                                                <TableCell><Badge variant={app.status === 'applied' ? 'secondary' : app.status === 'approved' ? 'default' : 'destructive'}>{app.status}</Badge></TableCell>
+                                                <TableCell className="text-right">
+                                                    {app.status === 'applied' && (
+                                                        <div className="flex gap-2 justify-end">
+                                                            <Button size="icon" variant="outline" className="h-8 w-8" onClick={() => handleScholarshipApplicantAction(doc.id, 'approved')}><Check className="h-4 w-4 text-green-500" /></Button>
+                                                            <Button size="icon" variant="outline" className="h-8 w-8" onClick={() => handleScholarshipApplicantAction(doc.id, 'rejected')}><X className="h-4 w-4 text-red-500" /></Button>
+                                                        </div>
+                                                    )}
+                                                </TableCell>
+                                            </TableRow>
+                                        )
+                                    })}
+                                </TableBody>
+                            </Table>
+                         </div>
+                    </CardContent>
+                </Card>
+            </div>
+        </TabsContent>
         <TabsContent value="settings">
           <Card>
             <CardHeader><CardTitle>Payment QR Code</CardTitle><CardDescription>Upload or update the QR code for payments.</CardDescription></CardHeader>
             <CardContent className="grid md:grid-cols-2 gap-6 items-start">
               <Form {...qrCodeForm}>
                 <form onSubmit={qrCodeForm.handleSubmit(onQrCodeSubmit)} className="space-y-4">
-                   <FormField
-                    control={qrCodeForm.control}
-                    name="imageFile"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>New QR Code Image</FormLabel>
-                        <FormControl>
-                          <Input type="file" accept="image/*" onChange={(e) => field.onChange(e.target.files?.[0])} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                   <FormField control={qrCodeForm.control} name="imageFile" render={({ field }) => (
+                      <FormItem><FormLabel>New QR Code Image</FormLabel><FormControl><Input type="file" accept="image/*" onChange={(e) => field.onChange(e.target.files?.[0])} /></FormControl><FormMessage /></FormItem>
+                    )}/>
                   <Button type="submit" disabled={qrCodeForm.formState.isSubmitting}>
                     {qrCodeForm.formState.isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin"/>Uploading...</> : <><Upload className="mr-2 h-4 w-4"/>Upload QR Code</>}
                   </Button>
@@ -335,3 +437,5 @@ export default function AdminPage() {
     </div>
   );
 }
+
+    

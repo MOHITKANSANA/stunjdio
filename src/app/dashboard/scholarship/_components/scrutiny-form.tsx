@@ -10,12 +10,12 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
-import { collection, query, where, getDocs, addDoc, serverTimestamp, orderBy, limit } from 'firebase/firestore';
+import { collection, query, where, getDocs, addDoc, serverTimestamp } from 'firebase/firestore';
 import { firestore } from '@/lib/firebase';
 import { Textarea } from '@/components/ui/textarea';
 
 const scrutinySchema = z.object({
-    registrationNumber: z.string().startsWith('SCHOLAR', 'Invalid registration number.'),
+    applicationNumber: z.string().length(5, 'Application number must be 5 digits.'),
     reason: z.string().min(10, 'Please provide a detailed reason for the review.').max(500, 'Reason cannot exceed 500 characters.'),
 });
 type ScrutinyFormValues = z.infer<typeof scrutinySchema>;
@@ -29,14 +29,14 @@ export function ScrutinyForm() {
     const onSubmit = async (data: ScrutinyFormValues) => {
         setIsLoading(true);
         try {
-            // First, verify the registration number and that a test was submitted
+            // First, verify the application number and that a test was submitted
             const q = query(
                 collection(firestore, 'scholarshipTestResults'),
-                where('registrationNumber', '==', data.registrationNumber)
+                where('applicationNumber', '==', data.applicationNumber)
             );
             const querySnapshot = await getDocs(q);
             if (querySnapshot.empty) {
-                toast({ variant: 'destructive', title: 'Not Found', description: 'No test result found for this registration number. Cannot submit scrutiny.' });
+                toast({ variant: 'destructive', title: 'Not Found', description: 'No test result found for this application number. Cannot submit scrutiny.' });
                 setIsLoading(false);
                 return;
             }
@@ -63,10 +63,10 @@ export function ScrutinyForm() {
     return (
         <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                <FormField control={form.control} name="registrationNumber" render={({ field }) => (
+                <FormField control={form.control} name="applicationNumber" render={({ field }) => (
                     <FormItem>
-                        <FormLabel>Registration Number</FormLabel>
-                        <FormControl><Input placeholder="SCHOLAR..." {...field} /></FormControl>
+                        <FormLabel>Application Number</FormLabel>
+                        <FormControl><Input placeholder="e.g. 12345" {...field} /></FormControl>
                         <FormMessage />
                     </FormItem>
                 )} />
@@ -85,3 +85,5 @@ export function ScrutinyForm() {
         </Form>
     )
 }
+
+    
