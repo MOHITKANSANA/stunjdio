@@ -17,18 +17,16 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useCollection } from 'react-firebase-hooks/firestore';
 
-const applyFormSchema = z.object({
-    // Personal Details
+const personalDetailsSchema = z.object({
     name: z.string().min(2, 'Name is required.'),
     email: z.string().email(),
     phone: z.string().min(10, 'Enter a valid phone number.'),
     address: z.string().min(5, 'Address is required.'),
-    // Scholarship Choice
+});
+
+const scholarshipChoiceSchema = z.object({
     scholarshipType: z.string().min(1, 'Please select a scholarship type.'),
     courseId: z.string().optional(),
-    // Uploads
-    photo: z.instanceof(File).optional(),
-    signature: z.instanceof(File).optional(),
 }).refine(data => {
     if (data.scholarshipType === 'Specific Course' && !data.courseId) {
         return false;
@@ -38,6 +36,13 @@ const applyFormSchema = z.object({
     message: 'Please select a course.',
     path: ['courseId'],
 });
+
+const uploadsSchema = z.object({
+    photo: z.instanceof(File).optional(),
+    signature: z.instanceof(File).optional(),
+});
+
+const applyFormSchema = z.intersection(personalDetailsSchema, z.intersection(scholarshipChoiceSchema, uploadsSchema));
 
 
 type ApplyFormValues = z.infer<typeof applyFormSchema>;
@@ -91,7 +96,7 @@ export function ApplyForm() {
         } else if (step === STEPS.SCHOLARSHIP_CHOICE) {
             isValid = await form.trigger(['scholarshipType', 'courseId']);
         } else if (step === STEPS.UPLOADS) {
-            isValid = true;
+            isValid = await form.trigger(['photo', 'signature']);
         }
         
         if (isValid) {
@@ -115,6 +120,7 @@ export function ApplyForm() {
             return;
         }
         try {
+            // Generate a random 5-digit number
             const appNumber = String(Math.floor(10000 + Math.random() * 90000));
             
             const photoUrl = data.photo ? await fileToDataUrl(data.photo) : null;
@@ -140,6 +146,7 @@ export function ApplyForm() {
             setStep(STEPS.CONFIRMATION);
 
         } catch (error) {
+            console.error("Application submission error:", error);
             toast({ variant: 'destructive', title: 'Error', description: 'Could not submit application.' });
         }
     }
@@ -154,157 +161,187 @@ export function ApplyForm() {
 
     if (step === STEPS.CONFIRMATION) {
         return (
-            <div className="text-center py-8">
-                <Check className="h-16 w-16 mx-auto bg-green-100 text-green-600 rounded-full p-3 mb-4" />
-                <h3 className="text-2xl font-bold">Application Submitted!</h3>
-                <p className="text-muted-foreground mt-2">Please save your application number for the online test.</p>
-                <div className="my-6">
-                    <p className="text-sm text-muted-foreground">Your Application Number is:</p>
-                    <div className="flex items-center justify-center gap-4 mt-2">
-                        <p className="text-3xl font-bold tracking-widest bg-muted p-3 rounded-lg">{applicationNumber}</p>
-                        <Button variant="outline" size="icon" onClick={copyToClipboard}>
-                           {isCopied ? <Check className="h-5 w-5 text-green-500" /> : <Copy className="h-5 w-5" />}
-                        </Button>
+            <Card>
+                <CardHeader>
+                    <CardTitle>Application Submitted!</CardTitle>
+                </CardHeader>
+                <CardContent className="text-center py-8">
+                    <Check className="h-16 w-16 mx-auto bg-green-100 text-green-600 rounded-full p-3 mb-4" />
+                    <h3 className="text-2xl font-bold">Thank You!</h3>
+                    <p className="text-muted-foreground mt-2">Please save your application number for the online test.</p>
+                    <div className="my-6">
+                        <p className="text-sm text-muted-foreground">Your Application Number is:</p>
+                        <div className="flex items-center justify-center gap-4 mt-2">
+                            <p className="text-3xl font-bold tracking-widest bg-muted p-3 rounded-lg">{applicationNumber}</p>
+                            <Button variant="outline" size="icon" onClick={copyToClipboard}>
+                            {isCopied ? <Check className="h-5 w-5 text-green-500" /> : <Copy className="h-5 w-5" />}
+                            </Button>
+                        </div>
                     </div>
-                </div>
-                <Button onClick={() => setStep(STEPS.PERSONAL_DETAILS)}>Apply Again</Button>
-            </div>
+                </CardContent>
+                <CardFooter className="justify-center">
+                    <Button onClick={() => { form.reset(); setStep(STEPS.PERSONAL_DETAILS); }}>Apply Again</Button>
+                </CardFooter>
+            </Card>
         );
     }
 
     return (
+      <Card>
+        <CardHeader>
+          {step === STEPS.PERSONAL_DETAILS && (
+            <>
+              <CardTitle>Step 1: Personal Details</CardTitle>
+              <CardDescription>Please fill in your personal information.</CardDescription>
+            </>
+          )}
+          {step === STEPS.SCHOLARSHIP_CHOICE && (
+            <>
+              <CardTitle>Step 2: Scholarship Choice</CardTitle>
+              <CardDescription>Tell us what you would like to avail for free.</CardDescription>
+            </>
+          )}
+          {step === STEPS.UPLOADS && (
+            <>
+              <CardTitle>Step 3: Uploads (Optional)</CardTitle>
+              <CardDescription>You can upload your photo and signature if you wish.</CardDescription>
+            </>
+          )}
+        </CardHeader>
         <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                
-                {step === STEPS.PERSONAL_DETAILS && (
-                     <CardContent className="space-y-4">
-                        <CardTitle>Step 1: Personal Details</CardTitle>
-                        <FormField control={form.control} name="name" render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Full Name</FormLabel>
-                                <FormControl><Input {...field} /></FormControl>
-                                <FormMessage />
-                            </FormItem>
-                        )} />
-                        <FormField control={form.control} name="email" render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Email Address</FormLabel>
-                                <FormControl><Input type="email" {...field} /></FormControl>
-                                <FormMessage />
-                            </FormItem>
-                        )} />
-                        <FormField control={form.control} name="phone" render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Phone Number</FormLabel>
-                                <FormControl><Input type="tel" {...field} /></FormControl>
-                                <FormMessage />
-                            </FormItem>
-                        )} />
-                         <FormField control={form.control} name="address" render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Full Address</FormLabel>
-                                <FormControl><Input {...field} /></FormControl>
-                                <FormMessage />
-                            </FormItem>
-                        )} />
-                    </CardContent>
-                )}
-
-                {step === STEPS.SCHOLARSHIP_CHOICE && (
-                     <CardContent className="space-y-4">
-                        <CardTitle>Step 2: Scholarship Choice</CardTitle>
-                         <FormField
-                            control={form.control}
-                            name="scholarshipType"
-                            render={({ field }) => (
+            <form onSubmit={form.handleSubmit(onSubmit)}>
+                <CardContent className="space-y-4">
+                    {step === STEPS.PERSONAL_DETAILS && (
+                        <>
+                            <FormField control={form.control} name="name" render={({ field }) => (
                                 <FormItem>
-                                <FormLabel>What do you want to avail for free?</FormLabel>
-                                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                    <FormControl><SelectTrigger><SelectValue placeholder="Select an option" /></SelectTrigger></FormControl>
-                                    <SelectContent>
-                                        <SelectItem value="Full App Access">Full App Access</SelectItem>
-                                        <SelectItem value="Specific Course">Specific Course</SelectItem>
-                                        <SelectItem value="Test Series">Test Series</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                                <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                        {scholarshipType === 'Specific Course' && (
-                            <FormField
-                                control={form.control}
-                                name="courseId"
-                                render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Select Course</FormLabel>
-                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                    <FormControl><SelectTrigger>
-                                        <SelectValue placeholder="Select a course" />
-                                    </Trigger></FormControl>
-                                    <SelectContent>
-                                        {coursesLoading && <p className='p-2 text-xs text-muted-foreground'>Loading courses...</p>}
-                                        {coursesCollection?.docs.map(doc => (
-                                            <SelectItem key={doc.id} value={doc.id}>{doc.data().title}</SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                    </Select>
+                                    <FormLabel>Full Name</FormLabel>
+                                    <FormControl><Input {...field} /></FormControl>
                                     <FormMessage />
                                 </FormItem>
+                            )} />
+                            <FormField control={form.control} name="email" render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Email Address</FormLabel>
+                                    <FormControl><Input type="email" {...field} /></FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )} />
+                            <FormField control={form.control} name="phone" render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Phone Number</FormLabel>
+                                    <FormControl><Input type="tel" {...field} /></FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )} />
+                            <FormField control={form.control} name="address" render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Full Address</FormLabel>
+                                    <FormControl><Input {...field} /></FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )} />
+                        </>
+                    )}
+
+                    {step === STEPS.SCHOLARSHIP_CHOICE && (
+                        <>
+                            <FormField
+                                control={form.control}
+                                name="scholarshipType"
+                                render={({ field }) => (
+                                    <FormItem>
+                                    <FormLabel>Scholarship For</FormLabel>
+                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                        <FormControl><SelectTrigger><SelectValue placeholder="Select an option" /></SelectTrigger></FormControl>
+                                        <SelectContent>
+                                            <SelectItem value="Full App Access">Full App Access</SelectItem>
+                                            <SelectItem value="Specific Course">Specific Course</SelectItem>
+                                            <SelectItem value="Test Series">Test Series</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                    <FormMessage />
+                                    </FormItem>
                                 )}
                             />
+                            {scholarshipType === 'Specific Course' && (
+                                <FormField
+                                    control={form.control}
+                                    name="courseId"
+                                    render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Select Course</FormLabel>
+                                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                        <FormControl><SelectTrigger>
+                                            <SelectValue placeholder="Select a course" />
+                                        </Trigger></FormControl>
+                                        <SelectContent>
+                                            {coursesLoading && <p className='p-2 text-xs text-muted-foreground'>Loading courses...</p>}
+                                            {coursesCollection?.docs.map(doc => (
+                                                <SelectItem key={doc.id} value={doc.id}>{doc.data().title}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                        </Select>
+                                        <FormMessage />
+                                    </FormItem>
+                                    )}
+                                />
+                            )}
+                        </>
+                    )}
+
+                    {step === STEPS.UPLOADS && (
+                        <>
+                            <FormField control={form.control} name="photo" render={({ field: { onChange, value, ...rest } }) => (
+                                <FormItem>
+                                    <FormLabel>Your Photo</FormLabel>
+                                    <FormControl>
+                                        <Input 
+                                            type="file" 
+                                            accept="image/*" 
+                                            onChange={(e) => onChange(e.target.files?.[0])}
+                                            {...rest} 
+                                        />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )} />
+                            <FormField control={form.control} name="signature" render={({ field: { onChange, value, ...rest } }) => (
+                                <FormItem>
+                                    <FormLabel>Your Signature</FormLabel>
+                                    <FormControl>
+                                        <Input 
+                                            type="file" 
+                                            accept="image/*" 
+                                            onChange={(e) => onChange(e.target.files?.[0])}
+                                            {...rest} 
+                                        />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )} />
+                        </>
+                    )}
+                </CardContent>
+                <CardFooter className="flex justify-between pt-6">
+                    <div>
+                        {step > STEPS.PERSONAL_DETAILS && (
+                            <Button type="button" variant="outline" onClick={handleBack}>Back</Button>
                         )}
-                    </CardContent>
-                )}
-
-                {step === STEPS.UPLOADS && (
-                     <CardContent className="space-y-4">
-                        <CardTitle>Step 3: Uploads (Optional)</CardTitle>
-                        <FormField control={form.control} name="photo" render={({ field: { onChange, value, ...rest } }) => (
-                            <FormItem>
-                                <FormLabel>Your Photo</FormLabel>
-                                <FormControl>
-                                    <Input 
-                                        type="file" 
-                                        accept="image/*" 
-                                        onChange={(e) => onChange(e.target.files?.[0])}
-                                        {...rest} 
-                                    />
-                                </FormControl>
-                                <FormMessage />
-                            </FormItem>
-                        )} />
-                         <FormField control={form.control} name="signature" render={({ field: { onChange, value, ...rest } }) => (
-                            <FormItem>
-                                <FormLabel>Your Signature</FormLabel>
-                                <FormControl>
-                                    <Input 
-                                        type="file" 
-                                        accept="image/*" 
-                                        onChange={(e) => onChange(e.target.files?.[0])}
-                                        {...rest} 
-                                    />
-                                </FormControl>
-                                <FormMessage />
-                            </FormItem>
-                        )} />
-                    </CardContent>
-                )}
-
-                <CardFooter className="flex justify-between">
-                    {step > STEPS.PERSONAL_DETAILS && (
-                        <Button type="button" variant="outline" onClick={handleBack}>Back</Button>
-                    )}
-                    {step < STEPS.UPLOADS ? (
-                        <Button type="button" onClick={handleNext} className="ml-auto">Next</Button>
-                    ) : (
-                        <Button type="submit" disabled={form.formState.isSubmitting} className="ml-auto">
-                            {form.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                            Submit Application
-                        </Button>
-                    )}
+                    </div>
+                    <div>
+                        {step < STEPS.UPLOADS ? (
+                            <Button type="button" onClick={handleNext}>Next</Button>
+                        ) : (
+                            <Button type="submit" disabled={form.formState.isSubmitting}>
+                                {form.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                Submit Application
+                            </Button>
+                        )}
+                    </div>
                 </CardFooter>
             </form>
         </Form>
+      </Card>
     );
 }

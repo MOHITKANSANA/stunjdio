@@ -25,15 +25,7 @@ export default function ScholarshipPage() {
   const renderContent = () => {
     switch (activeTab) {
         case 'apply':
-            return (
-                 <Card>
-                    <CardHeader>
-                        <CardTitle>Scholarship Application</CardTitle>
-                        <CardDescription>Fill out your details to apply for the scholarship program.</CardDescription>
-                    </CardHeader>
-                    <ApplyForm />
-                 </Card>
-            )
+            return <ApplyForm />
         case 'test':
              return (
                  <Card>
