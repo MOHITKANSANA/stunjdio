@@ -46,7 +46,12 @@ export function ViewResult() {
         checkResultDate();
     }, []);
 
-    const form = useForm<ResultFormValues>({ resolver: zodResolver(resultSchema) });
+    const form = useForm<ResultFormValues>({
+        resolver: zodResolver(resultSchema),
+        defaultValues: {
+            applicationNumber: '',
+        }
+    });
 
     const onCheckResult = async (data: ResultFormValues) => {
         setIsLoading(true);
