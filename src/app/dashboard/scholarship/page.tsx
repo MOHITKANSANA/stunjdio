@@ -7,7 +7,7 @@ import { ApplyForm } from "./_components/apply-form";
 import { OnlineTest } from "./_components/online-test";
 import { ViewResult } from "./_components/view-result";
 import { ScrutinyForm } from "./_components/scrutiny-form";
-import { Award, FileText, PenSquare, Eye, Search, AlertTriangle } from "lucide-react";
+import { Award, FileText, PenSquare, Eye, Search, AlertTriangle, Clock } from "lucide-react";
 import { cn } from '@/lib/utils';
 import { useCollection } from 'react-firebase-hooks/firestore';
 import { collection, doc, getDoc } from 'firebase/firestore';
@@ -24,26 +24,74 @@ const tabItems: { id: ActiveTab; label: string; icon: React.ElementType, color: 
     { id: 'review', label: 'Scrutiny/Review', icon: Search, color: 'bg-purple-500' },
 ];
 
+const CountdownTimer = ({ targetDate, onEnd }: { targetDate: Date; onEnd?: () => void }) => {
+    const calculateTimeLeft = () => {
+        const difference = +targetDate - +new Date();
+        let timeLeft = { days: 0, hours: 0, minutes: 0, seconds: 0 };
+        if (difference > 0) {
+            timeLeft = {
+                days: Math.floor(difference / (1000 * 60 * 60 * 24)),
+                hours: Math.floor((difference / (1000 * 60 * 60)) % 24),
+                minutes: Math.floor((difference / 1000 / 60) % 60),
+                seconds: Math.floor((difference / 1000) % 60),
+            };
+        } else {
+           if (onEnd) onEnd();
+        }
+        return timeLeft;
+    };
+
+    const [timeLeft, setTimeLeft] = useState(calculateTimeLeft());
+
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setTimeLeft(calculateTimeLeft());
+        }, 1000);
+        return () => clearTimeout(timer);
+    });
+
+    return (
+        <div className="flex justify-center gap-4 text-center">
+            {Object.entries(timeLeft).map(([interval, value]) => (
+                <div key={interval} className="flex flex-col p-2 bg-neutral-100 dark:bg-neutral-800 rounded-lg w-20">
+                    <span className="text-3xl font-bold">{String(value).padStart(2, '0')}</span>
+                    <span className="text-xs uppercase text-muted-foreground">{interval}</span>
+                </div>
+            ))}
+        </div>
+    );
+};
+
+
 export default function ScholarshipPage() {
   const [activeTab, setActiveTab] = useState<ActiveTab>('apply');
   const [settings, setSettings] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [isApplicationOpen, setIsApplicationOpen] = useState(false);
+  const [applicationStatus, setApplicationStatus] = useState<'closed' | 'open' | 'upcoming'>('closed');
+  const [testStatus, setTestStatus] = useState<'closed' | 'open' | 'upcoming'>('closed');
 
-  useEffect(() => {
-    const fetchSettings = async () => {
+  const fetchSettings = async () => {
         try {
             const settingsDoc = await getDoc(doc(firestore, 'settings', 'scholarship'));
             if (settingsDoc.exists()) {
                 const data = settingsDoc.data();
                 setSettings(data);
                 const now = new Date();
-                const startDate = data.startDate?.toDate();
-                const endDate = data.endDate?.toDate();
-                if (startDate && endDate && now >= startDate && now <= endDate) {
-                    setIsApplicationOpen(true);
-                } else {
-                    setIsApplicationOpen(false);
+
+                const appStartDate = data.startDate?.toDate();
+                const appEndDate = data.endDate?.toDate();
+                if (appStartDate && appEndDate) {
+                    if (now < appStartDate) setApplicationStatus('upcoming');
+                    else if (now >= appStartDate && now <= appEndDate) setApplicationStatus('open');
+                    else setApplicationStatus('closed');
+                }
+
+                const testStartDate = data.testStartDate?.toDate();
+                const testEndDate = data.testEndDate?.toDate();
+                if (testStartDate && testEndDate) {
+                    if (now < testStartDate) setTestStatus('upcoming');
+                    else if (now >= testStartDate && now <= testEndDate) setTestStatus('open');
+                    else setTestStatus('closed');
                 }
             }
         } catch (error) {
@@ -52,6 +100,8 @@ export default function ScholarshipPage() {
             setLoading(false);
         }
     };
+  
+  useEffect(() => {
     fetchSettings();
   }, []);
 
@@ -60,53 +110,71 @@ export default function ScholarshipPage() {
         return <Skeleton className="w-full h-96" />;
     }
 
-    if (activeTab === 'apply' && !isApplicationOpen) {
-        return (
-            <Alert variant="destructive">
-                <AlertTriangle className="h-4 w-4" />
-                <AlertTitle>Applications Closed</AlertTitle>
-                <AlertDescription>
-                   Scholarship applications are not open at this time. Please check back later. The application window is from {settings?.startDate?.toDate().toLocaleString()} to {settings?.endDate?.toDate().toLocaleString()}.
-                </AlertDescription>
-            </Alert>
-        )
-    }
+    const renderApplicationContent = () => {
+        if (applicationStatus === 'upcoming' && settings?.startDate) {
+            return (
+                <Card className="text-center">
+                    <CardHeader><CardTitle>Applications Open Soon!</CardTitle></CardHeader>
+                    <CardContent>
+                        <p className="mb-4">Applications will open on {settings.startDate.toDate().toLocaleString()}.</p>
+                        <CountdownTimer targetDate={settings.startDate.toDate()} onEnd={fetchSettings} />
+                    </CardContent>
+                </Card>
+            );
+        }
+        if (applicationStatus === 'closed') {
+             return (
+                <Alert variant="destructive">
+                    <AlertTriangle className="h-4 w-4" />
+                    <AlertTitle>Applications Closed</AlertTitle>
+                    <AlertDescription>
+                        Scholarship applications are not open at this time. Please check back later.
+                    </AlertDescription>
+                </Alert>
+            );
+        }
+        return <ApplyForm />;
+    };
+
+    const renderTestContent = () => {
+        if (testStatus === 'upcoming' && settings?.testStartDate) {
+            return (
+                <Card className="text-center">
+                    <CardHeader><CardTitle>Online Test Starts Soon!</CardTitle></CardHeader>
+                    <CardContent>
+                        <p className="mb-4">The online test will be available from {settings.testStartDate.toDate().toLocaleString()}.</p>
+                         <CountdownTimer targetDate={settings.testStartDate.toDate()} onEnd={fetchSettings} />
+                    </CardContent>
+                </Card>
+            );
+        }
+        if (testStatus === 'closed') {
+             return (
+                <Alert variant="destructive">
+                    <AlertTriangle className="h-4 w-4" />
+                    <AlertTitle>Test Window Closed</AlertTitle>
+                    <AlertDescription>The online test is no longer available.</AlertDescription>
+                </Alert>
+            );
+        }
+        return <OnlineTest />;
+    };
+
 
     switch (activeTab) {
-        case 'apply':
-            return <ApplyForm />
-        case 'test':
-             return (
-                 <Card>
-                    <CardHeader>
-                    <CardTitle>Online Scholarship Test</CardTitle>
-                    <CardDescription>Enter your application number to begin the test.</CardDescription>
-                    </CardHeader>
-                    <CardContent><OnlineTest /></CardContent>
-                </Card>
-             )
-        case 'result':
-             return (
-                <Card>
-                    <CardHeader>
-                    <CardTitle>Check Your Result</CardTitle>
-                    <CardDescription>Enter your application number to see your test score.</CardDescription>
-                    </CardHeader>
-                    <CardContent><ViewResult /></CardContent>
-                </Card>
-             )
-        case 'review':
-             return (
-                <Card>
-                    <CardHeader>
+        case 'apply': return renderApplicationContent();
+        case 'test': return renderTestContent();
+        case 'result': return <ViewResult />;
+        case 'review': return (
+            <Card>
+                <CardHeader>
                     <CardTitle>Answer Sheet Scrutiny</CardTitle>
                     <CardDescription>If you believe there was an error in your test evaluation, please submit a review request.</CardDescription>
-                    </CardHeader>
-                    <CardContent><ScrutinyForm /></CardContent>
-                </Card>
-             )
-        default:
-            return null;
+                </CardHeader>
+                <CardContent><ScrutinyForm /></CardContent>
+            </Card>
+        );
+        default: return null;
     }
   }
 
@@ -126,7 +194,7 @@ export default function ScholarshipPage() {
                 className={cn(
                     "flex flex-col items-center justify-center text-white p-4 rounded-lg shadow-md transition-all transform hover:-translate-y-1 aspect-square",
                     item.color,
-                    activeTab === item.id ? 'ring-4 ring-offset-2 ring-blue-500' : 'hover:shadow-lg'
+                    activeTab === item.id ? 'ring-4 ring-offset-2 ring-blue-500 dark:ring-blue-400' : 'hover:shadow-lg'
                 )}
             >
                 <item.icon className="h-8 w-8 mb-2" />
@@ -141,5 +209,3 @@ export default function ScholarshipPage() {
     </div>
   )
 }
-
-    

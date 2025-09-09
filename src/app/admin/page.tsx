@@ -17,7 +17,7 @@ import { firestore } from '@/lib/firebase';
 import { getStorage, ref, uploadString, getDownloadURL } from "firebase/storage";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Trash2, Check, X, Upload, Video, FileText, StickyNote, PlusCircle, Save } from 'lucide-react';
+import { Loader2, Trash2, Check, X, Upload, Video, FileText, StickyNote, PlusCircle, Save, Download } from 'lucide-react';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -41,7 +41,7 @@ const liveClassFormSchema = z.object({
 type LiveClassFormValues = z.infer<typeof liveClassFormSchema>;
 
 const qrCodeFormSchema = z.object({
-    imageFile: z.instanceof(File, { message: 'Please upload an image file.' }),
+    imageFile: z.instanceof(File, { message: 'Please upload an image file.' }).refine(file => file.size < 2 * 1024 * 1024, 'Image must be less than 2MB.'),
 });
 type QrCodeFormValues = z.infer<typeof qrCodeFormSchema>;
 
@@ -56,6 +56,9 @@ type CourseContentValues = z.infer<typeof courseContentSchema>;
 const scholarshipSettingsSchema = z.object({
     startDate: z.string().refine(val => !isNaN(Date.parse(val)), { message: 'Invalid date' }),
     endDate: z.string().refine(val => !isNaN(Date.parse(val)), { message: 'Invalid date' }),
+    testStartDate: z.string().refine(val => !isNaN(Date.parse(val)), { message: 'Invalid date' }),
+    testEndDate: z.string().refine(val => !isNaN(Date.parse(val)), { message: 'Invalid date' }),
+    resultDate: z.string().refine(val => !isNaN(Date.parse(val)), { message: 'Invalid date' }),
 });
 type ScholarshipSettingsValues = z.infer<typeof scholarshipSettingsSchema>;
 
@@ -99,6 +102,9 @@ export default function AdminPage() {
     values: {
       startDate: scholarshipSettings?.startDate?.toDate()?.toISOString().substring(0, 16) || '',
       endDate: scholarshipSettings?.endDate?.toDate()?.toISOString().substring(0, 16) || '',
+      testStartDate: scholarshipSettings?.testStartDate?.toDate()?.toISOString().substring(0, 16) || '',
+      testEndDate: scholarshipSettings?.testEndDate?.toDate()?.toISOString().substring(0, 16) || '',
+      resultDate: scholarshipSettings?.resultDate?.toDate()?.toISOString().substring(0, 16) || '',
     },
   });
   const scholarshipQuestionForm = useForm<ScholarshipQuestionValues>({ resolver: zodResolver(scholarshipQuestionSchema) });
@@ -179,7 +185,10 @@ export default function AdminPage() {
       await setDoc(doc(firestore, 'settings', 'scholarship'), {
         startDate: new Date(data.startDate),
         endDate: new Date(data.endDate),
-      });
+        testStartDate: new Date(data.testStartDate),
+        testEndDate: new Date(data.testEndDate),
+        resultDate: new Date(data.resultDate),
+      }, { merge: true });
       toast({ title: 'Success', description: 'Scholarship settings saved.' });
     } catch (error) {
       toast({ variant: 'destructive', title: 'Error', description: 'Could not save settings.' });
@@ -203,14 +212,26 @@ export default function AdminPage() {
     }
   };
   
-  const handleScholarshipApplicantAction = async (id: string, newStatus: 'approved' | 'rejected') => {
+  const handleScholarshipApplicantAction = async (id: string, newStatus: 'payment_approved' | 'payment_rejected' | 'applied') => {
     try {
       await updateDoc(doc(firestore, 'scholarshipApplications', id), { status: newStatus });
-      toast({ title: 'Success', description: `Applicant has been ${newStatus}.` });
+      toast({ title: 'Success', description: `Applicant status has been updated.` });
     } catch (error) {
       toast({ variant: 'destructive', title: 'Error', description: 'Could not update applicant status.' });
     }
   };
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+        case 'applied': return <Badge variant="secondary">Applied</Badge>;
+        case 'payment_pending': return <Badge className="bg-yellow-500 text-white">Payment Pending</Badge>;
+        case 'payment_approved': return <Badge className="bg-green-500 text-white">Payment Approved</Badge>;
+        case 'payment_rejected': return <Badge variant="destructive">Payment Rejected</Badge>;
+        case 'test_taken': return <Badge>Test Taken</Badge>;
+        default: return <Badge variant="outline">{status}</Badge>;
+    }
+  }
+
 
   return (
     <div className="mx-auto grid w-full max-w-7xl gap-6">
@@ -333,11 +354,14 @@ export default function AdminPage() {
             <div className="grid md:grid-cols-2 gap-6 items-start">
                 <div className="space-y-6">
                     <Card>
-                        <CardHeader><CardTitle>Scholarship Settings</CardTitle><CardDescription>Set the application start and end dates.</CardDescription></CardHeader>
+                        <CardHeader><CardTitle>Scholarship Settings</CardTitle><CardDescription>Set application, test, and result dates.</CardDescription></CardHeader>
                         <CardContent>
                             <Form {...scholarshipSettingsForm}><form onSubmit={scholarshipSettingsForm.handleSubmit(onScholarshipSettingsSubmit)} className="grid gap-4">
                                 <FormField control={scholarshipSettingsForm.control} name="startDate" render={({ field }) => (<FormItem><FormLabel>Application Start Date</FormLabel><FormControl><Input type="datetime-local" {...field} /></FormControl><FormMessage /></FormItem>)}/>
                                 <FormField control={scholarshipSettingsForm.control} name="endDate" render={({ field }) => (<FormItem><FormLabel>Application End Date</FormLabel><FormControl><Input type="datetime-local" {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                                <FormField control={scholarshipSettingsForm.control} name="testStartDate" render={({ field }) => (<FormItem><FormLabel>Test Start Date</FormLabel><FormControl><Input type="datetime-local" {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                                <FormField control={scholarshipSettingsForm.control} name="testEndDate" render={({ field }) => (<FormItem><FormLabel>Test End Date</FormLabel><FormControl><Input type="datetime-local" {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                                <FormField control={scholarshipSettingsForm.control} name="resultDate" render={({ field }) => (<FormItem><FormLabel>Result Declaration Date</FormLabel><FormControl><Input type="datetime-local" {...field} /></FormControl><FormMessage /></FormItem>)}/>
                                 <Button type="submit" disabled={scholarshipSettingsForm.formState.isSubmitting}><Save className="mr-2"/>{scholarshipSettingsForm.formState.isSubmitting ? 'Saving...' : 'Save Settings'}</Button>
                             </form></Form>
                         </CardContent>
@@ -379,24 +403,37 @@ export default function AdminPage() {
                     <CardContent>
                          <div className="max-h-[800px] overflow-y-auto">
                             <Table>
-                                <TableHeader><TableRow><TableHead>Applicant</TableHead><TableHead>App#</TableHead><TableHead>Type</TableHead><TableHead>Status</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
+                                <TableHeader><TableRow><TableHead>Applicant</TableHead><TableHead>Payment</TableHead><TableHead>Status</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
                                 <TableBody>
-                                    {scholarshipApplicantsLoading && <TableRow><TableCell colSpan={5}><Skeleton className="h-12 w-full"/></TableCell></TableRow>}
+                                    {scholarshipApplicantsLoading && <TableRow><TableCell colSpan={4}><Skeleton className="h-12 w-full"/></TableCell></TableRow>}
                                     {scholarshipApplicants?.docs.map(doc => {
                                         const app = doc.data();
                                         return (
                                             <TableRow key={doc.id}>
-                                                <TableCell><div className="font-medium">{app.name}</div><div className="text-sm text-muted-foreground">{app.email}</div></TableCell>
-                                                <TableCell>{app.applicationNumber}</TableCell>
-                                                <TableCell>{app.scholarshipType}</TableCell>
-                                                <TableCell><Badge variant={app.status === 'applied' ? 'secondary' : app.status === 'approved' ? 'default' : 'destructive'}>{app.status}</Badge></TableCell>
+                                                <TableCell>
+                                                    <div className="font-medium">{app.name}</div>
+                                                    <div className="text-sm text-muted-foreground">{app.applicationNumber}</div>
+                                                </TableCell>
+                                                <TableCell>
+                                                    {app.paymentScreenshotUrl ? (
+                                                        <Link href={app.paymentScreenshotUrl} target="_blank" rel="noopener noreferrer">
+                                                            <Image src={app.paymentScreenshotUrl} alt="Payment" width={60} height={60} className="rounded-md object-cover"/>
+                                                        </Link>
+                                                    ) : (
+                                                        <span className="text-xs text-muted-foreground">Not Uploaded</span>
+                                                    )}
+                                                </TableCell>
+                                                <TableCell>{getStatusBadge(app.status)}</TableCell>
                                                 <TableCell className="text-right">
-                                                    {app.status === 'applied' && (
+                                                    {(app.status === 'payment_pending') && (
                                                         <div className="flex gap-2 justify-end">
-                                                            <Button size="icon" variant="outline" className="h-8 w-8" onClick={() => handleScholarshipApplicantAction(doc.id, 'approved')}><Check className="h-4 w-4 text-green-500" /></Button>
-                                                            <Button size="icon" variant="outline" className="h-8 w-8" onClick={() => handleScholarshipApplicantAction(doc.id, 'rejected')}><X className="h-4 w-4 text-red-500" /></Button>
+                                                            <Button size="icon" variant="outline" className="h-8 w-8" onClick={() => handleScholarshipApplicantAction(doc.id, 'payment_approved')}><Check className="h-4 w-4 text-green-500" /></Button>
+                                                            <Button size="icon" variant="outline" className="h-8 w-8" onClick={() => handleScholarshipApplicantAction(doc.id, 'payment_rejected')}><X className="h-4 w-4 text-red-500" /></Button>
                                                         </div>
                                                     )}
+                                                     {(app.status === 'payment_rejected') && (
+                                                         <Button size="sm" variant="outline" onClick={() => handleScholarshipApplicantAction(doc.id, 'payment_approved')}>Re-Approve</Button>
+                                                     )}
                                                 </TableCell>
                                             </TableRow>
                                         )
@@ -437,5 +474,3 @@ export default function AdminPage() {
     </div>
   );
 }
-
-    
