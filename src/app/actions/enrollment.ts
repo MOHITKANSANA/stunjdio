@@ -2,7 +2,6 @@
 'use server';
 
 import { firestore } from '@/lib/firebase';
-import { getStorage, ref, uploadString, getDownloadURL } from 'firebase/storage';
 import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import { revalidatePath } from 'next/cache';
 
@@ -26,12 +25,6 @@ export async function submitEnrollmentAction(input: EnrollmentInput, user: { uid
 
 
   try {
-    // 1. Upload screenshot to Firebase Storage
-    const storage = getStorage();
-    const screenshotRef = ref(storage, `enrollment_screenshots/${user.uid}_${courseId}_${Date.now()}`);
-    const uploadResult = await uploadString(screenshotRef, screenshotDataUrl, 'data_url');
-    const screenshotUrl = await getDownloadURL(uploadResult.ref);
-
     // 2. Create enrollment document in Firestore with the screenshot URL
     await addDoc(collection(firestore, 'enrollments'), {
       enrollmentType,
@@ -40,7 +33,7 @@ export async function submitEnrollmentAction(input: EnrollmentInput, user: { uid
       userId: user.uid,
       userEmail: user.email,
       userDisplayName: user.displayName,
-      screenshotUrl, 
+      screenshotDataUrl, 
       status: 'pending', // initial status
       createdAt: serverTimestamp(),
     });

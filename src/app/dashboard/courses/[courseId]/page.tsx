@@ -78,7 +78,7 @@ export default function CourseDetailPage({ params }: { params: { courseId: strin
             <h1 className="text-4xl font-bold font-headline">{course.title}</h1>
           </div>
           <div className="relative h-80 w-full rounded-lg overflow-hidden shadow-lg">
-            <Image src={course.imageUrl || `https://picsum.photos/seed/${courseId}/800/600`} alt={course.title} layout="fill" objectFit="cover" data-ai-hint="online learning" />
+            <Image src={course.imageUrl || `https://picsum.photos/seed/${courseId}/800/600`} alt={course.title} fill objectFit="cover" data-ai-hint="online learning" />
           </div>
           <Card>
             <CardHeader>

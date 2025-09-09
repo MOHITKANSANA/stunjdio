@@ -12,7 +12,6 @@ import { useToast } from '@/hooks/use-toast';
 import { Loader2, Upload } from 'lucide-react';
 import { collection, query, where, getDocs, addDoc, serverTimestamp, orderBy, updateDoc, doc } from 'firebase/firestore';
 import { firestore } from '@/lib/firebase';
-import { getStorage, ref, uploadString, getDownloadURL } from "firebase/storage";
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useCollection } from 'react-firebase-hooks/firestore';
@@ -112,14 +111,10 @@ export function OnlineTest() {
     const onPaymentSubmit = async (data: PaymentFormValues) => {
         setIsLoading(true);
         try {
-            const storage = getStorage();
-            const screenshotRef = ref(storage, `scholarship_payments/${applicant.id}-${Date.now()}`);
             const dataUrl = await fileToDataUrl(data.paymentScreenshot);
-            const uploadResult = await uploadString(screenshotRef, dataUrl, 'data_url');
-            const downloadUrl = await getDownloadURL(uploadResult.ref);
-
+            
             await updateDoc(doc(firestore, 'scholarshipApplications', applicant.id), {
-                paymentScreenshotUrl: downloadUrl,
+                paymentScreenshotDataUrl: dataUrl,
                 status: 'payment_pending',
             });
             setStage('pending_approval');

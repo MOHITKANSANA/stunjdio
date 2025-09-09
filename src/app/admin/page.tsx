@@ -14,7 +14,6 @@ import { Badge } from "@/components/ui/badge";
 import { useCollection } from 'react-firebase-hooks/firestore';
 import { collection, query, orderBy, doc, updateDoc, addDoc, deleteDoc, serverTimestamp, setDoc, writeBatch } from 'firebase/firestore';
 import { firestore } from '@/lib/firebase';
-import { getStorage, ref, uploadString, getDownloadURL } from "firebase/storage";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Trash2, Check, X, Upload, Video, FileText, StickyNote, PlusCircle, Save, Download, ThumbsUp, ThumbsDown, Clock, CircleAlert, CheckCircle2, XCircle } from 'lucide-react';
@@ -134,19 +133,11 @@ export default function AdminPage() {
     }
   };
   
-  const uploadImage = async (file: File, path: string): Promise<string> => {
-    const storage = getStorage();
-    const storageRef = ref(storage, path);
-    const dataUrl = await fileToDataUrl(file);
-    await uploadString(storageRef, dataUrl, 'data_url');
-    return getDownloadURL(storageRef);
-  };
-
   const onCourseSubmit = async (data: CourseFormValues) => {
     try {
       let imageUrl = 'https://picsum.photos/600/400';
       if (data.imageFile) {
-        imageUrl = await uploadImage(data.imageFile, `courses/${Date.now()}-${data.imageFile.name}`);
+        imageUrl = await fileToDataUrl(data.imageFile);
       }
       
       await addDoc(collection(firestore, 'courses'), { ...data, imageUrl, createdAt: serverTimestamp() });
@@ -185,9 +176,10 @@ export default function AdminPage() {
   }
   
   const onQrCodeSubmit = async (data: QrCodeFormValues) => {
+    qrCodeForm.formState.isSubmitting;
     try {
-      const imageUrl = await uploadImage(data.imageFile, `settings/qr-code.jpg`);
-      await setDoc(doc(firestore, 'settings', 'paymentQrCode'), { url: imageUrl });
+      const dataUrl = await fileToDataUrl(data.imageFile);
+      await setDoc(doc(firestore, 'settings', 'paymentQrCode'), { url: dataUrl });
       toast({ title: 'Success', description: 'QR Code updated.' });
       qrCodeForm.reset();
     } catch (error) {
@@ -302,8 +294,8 @@ export default function AdminPage() {
                           <TableCell><div className="font-medium">{enrollment.userDisplayName}</div><div className="text-sm text-muted-foreground">{enrollment.userEmail}</div></TableCell>
                           <TableCell>{enrollment.courseTitle}</TableCell>
                           <TableCell>
-                            <Link href={enrollment.screenshotUrl} target="_blank" rel="noopener noreferrer">
-                              <Image src={enrollment.screenshotUrl} alt="Payment Screenshot" width={80} height={80} className="rounded-md object-cover" />
+                            <Link href={enrollment.screenshotDataUrl} target="_blank" rel="noopener noreferrer">
+                              <Image src={enrollment.screenshotDataUrl} alt="Payment Screenshot" width={80} height={80} className="rounded-md object-cover" />
                             </Link>
                           </TableCell>
                           <TableCell><Badge variant={enrollment.status === 'pending' ? 'secondary' : enrollment.status === 'approved' ? 'default' : 'destructive'}>{enrollment.status}</Badge></TableCell>
@@ -473,9 +465,9 @@ export default function AdminPage() {
                                                     <div className="text-sm text-muted-foreground">{app.applicationNumber}</div>
                                                 </TableCell>
                                                 <TableCell>
-                                                    {app.paymentScreenshotUrl ? (
-                                                        <Link href={app.paymentScreenshotUrl} target="_blank" rel="noopener noreferrer">
-                                                            <Image src={app.paymentScreenshotUrl} alt="Payment" width={60} height={60} className="rounded-md object-cover"/>
+                                                    {app.paymentScreenshotDataUrl ? (
+                                                        <Link href={app.paymentScreenshotDataUrl} target="_blank" rel="noopener noreferrer">
+                                                            <Image src={app.paymentScreenshotDataUrl} alt="Payment" width={60} height={60} className="rounded-md object-cover"/>
                                                         </Link>
                                                     ) : (
                                                         <span className="text-xs text-muted-foreground">Not Uploaded</span>
