@@ -56,7 +56,7 @@ export function OnlineTest() {
     const [questionsCollection, questionsLoading] = useCollection(
         query(collection(firestore, 'scholarshipTest'), orderBy('createdAt', 'asc'))
     );
-     const [qrCodeDoc] = useCollection(collection(firestore, 'settings'));
+     const [qrCodeDoc, qrCodeLoading] = useCollection(collection(firestore, 'settings'));
      const qrCodeUrl = qrCodeDoc?.docs.find(d => d.id === 'paymentQrCode')?.data().url;
 
     const regForm = useForm<RegFormValues>({ resolver: zodResolver(regSchema) });
@@ -96,8 +96,7 @@ export function OnlineTest() {
                 } else if (applicantData.status === 'payment_pending') {
                     setStage('pending_approval');
                 } else if (applicantData.status === 'payment_rejected') {
-                    toast({ variant: 'destructive', title: 'Payment Rejected', description: 'Your payment was rejected. Please contact support.' });
-                    // Allow re-payment
+                    toast({ variant: 'destructive', title: 'Payment Rejected', description: 'Your previous payment was rejected. Please re-upload a valid screenshot.' });
                     setStage('payment'); 
                 } else {
                     setStage('payment');
@@ -116,8 +115,8 @@ export function OnlineTest() {
             const storage = getStorage();
             const screenshotRef = ref(storage, `scholarship_payments/${applicant.id}-${Date.now()}`);
             const dataUrl = await fileToDataUrl(data.paymentScreenshot);
-            await uploadString(screenshotRef, dataUrl, 'data_url');
-            const downloadUrl = await getDownloadURL(screenshotRef);
+            const uploadResult = await uploadString(screenshotRef, dataUrl, 'data_url');
+            const downloadUrl = await getDownloadURL(uploadResult.ref);
 
             await updateDoc(doc(firestore, 'scholarshipApplications', applicant.id), {
                 paymentScreenshotUrl: downloadUrl,
@@ -250,10 +249,12 @@ export function OnlineTest() {
                         <form onSubmit={paymentForm.handleSubmit(onPaymentSubmit)} className="space-y-6">
                             <div className="p-4 border rounded-lg bg-muted/50 flex flex-col items-center text-center">
                                 <p className="text-muted-foreground mb-4">Scan the QR code to pay the test fee.</p>
-                                {qrCodeUrl ? (
+                                {qrCodeLoading ? (
+                                     <Skeleton className="w-52 h-52" />
+                                ) : qrCodeUrl ? (
                                     <Image src={qrCodeUrl} alt="QR Code" width={208} height={208} data-ai-hint="qr code" />
                                 ) : (
-                                    <Skeleton className="w-52 h-52" />
+                                    <p>QR Code not available.</p>
                                 )}
                             </div>
                             <FormField

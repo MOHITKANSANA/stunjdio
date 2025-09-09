@@ -25,17 +25,22 @@ export function ViewResult() {
     const { toast } = useToast();
     const [isLoading, setIsLoading] = useState(false);
     const [result, setResult] = useState<any>(null);
+    const [applicant, setApplicant] = useState<any>(null);
     const [isResultAvailable, setIsResultAvailable] = useState(true); // Default to true, check on load
 
     useEffect(() => {
         const checkResultDate = async () => {
-            const settingsDoc = await getDoc(doc(firestore, 'settings', 'scholarship'));
-            if (settingsDoc.exists()) {
-                const settings = settingsDoc.data();
-                const resultDate = settings.resultDate?.toDate();
-                if (resultDate && new Date() < resultDate) {
-                    setIsResultAvailable(false);
+            try {
+                const settingsDoc = await getDoc(doc(firestore, 'settings', 'scholarship'));
+                if (settingsDoc.exists()) {
+                    const settings = settingsDoc.data();
+                    const resultDate = settings.resultDate?.toDate();
+                    if (resultDate && new Date() < resultDate) {
+                        setIsResultAvailable(false);
+                    }
                 }
+            } catch (error) {
+                console.error("Error fetching result date settings: ", error);
             }
         };
         checkResultDate();
@@ -46,20 +51,43 @@ export function ViewResult() {
     const onCheckResult = async (data: ResultFormValues) => {
         setIsLoading(true);
         setResult(null);
+        setApplicant(null);
         try {
-            const q = query(
-                collection(firestore, 'scholarshipTestResults'), 
-                where('applicationNumber', '==', data.applicationNumber),
-                orderBy('submittedAt', 'desc'),
-                limit(1)
+             // 1. Find the applicant to check their resultStatus
+            const applicantQuery = query(
+                collection(firestore, 'scholarshipApplications'), 
+                where('applicationNumber', '==', data.applicationNumber)
             );
-            const querySnapshot = await getDocs(q);
-            if (querySnapshot.empty) {
-                toast({ variant: 'destructive', title: 'Not Found', description: 'No test result found for this application number.' });
-            } else {
-                const resultData = querySnapshot.docs[0].data();
-                setResult(resultData);
+            const applicantSnapshot = await getDocs(applicantQuery);
+
+            if (applicantSnapshot.empty) {
+                toast({ variant: 'destructive', title: 'Not Found', description: 'This application number does not exist.' });
+                setIsLoading(false);
+                return;
             }
+            const applicantData = applicantSnapshot.docs[0].data();
+            setApplicant(applicantData);
+            
+            // 2. Check the resultStatus
+            if (applicantData.resultStatus === 'pass' || applicantData.resultStatus === 'fail') {
+                // 3. If passed/failed, fetch the detailed test result
+                const resultQuery = query(
+                    collection(firestore, 'scholarshipTestResults'), 
+                    where('applicationNumber', '==', data.applicationNumber),
+                    orderBy('submittedAt', 'desc'),
+                    limit(1)
+                );
+                const resultSnapshot = await getDocs(resultQuery);
+                if (resultSnapshot.empty) {
+                     toast({ variant: 'destructive', title: 'Result Missing', description: 'Your result status is updated, but detailed test data is missing. Please contact support.' });
+                } else {
+                    const resultData = resultSnapshot.docs[0].data();
+                    setResult(resultData);
+                }
+            } else {
+                 toast({ title: 'Result Pending', description: 'Your result is still pending. Please check back later.' });
+            }
+
         } catch (error) {
             toast({ variant: 'destructive', title: 'Error', description: 'Could not fetch result.' });
         } finally {
@@ -120,7 +148,7 @@ export function ViewResult() {
                     </Form>
                 )}
             </CardContent>
-            {result && isResultAvailable && (
+            {result && applicant && isResultAvailable && (
                  <CardContent>
                     <Card className="mt-6">
                         <CardHeader>
@@ -128,18 +156,21 @@ export function ViewResult() {
                             <CardDescription>Application No: {result.applicationNumber}</CardDescription>
                         </CardHeader>
                         <CardContent>
-                            <div id="certificate-wrapper" className='bg-gray-100 dark:bg-gray-800 p-4 rounded-lg'>
+                            <div id="certificate-wrapper" className='bg-gray-100 dark:bg-gray-800 p-4 rounded-lg overflow-x-auto'>
                                 <Certificate
                                     studentName={result.applicantName || 'Student'}
                                     courseName="Scholarship Eligibility Test"
                                     score={(result.score / result.totalQuestions) * 100}
                                     date={result.submittedAt?.toDate()?.toLocaleDateString() || new Date().toLocaleDateString()}
+                                    status={applicant.resultStatus}
                                 />
                             </div>
                         </CardContent>
-                        <CardFooter>
-                            <Button onClick={handleDownloadCertificate}><Download className="mr-2"/>Download Certificate</Button>
-                        </CardFooter>
+                         {applicant.resultStatus === 'pass' && (
+                            <CardFooter>
+                                <Button onClick={handleDownloadCertificate}><Download className="mr-2"/>Download Certificate</Button>
+                            </CardFooter>
+                         )}
                     </Card>
                 </CardContent>
             )}
