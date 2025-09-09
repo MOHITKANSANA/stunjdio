@@ -12,17 +12,18 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { useCollection } from 'react-firebase-hooks/firestore';
-import { collection, query, orderBy, doc, updateDoc, addDoc, deleteDoc, serverTimestamp, setDoc } from 'firebase/firestore';
+import { collection, query, orderBy, doc, updateDoc, addDoc, deleteDoc, serverTimestamp, setDoc, writeBatch } from 'firebase/firestore';
 import { firestore } from '@/lib/firebase';
 import { getStorage, ref, uploadString, getDownloadURL } from "firebase/storage";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Trash2, Check, X, Upload, Video, FileText, StickyNote, PlusCircle, Save, Download } from 'lucide-react';
+import { Loader2, Trash2, Check, X, Upload, Video, FileText, StickyNote, PlusCircle, Save, Download, ThumbsUp, ThumbsDown, Clock, CircleAlert, CheckCircle2, XCircle } from 'lucide-react';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Separator } from '@/components/ui/separator';
 
 const courseFormSchema = z.object({
   title: z.string().min(3, 'Title must be at least 3 characters'),
@@ -69,6 +70,19 @@ const scholarshipQuestionSchema = z.object({
 });
 type ScholarshipQuestionValues = z.infer<typeof scholarshipQuestionSchema>;
 
+const jsonQuestionsSchema = z.object({
+    jsonInput: z.string().refine((val) => {
+        try {
+            const parsed = JSON.parse(val);
+            return Array.isArray(parsed) && parsed.every(q => scholarshipQuestionSchema.safeParse(q).success);
+        } catch (e) {
+            return false;
+        }
+    }, 'Invalid JSON format or structure.'),
+});
+type JsonQuestionsValues = z.infer<typeof jsonQuestionsSchema>;
+
+
 const fileToDataUrl = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -108,6 +122,7 @@ export default function AdminPage() {
     },
   });
   const scholarshipQuestionForm = useForm<ScholarshipQuestionValues>({ resolver: zodResolver(scholarshipQuestionSchema) });
+  const jsonQuestionsForm = useForm<JsonQuestionsValues>({ resolver: zodResolver(jsonQuestionsSchema) });
 
 
   const handleEnrollmentAction = async (id: string, newStatus: 'approved' | 'rejected') => {
@@ -204,6 +219,22 @@ export default function AdminPage() {
       toast({ variant: 'destructive', title: 'Error', description: 'Could not add question.' });
     }
   };
+  
+  const onJsonQuestionsSubmit = async (data: JsonQuestionsValues) => {
+    try {
+        const questions = JSON.parse(data.jsonInput);
+        const batch = writeBatch(firestore);
+        questions.forEach((q: ScholarshipQuestionValues) => {
+            const newDocRef = doc(collection(firestore, 'scholarshipTest'));
+            batch.set(newDocRef, { ...q, createdAt: serverTimestamp() });
+        });
+        await batch.commit();
+        toast({ title: 'Success', description: `${questions.length} questions added successfully.` });
+        jsonQuestionsForm.reset();
+    } catch (error) {
+        toast({ variant: 'destructive', title: 'Error', description: 'Could not add questions from JSON.' });
+    }
+  };
 
   const deleteScholarshipQuestion = async (id: string) => {
     if (window.confirm('Are you sure you want to delete this question?')) {
@@ -212,9 +243,9 @@ export default function AdminPage() {
     }
   };
   
-  const handleScholarshipApplicantAction = async (id: string, newStatus: 'payment_approved' | 'payment_rejected' | 'applied') => {
+  const handleScholarshipApplicantAction = async (id: string, field: 'status' | 'resultStatus', newStatus: string) => {
     try {
-      await updateDoc(doc(firestore, 'scholarshipApplications', id), { status: newStatus });
+      await updateDoc(doc(firestore, 'scholarshipApplications', id), { [field]: newStatus });
       toast({ title: 'Success', description: `Applicant status has been updated.` });
     } catch (error) {
       toast({ variant: 'destructive', title: 'Error', description: 'Could not update applicant status.' });
@@ -224,11 +255,21 @@ export default function AdminPage() {
   const getStatusBadge = (status: string) => {
     switch (status) {
         case 'applied': return <Badge variant="secondary">Applied</Badge>;
-        case 'payment_pending': return <Badge className="bg-yellow-500 text-white">Payment Pending</Badge>;
-        case 'payment_approved': return <Badge className="bg-green-500 text-white">Payment Approved</Badge>;
-        case 'payment_rejected': return <Badge variant="destructive">Payment Rejected</Badge>;
-        case 'test_taken': return <Badge>Test Taken</Badge>;
+        case 'payment_pending': return <Badge className="bg-yellow-500 text-white hover:bg-yellow-500/90"><Clock className="mr-1.5 h-3 w-3"/>Payment Pending</Badge>;
+        case 'payment_approved': return <Badge className="bg-green-500 text-white hover:bg-green-500/90"><Check className="mr-1.5 h-3 w-3"/>Payment Approved</Badge>;
+        case 'payment_rejected': return <Badge variant="destructive"><X className="mr-1.5 h-3 w-3"/>Payment Rejected</Badge>;
+        case 'test_taken': return <Badge><FileText className="mr-1.5 h-3 w-3"/>Test Taken</Badge>;
         default: return <Badge variant="outline">{status}</Badge>;
+    }
+  }
+
+  const getResultBadge = (status: string | undefined) => {
+    switch (status) {
+        case 'pass': return <Badge className="bg-green-600 text-white hover:bg-green-600/90"><CheckCircle2 className="mr-1.5 h-3 w-3"/>Pass</Badge>;
+        case 'fail': return <Badge variant="destructive"><XCircle className="mr-1.5 h-3 w-3"/>Fail</Badge>;
+        case 'pending':
+        default:
+            return <Badge variant="secondary"><CircleAlert className="mr-1.5 h-3 w-3"/>Pending</Badge>;
     }
   }
 
@@ -261,8 +302,8 @@ export default function AdminPage() {
                           <TableCell><div className="font-medium">{enrollment.userDisplayName}</div><div className="text-sm text-muted-foreground">{enrollment.userEmail}</div></TableCell>
                           <TableCell>{enrollment.courseTitle}</TableCell>
                           <TableCell>
-                            <Link href={enrollment.screenshotDataUrl} target="_blank" rel="noopener noreferrer">
-                              <Image src={enrollment.screenshotDataUrl} alt="Payment Screenshot" width={80} height={80} className="rounded-md object-cover" />
+                            <Link href={enrollment.screenshotUrl} target="_blank" rel="noopener noreferrer">
+                              <Image src={enrollment.screenshotUrl} alt="Payment Screenshot" width={80} height={80} className="rounded-md object-cover" />
                             </Link>
                           </TableCell>
                           <TableCell><Badge variant={enrollment.status === 'pending' ? 'secondary' : enrollment.status === 'approved' ? 'default' : 'destructive'}>{enrollment.status}</Badge></TableCell>
@@ -369,22 +410,39 @@ export default function AdminPage() {
                      <Card>
                         <CardHeader><CardTitle>Scholarship Test Questions</CardTitle><CardDescription>Manage the questions for the online test.</CardDescription></CardHeader>
                         <CardContent>
-                             <Form {...scholarshipQuestionForm}><form onSubmit={scholarshipQuestionForm.handleSubmit(onScholarshipQuestionSubmit)} className="grid gap-4 mb-6">
-                                <FormField control={scholarshipQuestionForm.control} name="text" render={({ field }) => (<FormItem><FormLabel>Question</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>)}/>
-                                <FormField control={scholarshipQuestionForm.control} name="options.0" render={({ field }) => (<FormItem><FormLabel>Option 1</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)}/>
-                                <FormField control={scholarshipQuestionForm.control} name="options.1" render={({ field }) => (<FormItem><FormLabel>Option 2</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)}/>
-                                <FormField control={scholarshipQuestionForm.control} name="options.2" render={({ field }) => (<FormItem><FormLabel>Option 3</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)}/>
-                                <FormField control={scholarshipQuestionForm.control} name="options.3" render={({ field }) => (<FormItem><FormLabel>Option 4</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)}/>
-                                 <FormField control={scholarshipQuestionForm.control} name="correctAnswer" render={({ field }) => (<FormItem><FormLabel>Correct Answer</FormLabel>
-                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                        <FormControl><SelectTrigger><SelectValue placeholder="Select the correct option" /></SelectTrigger></FormControl>
-                                        <SelectContent>
-                                            {scholarshipQuestionForm.watch('options')?.map((opt, i) => opt && (<SelectItem key={i} value={opt}>Option {i + 1}: {opt}</SelectItem>))}
-                                        </SelectContent>
-                                    </Select><FormMessage /></FormItem>
-                                )}/>
-                                <Button type="submit" disabled={scholarshipQuestionForm.formState.isSubmitting}><PlusCircle className="mr-2"/>{scholarshipQuestionForm.formState.isSubmitting ? 'Adding...' : 'Add Question'}</Button>
-                            </form></Form>
+                            <Tabs defaultValue="add_single">
+                                <TabsList className="grid w-full grid-cols-2">
+                                    <TabsTrigger value="add_single">Add Single</TabsTrigger>
+                                    <TabsTrigger value="add_json">Add from JSON</TabsTrigger>
+                                </TabsList>
+                                <TabsContent value="add_single" className="pt-4">
+                                    <Form {...scholarshipQuestionForm}><form onSubmit={scholarshipQuestionForm.handleSubmit(onScholarshipQuestionSubmit)} className="grid gap-4 mb-6">
+                                        <FormField control={scholarshipQuestionForm.control} name="text" render={({ field }) => (<FormItem><FormLabel>Question</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                                        <FormField control={scholarshipQuestionForm.control} name="options.0" render={({ field }) => (<FormItem><FormLabel>Option 1</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                                        <FormField control={scholarshipQuestionForm.control} name="options.1" render={({ field }) => (<FormItem><FormLabel>Option 2</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                                        <FormField control={scholarshipQuestionForm.control} name="options.2" render={({ field }) => (<FormItem><FormLabel>Option 3</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                                        <FormField control={scholarshipQuestionForm.control} name="options.3" render={({ field }) => (<FormItem><FormLabel>Option 4</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                                        <FormField control={scholarshipQuestionForm.control} name="correctAnswer" render={({ field }) => (<FormItem><FormLabel>Correct Answer</FormLabel>
+                                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                                <FormControl><SelectTrigger><SelectValue placeholder="Select the correct option" /></SelectTrigger></FormControl>
+                                                <SelectContent>
+                                                    {scholarshipQuestionForm.watch('options')?.map((opt, i) => opt && (<SelectItem key={i} value={opt}>Option {i + 1}: {opt}</SelectItem>))}
+                                                </SelectContent>
+                                            </Select><FormMessage /></FormItem>
+                                        )}/>
+                                        <Button type="submit" disabled={scholarshipQuestionForm.formState.isSubmitting}><PlusCircle className="mr-2"/>{scholarshipQuestionForm.formState.isSubmitting ? 'Adding...' : 'Add Question'}</Button>
+                                    </form></Form>
+                                </TabsContent>
+                                <TabsContent value="add_json" className="pt-4">
+                                    <Form {...jsonQuestionsForm}><form onSubmit={jsonQuestionsForm.handleSubmit(onJsonQuestionsSubmit)} className="grid gap-4">
+                                        <FormField control={jsonQuestionsForm.control} name="jsonInput" render={({ field }) => (<FormItem><FormLabel>JSON Input</FormLabel><FormControl><Textarea {...field} rows={10} placeholder='[{"text": "...", "options": ["..."], "correctAnswer": "..."}]' /></FormControl><FormMessage /></FormItem>)}/>
+                                        <Button type="submit" disabled={jsonQuestionsForm.formState.isSubmitting}><Upload className="mr-2"/>{jsonQuestionsForm.formState.isSubmitting ? 'Uploading...' : 'Upload from JSON'}</Button>
+                                    </form></Form>
+                                </TabsContent>
+                            </Tabs>
+
+                            <Separator className="my-6" />
+                            
                             <h4 className="font-semibold mb-2">Current Questions</h4>
                             <div className="max-h-60 overflow-y-auto pr-2 space-y-2">
                                 {scholarshipQuestionsLoading && <Skeleton className="h-9 w-full" />}
@@ -401,11 +459,11 @@ export default function AdminPage() {
                  <Card>
                     <CardHeader><CardTitle>Scholarship Applicants</CardTitle><CardDescription>Review and manage scholarship applications.</CardDescription></CardHeader>
                     <CardContent>
-                         <div className="max-h-[800px] overflow-y-auto">
+                         <div className="max-h-[1200px] overflow-y-auto">
                             <Table>
-                                <TableHeader><TableRow><TableHead>Applicant</TableHead><TableHead>Payment</TableHead><TableHead>Status</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
+                                <TableHeader><TableRow><TableHead>Applicant</TableHead><TableHead>Payment</TableHead><TableHead>Status</TableHead><TableHead>Result</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
                                 <TableBody>
-                                    {scholarshipApplicantsLoading && <TableRow><TableCell colSpan={4}><Skeleton className="h-12 w-full"/></TableCell></TableRow>}
+                                    {scholarshipApplicantsLoading && <TableRow><TableCell colSpan={5}><Skeleton className="h-12 w-full"/></TableCell></TableRow>}
                                     {scholarshipApplicants?.docs.map(doc => {
                                         const app = doc.data();
                                         return (
@@ -424,16 +482,20 @@ export default function AdminPage() {
                                                     )}
                                                 </TableCell>
                                                 <TableCell>{getStatusBadge(app.status)}</TableCell>
+                                                <TableCell>{getResultBadge(app.resultStatus)}</TableCell>
                                                 <TableCell className="text-right">
-                                                    {(app.status === 'payment_pending') && (
+                                                    <div className="flex flex-col items-end gap-2">
                                                         <div className="flex gap-2 justify-end">
-                                                            <Button size="icon" variant="outline" className="h-8 w-8" onClick={() => handleScholarshipApplicantAction(doc.id, 'payment_approved')}><Check className="h-4 w-4 text-green-500" /></Button>
-                                                            <Button size="icon" variant="outline" className="h-8 w-8" onClick={() => handleScholarshipApplicantAction(doc.id, 'payment_rejected')}><X className="h-4 w-4 text-red-500" /></Button>
+                                                            <span className="text-xs text-muted-foreground self-center">Payment:</span>
+                                                            <Button size="icon" variant={app.status === 'payment_approved' ? 'default' : 'outline'} className="h-8 w-8" onClick={() => handleScholarshipApplicantAction(doc.id, 'status', 'payment_approved')}><ThumbsUp className="h-4 w-4"/></Button>
+                                                            <Button size="icon" variant={app.status === 'payment_rejected' ? 'destructive' : 'outline'} className="h-8 w-8" onClick={() => handleScholarshipApplicantAction(doc.id, 'status', 'payment_rejected')}><ThumbsDown className="h-4 w-4"/></Button>
                                                         </div>
-                                                    )}
-                                                     {(app.status === 'payment_rejected') && (
-                                                         <Button size="sm" variant="outline" onClick={() => handleScholarshipApplicantAction(doc.id, 'payment_approved')}>Re-Approve</Button>
-                                                     )}
+                                                        <div className="flex gap-2 justify-end">
+                                                            <span className="text-xs text-muted-foreground self-center">Result:</span>
+                                                            <Button size="icon" variant={app.resultStatus === 'pass' ? 'default' : 'outline'} className="h-8 w-8" onClick={() => handleScholarshipApplicantAction(doc.id, 'resultStatus', 'pass')}><Check className="h-4 w-4"/></Button>
+                                                            <Button size="icon" variant={app.resultStatus === 'fail' ? 'destructive' : 'outline'} className="h-8 w-8" onClick={() => handleScholarshipApplicantAction(doc.id, 'resultStatus', 'fail')}><X className="h-4 w-4"/></Button>
+                                                        </div>
+                                                    </div>
                                                 </TableCell>
                                             </TableRow>
                                         )

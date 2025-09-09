@@ -82,7 +82,9 @@ export function OnlineTest() {
                 const applicantData = { id: querySnapshot.docs[0].id, ...querySnapshot.docs[0].data() };
                 setApplicant(applicantData);
                 
-                if (applicantData.status === 'payment_approved') {
+                if (applicantData.status === 'test_taken') {
+                    setStage('submitted');
+                } else if (applicantData.status === 'payment_approved') {
                     if (questionsCollection) {
                         replace(questionsCollection.docs.map(doc => ({
                             questionId: doc.id,
@@ -95,6 +97,8 @@ export function OnlineTest() {
                     setStage('pending_approval');
                 } else if (applicantData.status === 'payment_rejected') {
                     toast({ variant: 'destructive', title: 'Payment Rejected', description: 'Your payment was rejected. Please contact support.' });
+                    // Allow re-payment
+                    setStage('payment'); 
                 } else {
                     setStage('payment');
                 }
@@ -166,7 +170,7 @@ export function OnlineTest() {
             <Card>
                 <CardHeader><CardTitle>Test Submitted</CardTitle></CardHeader>
                 <CardContent>
-                    <p className="text-center">Thank you for taking the test! You can check your result in the "View Result" tab after the result declaration date.</p>
+                    <p className="text-center p-4">Thank you for taking the test! You can check your result in the "View Result" tab after the result declaration date.</p>
                 </CardContent>
             </Card>
         )
@@ -177,7 +181,7 @@ export function OnlineTest() {
             <Card>
                 <CardHeader><CardTitle>Payment Pending Approval</CardTitle></CardHeader>
                 <CardContent>
-                    <p className="text-center">Your payment screenshot has been submitted. Please wait for an admin to approve it. You can check back later.</p>
+                    <p className="text-center p-4">Your payment screenshot has been submitted. Please wait for an admin to approve it. You can check back later to take the test.</p>
                 </CardContent>
             </Card>
         )
@@ -190,7 +194,7 @@ export function OnlineTest() {
             <Card>
                 <CardHeader>
                     <CardTitle>Scholarship Test</CardTitle>
-                    <CardDescription>Welcome, {applicant.name}. Please answer all questions.</CardDescription>
+                    <CardDescription>Welcome, <span className="font-bold">{applicant.name}</span>. Please answer all questions.</CardDescription>
                 </CardHeader>
                 <CardContent>
                     <Form {...answeringForm}>
@@ -221,10 +225,10 @@ export function OnlineTest() {
                                     )}
                                 />
                             )})}
-                            <div className="flex justify-end">
-                                <Button type="submit" disabled={isLoading}>
+                            <div className="flex justify-between items-center">
+                                <Button type="submit" disabled={isLoading} className="w-full">
                                     {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                    Finish Test
+                                    Finish & Submit Test
                                 </Button>
                             </div>
                         </form>
@@ -239,13 +243,13 @@ export function OnlineTest() {
             <Card>
                 <CardHeader>
                     <CardTitle>Step 2: Payment Verification</CardTitle>
-                    <CardDescription>Welcome, {applicant.name}. Please complete the payment to proceed.</CardDescription>
+                    <CardDescription>Welcome, <span className="font-bold">{applicant.name}</span>. Please complete the payment to proceed to the test.</CardDescription>
                 </CardHeader>
                 <CardContent>
                     <Form {...paymentForm}>
                         <form onSubmit={paymentForm.handleSubmit(onPaymentSubmit)} className="space-y-6">
                             <div className="p-4 border rounded-lg bg-muted/50 flex flex-col items-center text-center">
-                                <p className="text-muted-foreground mb-4">Scan the QR code to pay.</p>
+                                <p className="text-muted-foreground mb-4">Scan the QR code to pay the test fee.</p>
                                 {qrCodeUrl ? (
                                     <Image src={qrCodeUrl} alt="QR Code" width={208} height={208} data-ai-hint="qr code" />
                                 ) : (
@@ -264,7 +268,7 @@ export function OnlineTest() {
                                 )}
                             />
                             <Button type="submit" disabled={isLoading} className="w-full">
-                                {isLoading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin"/>Submitting...</> : <><Upload className="mr-2 h-4 w-4"/>Submit Screenshot</>}
+                                {isLoading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin"/>Submitting Screenshot...</> : <><Upload className="mr-2 h-4 w-4"/>Submit for Approval</>}
                             </Button>
                         </form>
                     </Form>
@@ -277,8 +281,8 @@ export function OnlineTest() {
     return (
         <Card>
             <CardHeader>
-                <CardTitle>Online Scholarship Test</CardTitle>
-                <CardDescription>Enter your application number to begin.</CardDescription>
+                <CardTitle>Take the Online Test</CardTitle>
+                <CardDescription>Enter your 5-digit application number to begin.</CardDescription>
             </CardHeader>
             <CardContent>
                  <Form {...regForm}>
@@ -292,7 +296,7 @@ export function OnlineTest() {
                         )} />
                         <Button type="submit" disabled={isLoading}>
                             {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                            Proceed
+                            Verify & Proceed
                         </Button>
                     </form>
                 </Form>
