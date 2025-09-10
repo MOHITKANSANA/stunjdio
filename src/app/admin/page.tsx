@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -16,13 +16,14 @@ import { collection, query, orderBy, doc, updateDoc, addDoc, deleteDoc, serverTi
 import { firestore } from '@/lib/firebase';
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Trash2, Check, X, Upload, Video, FileText, StickyNote, PlusCircle, Save, Download, ThumbsUp, ThumbsDown, Clock, CircleAlert, CheckCircle2, XCircle } from 'lucide-react';
+import { Loader2, Trash2, Check, X, Upload, Video, FileText, StickyNote, PlusCircle, Save, Download, ThumbsUp, ThumbsDown, Clock, CircleAlert, CheckCircle2, XCircle, KeyRound } from 'lucide-react';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 const courseFormSchema = z.object({
   title: z.string().min(3, 'Title must be at least 3 characters'),
@@ -81,6 +82,10 @@ const jsonQuestionsSchema = z.object({
 });
 type JsonQuestionsValues = z.infer<typeof jsonQuestionsSchema>;
 
+const accessKeySchema = z.object({
+    key: z.string().min(1, 'Access key is required.'),
+});
+type AccessKeyFormValues = z.infer<typeof accessKeySchema>;
 
 const fileToDataUrl = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
@@ -91,7 +96,77 @@ const fileToDataUrl = (file: File): Promise<string> => {
     });
 };
 
+const ADMIN_ACCESS_KEY = "GSC_ADMIN_2024";
+
 export default function AdminPage() {
+  const [hasAccess, setHasAccess] = useState(false);
+
+  useEffect(() => {
+    if (sessionStorage.getItem('admin_access_granted') === 'true') {
+        setHasAccess(true);
+    }
+  }, []);
+
+  if (!hasAccess) {
+    return <AdminAccessGate setHasAccess={setHasAccess} />;
+  }
+
+  return <AdminDashboard />;
+}
+
+function AdminAccessGate({ setHasAccess }: { setHasAccess: (hasAccess: boolean) => void }) {
+    const accessKeyForm = useForm<AccessKeyFormValues>({ resolver: zodResolver(accessKeySchema) });
+    const { toast } = useToast();
+
+    const onAccessKeySubmit = (data: AccessKeyFormValues) => {
+        if (data.key === ADMIN_ACCESS_KEY) {
+            sessionStorage.setItem('admin_access_granted', 'true');
+            setHasAccess(true);
+            toast({ title: 'Access Granted', description: 'Welcome to the Admin Panel.' });
+        } else {
+            toast({ variant: 'destructive', title: 'Access Denied', description: 'The provided access key is incorrect.' });
+        }
+    };
+    
+    return (
+        <div className="flex items-center justify-center min-h-[60vh]">
+            <Card className="w-full max-w-md">
+                <CardHeader>
+                    <CardTitle>Admin Access Required</CardTitle>
+                    <CardDescription>Please enter the access key to manage the admin panel.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <Form {...accessKeyForm}>
+                        <form onSubmit={accessKeyForm.handleSubmit(onAccessKeySubmit)} className="space-y-4">
+                            <FormField
+                                control={accessKeyForm.control}
+                                name="key"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Access Key</FormLabel>
+                                        <FormControl>
+                                            <div className="relative">
+                                                <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                                <Input type="password" placeholder="Enter secret key" className="pl-10" {...field} />
+                                            </div>
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                            <Button type="submit" className="w-full" disabled={accessKeyForm.formState.isSubmitting}>
+                                {accessKeyForm.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                Unlock Admin Panel
+                            </Button>
+                        </form>
+                    </Form>
+                </CardContent>
+            </Card>
+        </div>
+    );
+}
+
+function AdminDashboard() {
   const [enrollmentsCollection, enrollmentsLoading] = useCollection(query(collection(firestore, 'enrollments'), orderBy('createdAt', 'desc')));
   const [liveClassesCollection, liveClassesLoading] = useCollection(query(collection(firestore, 'live_classes'), orderBy('startTime', 'desc')));
   const [coursesCollection] = useCollection(query(collection(firestore, 'courses'), orderBy('title', 'asc')));
@@ -102,7 +177,6 @@ export default function AdminPage() {
 
   const qrCodeUrl = qrCodeDoc?.docs.find(d => d.id === 'paymentQrCode')?.data().url;
   const scholarshipSettings = scholarshipSettingsDoc?.docs.find(d => d.id === 'scholarship')?.data();
-
 
   const { toast } = useToast();
   
@@ -122,7 +196,6 @@ export default function AdminPage() {
   });
   const scholarshipQuestionForm = useForm<ScholarshipQuestionValues>({ resolver: zodResolver(scholarshipQuestionSchema) });
   const jsonQuestionsForm = useForm<JsonQuestionsValues>({ resolver: zodResolver(jsonQuestionsSchema) });
-
 
   const handleEnrollmentAction = async (id: string, newStatus: 'approved' | 'rejected') => {
     try {
@@ -528,3 +601,5 @@ export default function AdminPage() {
     </div>
   );
 }
+
+    

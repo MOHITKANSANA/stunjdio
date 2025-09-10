@@ -16,11 +16,11 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 type ActiveTab = 'apply' | 'test' | 'result' | 'review';
 
-const tabItems: { id: ActiveTab; label: string; icon: React.ElementType, color: string }[] = [
-    { id: 'apply', label: 'Apply for Scholarship', icon: PenSquare, color: 'bg-blue-500' },
-    { id: 'test', label: 'Online Test', icon: FileText, color: 'bg-green-500' },
-    { id: 'result', label: 'View Result', icon: Eye, color: 'bg-yellow-500' },
-    { id: 'review', label: 'Scrutiny/Review', icon: Search, color: 'bg-purple-500' },
+const tabItems: { id: ActiveTab; label: string; icon: React.ElementType, gradient: string }[] = [
+    { id: 'apply', label: 'Apply for Scholarship', icon: PenSquare, gradient: 'from-blue-500 to-indigo-600' },
+    { id: 'test', label: 'Online Test', icon: FileText, gradient: 'from-green-500 to-emerald-600' },
+    { id: 'result', label: 'View Result', icon: Eye, gradient: 'from-yellow-500 to-amber-600' },
+    { id: 'review', label: 'Scrutiny/Review', icon: Search, gradient: 'from-purple-500 to-violet-600' },
 ];
 
 const CountdownTimer = ({ targetDate, onEnd }: { targetDate: Date; onEnd?: () => void }) => {
@@ -178,7 +178,7 @@ export default function ScholarshipPage() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8 p-4 md:p-8">
+    <div className="max-w-4xl mx-auto space-y-8">
       <div className="text-center">
         <Award className="mx-auto h-12 w-12 text-yellow-500 mb-4" />
         <h1 className="text-3xl md:text-4xl font-bold font-headline">Student Scholarship Portal</h1>
@@ -191,9 +191,9 @@ export default function ScholarshipPage() {
                 key={item.id}
                 onClick={() => setActiveTab(item.id)}
                 className={cn(
-                    "flex flex-col items-center justify-center text-white p-4 rounded-lg shadow-md transition-all transform hover:-translate-y-1 aspect-square",
-                    item.color,
-                    activeTab === item.id ? 'ring-4 ring-offset-2 ring-blue-500 dark:ring-blue-400' : 'hover:shadow-lg'
+                    "flex flex-col items-center justify-center text-white p-4 rounded-lg shadow-md transition-all transform hover:-translate-y-1 aspect-square bg-gradient-to-br",
+                    item.gradient,
+                    activeTab === item.id ? 'ring-4 ring-offset-2 ring-primary dark:ring-primary' : 'hover:shadow-lg'
                 )}
             >
                 <item.icon className="h-8 w-8 mb-2" />
@@ -208,3 +208,5 @@ export default function ScholarshipPage() {
     </div>
   )
 }
+
+    

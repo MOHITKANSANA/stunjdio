@@ -8,10 +8,9 @@ import {
   Trophy,
   Wallet,
   FileText,
-  PlayCircle,
-  BookCopy,
   Globe,
   Puzzle,
+  BookCopy,
 } from 'lucide-react';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -21,6 +20,7 @@ import { useCollection } from 'react-firebase-hooks/firestore';
 import { collection, query, orderBy, where, limit } from 'firebase/firestore';
 import { firestore } from '@/lib/firebase';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useAuth } from '@/hooks/use-auth';
 
 const TopStudentCard = ({ rank, name, avatarUrl }: { rank: number, name: string | null, avatarUrl: string | null }) => (
     <Card className="flex flex-col items-center justify-center p-4 shadow-md h-full">
@@ -87,6 +87,7 @@ const NextLiveClassCard = () => {
 
 
 export default function DashboardPage() {
+    const { user } = useAuth();
     
     const [topStudents, loading, error] = useCollection(
         query(collection(firestore, 'top_students'), orderBy('addedAt', 'desc'), limit(10))
@@ -101,16 +102,18 @@ export default function DashboardPage() {
     
     const quickAccessItems = [
       { label: "Paid Courses", icon: Wallet, href: "/dashboard/courses", color: "bg-indigo-500" },
-      { label: "Test Series", icon: FileText, href: "/dashboard/ai-test", color: "bg-red-500" },
-      { label: "Free Classes", icon: PlayCircle, href: "/dashboard/courses", color: "bg-orange-500" },
-      { label: "Previous Papers", icon: BookCopy, href: "/dashboard/papers", color: "bg-sky-500" },
+      { label: "Live Class", icon: Video, href: "/dashboard/live-class", color: "bg-red-500" },
+      { label: "Test Series", icon: FileText, href: "/dashboard/ai-test", color: "bg-orange-500" },
+      { label: "Previous Papers", icon: BookCopy, href: "#", color: "bg-sky-500" },
       { label: "Current Affairs", icon: Globe, href: "#", color: "bg-teal-500" },
       { label: "Quiz & Games", icon: Puzzle, href: "#", color: "bg-yellow-500" },
     ];
     
   return (
-    <div className="flex flex-col h-full bg-background p-4 space-y-6 pb-24 md:pb-4">
+    <div className="flex flex-col h-full bg-background space-y-6">
       
+        <h2 className="text-2xl font-bold">Hello, {user?.displayName || 'Student'}!</h2>
+
       {/* Top Section */}
         <div className="grid grid-cols-2 gap-4">
             {topSectionItems.map((item) => (
@@ -174,3 +177,5 @@ export default function DashboardPage() {
     </div>
   );
 }
+
+    

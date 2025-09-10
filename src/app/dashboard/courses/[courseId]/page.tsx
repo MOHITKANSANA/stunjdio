@@ -78,28 +78,17 @@ export default function CourseDetailPage() {
             <p className="text-primary font-semibold mb-1">{course.category}</p>
             <h1 className="text-4xl font-bold font-headline">{course.title}</h1>
           </div>
-          <div className="relative h-80 w-full rounded-lg overflow-hidden shadow-lg">
-            <Image src={course.imageUrl || `https://picsum.photos/seed/${courseId}/800/600`} alt={course.title} fill style={{objectFit:"cover"}} data-ai-hint="online learning" />
-          </div>
-          <Card>
-            <CardHeader>
-              <CardTitle>About this course</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground whitespace-pre-wrap">{course.description}</p>
-            </CardContent>
-          </Card>
           
-          <Card>
-            <CardHeader>
-              <CardTitle>Course Content</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {isEnrolled ? (
-                  <div className="space-y-4">
-                    {courseContentError && <p className="text-destructive">Could not load course content.</p>}
-                    {courseContentCollection && courseContentCollection.docs.length > 0 ? (
-                      courseContentCollection.docs.map(doc => {
+          {isEnrolled ? (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Course Content</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {courseContentError && <p className="text-destructive">Could not load course content.</p>}
+                  {courseContentCollection && courseContentCollection.docs.length > 0 ? (
+                    <div className="space-y-4">
+                      {courseContentCollection.docs.map(doc => {
                         const content = doc.data();
                         return (
                           <div key={doc.id} className="flex items-center justify-between p-3 rounded-lg border bg-muted/50">
@@ -114,25 +103,28 @@ export default function CourseDetailPage() {
                             </Button>
                           </div>
                         )
-                      })
-                    ) : (
-                      <p className="text-muted-foreground">No content has been added to this course yet.</p>
-                    )}
-                  </div>
-              ) : (
-                <div className="flex flex-col items-center justify-center text-center p-8 bg-muted/50 rounded-lg">
-                    <Lock className="h-12 w-12 text-muted-foreground mb-4" />
-                    <h3 className="text-lg font-semibold">Content Locked</h3>
-                    <p className="text-muted-foreground mt-2">
-                        Enroll in this course to access all the lessons, videos, and materials.
-                    </p>
-                    <Button asChild className="mt-4">
-                        <Link href={`/dashboard/payment-verification?courseId=${courseId}`}>Enroll Now</Link>
-                    </Button>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                      })}
+                    </div>
+                  ) : (
+                    <p className="text-muted-foreground">No content has been added to this course yet.</p>
+                  )}
+                </CardContent>
+              </Card>
+          ) : (
+            <>
+              <div className="relative h-80 w-full rounded-lg overflow-hidden shadow-lg">
+                <Image src={course.imageUrl || `https://picsum.photos/seed/${courseId}/800/600`} alt={course.title} fill style={{objectFit:"cover"}} data-ai-hint="online learning" />
+              </div>
+              <Card>
+                <CardHeader>
+                  <CardTitle>About this course</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-muted-foreground whitespace-pre-wrap">{course.description}</p>
+                </CardContent>
+              </Card>
+            </>
+          )}
 
         </div>
 
@@ -174,3 +166,5 @@ export default function CourseDetailPage() {
     </div>
   );
 }
+
+    

@@ -2,11 +2,8 @@
 "use client"
 import React from 'react';
 import {
-  Bell,
   Book,
   Home,
-  CheckSquare,
-  FileText,
   User,
   Shield,
   GraduationCap,
@@ -15,9 +12,7 @@ import {
   LogOut,
   UserCog,
   BookCopy,
-  Download,
   Video,
-  Banknote,
   Award,
 } from 'lucide-react';
 
@@ -39,8 +34,8 @@ import {
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
-import { Button } from '@/components/ui/button';
 import { useLanguage } from '@/hooks/use-language';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const bottomNavItems = [
     { href: '/dashboard', icon: Home, label: 'Home' },
@@ -53,12 +48,10 @@ const sidebarNavItems = [
     { href: '/dashboard', icon: Home, label: 'home' },
     { href: '/dashboard/profile', icon: User, label: 'profile' },
     { href: '/dashboard/courses', icon: Book, label: 'courses' },
-    { href: '/dashboard/payment-verification', icon: Banknote, label: 'payment_verification' },
     { href: '/dashboard/scholarship', icon: Award, label: 'scholarship' },
     { href: '/dashboard/live-class', icon: Video, label: 'live_classes' },
     { href: '/dashboard/tutor', icon: GraduationCap, label: 'ai_tutor' },
     { href: '/dashboard/ai-test', icon: ShieldQuestion, label: 'ai_tests' },
-    { href: '/dashboard/papers', icon: FileText, label: 'papers' },
 ];
 
 const SidebarMenuItemWithHandler = ({ href, icon: Icon, label, closeSidebar }: { href: string; icon: React.ElementType; label: string; closeSidebar: () => void; }) => {
@@ -107,7 +100,7 @@ const AppSidebar = () => {
                 <SidebarHeader>
                      <div className='flex items-center gap-2'>
                         <Shield className="h-7 w-7 text-white" />
-                        <span className="text-lg font-semibold font-headline">GoSwami Defence Academy</span>
+                        <span className="text-lg font-semibold font-headline">Go Swami Coaching Classes</span>
                     </div>
                 </SidebarHeader>
                 <SidebarMenu>
@@ -161,7 +154,7 @@ const AppHeader = () => {
                     <SidebarTrigger />
                 </div>
                  <div className="flex items-center gap-2 text-lg font-semibold font-headline">
-                    GoSwami Defence Academy
+                    Go Swami Coaching Classes
                  </div>
             </div>
         </header>
@@ -193,6 +186,16 @@ const AppBottomNav = () => {
 }
 
 
+const LoadingScreen = () => (
+    <div className="flex h-screen w-full items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-4">
+            <Shield className="h-12 w-12 animate-pulse text-primary" />
+            <Skeleton className="h-4 w-48" />
+        </div>
+    </div>
+);
+
+
 export default function DashboardLayout({
   children,
 }: {
@@ -202,12 +205,12 @@ export default function DashboardLayout({
   const router = useRouter();
   
   if (loading) {
-    return <div className="flex h-screen w-full items-center justify-center">Loading...</div>;
+    return <LoadingScreen />;
   }
 
   if (!user) {
     router.push('/');
-    return null;
+    return <LoadingScreen />;
   }
 
   return (
@@ -218,7 +221,7 @@ export default function DashboardLayout({
                 <AppHeader />
                  <main className="flex-1 overflow-y-auto h-full">
                     <SidebarInset>
-                        {children}
+                        <div className="p-4 md:p-6">{children}</div>
                     </SidebarInset>
                 </main>
                 <AppBottomNav />
@@ -227,3 +230,5 @@ export default function DashboardLayout({
       </SidebarProvider>
   );
 }
+
+    

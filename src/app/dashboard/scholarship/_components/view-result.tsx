@@ -94,7 +94,8 @@ export function ViewResult() {
             }
 
         } catch (error) {
-            toast({ variant: 'destructive', title: 'Error', description: 'Could not fetch result.' });
+            console.error("Error fetching result: ", error);
+            toast({ variant: 'destructive', title: 'Error', description: 'Could not fetch result. Please try again.' });
         } finally {
             setIsLoading(false);
         }
@@ -182,3 +183,5 @@ export function ViewResult() {
         </Card>
     )
 }
+
+    

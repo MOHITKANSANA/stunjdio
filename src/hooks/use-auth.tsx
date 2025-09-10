@@ -53,11 +53,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     const unsubscribe = onIdTokenChanged(auth, async (currentUser) => {
+      setUser(currentUser); // Set user immediately
       if (currentUser) {
-        setUser(currentUser);
         await updateUserInFirestore(currentUser);
-      } else {
-        setUser(null);
       }
       setLoading(false);
     });
@@ -90,7 +88,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
   
   const setupRecaptcha = (elementId: string) => {
-    // Ensure this only runs on the client
     if (typeof window !== 'undefined') {
       // @ts-ignore
       if (window.recaptchaVerifier) {
@@ -100,15 +97,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       // @ts-ignore
       window.recaptchaVerifier = new RecaptchaVerifier(auth, elementId, {
         'size': 'invisible',
-        'callback': (response: any) => {
-          // reCAPTCHA solved, allow signInWithPhoneNumber.
-        }
+        'callback': (response: any) => {},
       });
       // @ts-ignore
       return window.recaptchaVerifier;
     }
-    // This part should ideally not be reached in a browser environment.
-    // We return a dummy object to satisfy TypeScript, but it won't work server-side.
     return {} as RecaptchaVerifier;
   };
 
@@ -123,7 +116,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const value = { user, loading, login, signup, googleLogin, logout, setupRecaptcha, sendOtp, verifyOtp };
 
-  return <AuthContext.Provider value={value}>{!loading && children}</AuthContext.Provider>;
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
 export const useAuth = () => {
@@ -133,3 +126,5 @@ export const useAuth = () => {
   }
   return context;
 };
+
+    
