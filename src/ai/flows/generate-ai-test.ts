@@ -15,7 +15,7 @@ const GenerateAiTestInputSchema = z.object({
   examType: z.string().describe('The type of competitive exam (e.g., UPSC, Sainik School).'),
   language: z.string().describe('The language for the test questions (e.g., English, Hindi).'),
   testType: z.enum(['Multiple Choice', 'Written Answer']).describe('The format of the test questions.'),
-  questionCount: z.number().min(1).max(20).default(5).describe('The number of questions to generate.'),
+  questionCount: z.number().min(1).max(50).default(5).describe('The number of questions to generate.'),
 });
 export type GenerateAiTestInput = z.infer<typeof GenerateAiTestInputSchema>;
 

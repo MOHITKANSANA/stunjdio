@@ -16,17 +16,17 @@ const Certificate: React.FC<CertificateProps> = ({ studentName, courseName, scor
   const isPass = status === 'pass' || (status === undefined && score >= 40); // Default pass mark is 40% if status is not provided
 
   return (
-    <div id="certificate" className="bg-white text-gray-800 p-8 rounded-lg shadow-2xl border-4 border-yellow-500 max-w-2xl min-w-[700px] mx-auto font-serif">
+    <div id="certificate" className="bg-white text-gray-800 p-8 rounded-lg shadow-2xl border-4 border-yellow-500 w-full max-w-2xl mx-auto font-serif">
       <div className="text-center space-y-4">
         <h1 className="text-4xl font-bold text-yellow-600">{isPass ? 'Certificate of Achievement' : 'Participation Certificate'}</h1>
         
         <p className="text-lg">This is to certify that</p>
         
-        <h2 className="text-3xl font-semibold text-blue-800 tracking-wider">{studentName}</h2>
+        <h2 className="text-3xl font-semibold text-blue-800 tracking-wider break-words">{studentName}</h2>
         
         <p className="text-lg">has successfully participated in the</p>
         
-        <h3 className="text-2xl font-medium text-blue-700">{courseName}</h3>
+        <h3 className="text-2xl font-medium text-blue-700 break-words">{courseName}</h3>
         
         <p className="text-lg">with a score of</p>
 

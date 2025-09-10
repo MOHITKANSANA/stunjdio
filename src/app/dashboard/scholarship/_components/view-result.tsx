@@ -111,7 +111,7 @@ export function ViewResult() {
                     <title>Certificate</title>
                     <script src="https://cdn.tailwindcss.com"></script>
                  </head>
-                 <body class="bg-gray-100 p-10">${certificateHTML}</body>
+                 <body class="bg-gray-100 flex items-center justify-center min-h-screen">${certificateHTML}</body>
                </html>`
           ], { type: 'text/html' });
           a.href = URL.createObjectURL(blob);

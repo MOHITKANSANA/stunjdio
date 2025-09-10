@@ -36,17 +36,18 @@ import {
 } from '@/components/ui/select';
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Loader2, Sparkles, FileText, AlertTriangle, Award, Download } from 'lucide-react';
-import { useLanguage } from '@/hooks/use-language';
+import { Loader2, Sparkles, FileText, AlertTriangle, Award, Download, ArrowLeft, ArrowRight } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import Certificate from '@/components/certificate';
+import { Progress } from '@/components/ui/progress';
+
 
 const testGenerationSchema = z.object({
   subject: z.string().min(1, 'Subject is required.'),
   examType: z.string().min(1, 'Exam type is required.'),
   language: z.string().min(1, 'Language is required.'),
   testType: z.literal('Multiple Choice'),
-  questionCount: z.coerce.number().min(3, 'Minimum 3 questions').max(20, 'Maximum 20 questions'),
+  questionCount: z.coerce.number().min(3, 'Minimum 3 questions').max(50, 'Maximum 50 questions'),
 });
 
 type TestGenerationValues = z.infer<typeof testGenerationSchema>;
@@ -66,7 +67,8 @@ export default function AiTestPage() {
   const [testData, setTestData] = useState<GenerateAiTestOutput | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [score, setScore] = useState<number | null>(null);
-  const { t } = useLanguage();
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+
   const { user } = useAuth();
 
   const generationForm = useForm<TestGenerationValues>({
@@ -97,6 +99,7 @@ export default function AiTestPage() {
     setTestData(null);
     setError(null);
     setScore(null);
+    setCurrentQuestionIndex(0);
     try {
       const result = await generateAiTestAction(data);
       setTestData(result);
@@ -120,7 +123,7 @@ export default function AiTestPage() {
         }
     });
     setScore((correctAnswers / testData.questions.length) * 100);
-    window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
   const handleDownloadCertificate = () => {
@@ -134,7 +137,7 @@ export default function AiTestPage() {
                 <title>Certificate</title>
                 <script src="https://cdn.tailwindcss.com"></script>
              </head>
-             <body>${certificateHTML}</body>
+             <body class="bg-gray-100 flex items-center justify-center min-h-screen">${certificateHTML}</body>
            </html>`
       ], { type: 'text/html' });
       a.href = URL.createObjectURL(blob);
@@ -149,10 +152,23 @@ export default function AiTestPage() {
     setError(null);
     generationForm.reset();
   }
+  
+  const goToNextQuestion = () => {
+    if (testData && currentQuestionIndex < testData.questions.length - 1) {
+      setCurrentQuestionIndex(prev => prev + 1);
+    }
+  };
+
+  const goToPreviousQuestion = () => {
+    if (currentQuestionIndex > 0) {
+      setCurrentQuestionIndex(prev => prev - 1);
+    }
+  };
+
 
   if (score !== null && testData) {
      return (
-        <div className="max-w-4xl mx-auto space-y-6 pb-8">
+        <div className="max-w-4xl mx-auto space-y-6 p-4">
              <Card className="shadow-lg border-border/60">
                  <CardHeader className="text-center">
                     <Award className="mx-auto h-12 w-12 text-yellow-500" />
@@ -163,7 +179,7 @@ export default function AiTestPage() {
                     <div className="text-center">
                         <p>Here is your certificate of completion.</p>
                     </div>
-                     <div id="certificate-wrapper" className='bg-gray-100 p-4 rounded-lg'>
+                     <div id="certificate-wrapper" className='bg-gray-100 dark:bg-gray-800 p-4 rounded-lg overflow-x-auto'>
                         <Certificate
                             studentName={user?.displayName || 'Student'}
                             courseName={`${generationForm.getValues('subject')} Practice Test (${generationForm.getValues('examType')})`}
@@ -197,8 +213,12 @@ export default function AiTestPage() {
   }
 
   if (testData) {
+     const currentQuestion = testData.questions[currentQuestionIndex];
+     const isLastQuestion = currentQuestionIndex === testData.questions.length - 1;
+     const progress = ((currentQuestionIndex + 1) / testData.questions.length) * 100;
+
      return (
-        <div className="max-w-4xl mx-auto space-y-6 pb-8">
+        <div className="max-w-4xl mx-auto space-y-6 p-4">
             <Card className="shadow-lg border-border/60">
                 <CardHeader>
                     <div className="flex items-center gap-3">
@@ -210,25 +230,28 @@ export default function AiTestPage() {
                             </CardDescription>
                         </div>
                     </div>
+                    <div className="pt-4">
+                        <Progress value={progress} />
+                        <p className="text-sm text-muted-foreground text-center mt-2">Question {currentQuestionIndex + 1} of {testData.questions.length}</p>
+                    </div>
                 </CardHeader>
                 <CardContent>
                     <Form {...answeringForm}>
                         <form onSubmit={answeringForm.handleSubmit(onCheckAnswers)} className="space-y-8">
-                            {fields.map((field, index) => (
                                 <FormField
-                                  key={field.id}
+                                  key={fields[currentQuestionIndex].id}
                                   control={answeringForm.control}
-                                  name={`answers.${index}.selectedIndex`}
+                                  name={`answers.${currentQuestionIndex}.selectedIndex`}
                                   render={({ field }) => (
-                                    <FormItem className="space-y-3 p-4 border rounded-lg">
-                                      <FormLabel className="font-semibold text-base">{index + 1}. {testData.questions[index].question}</FormLabel>
+                                    <FormItem className="space-y-3 p-4 border rounded-lg min-h-[250px]">
+                                      <FormLabel className="font-semibold text-base">{currentQuestionIndex + 1}. {currentQuestion.question}</FormLabel>
                                       <FormControl>
                                         <RadioGroup
                                           onValueChange={field.onChange}
-                                          defaultValue={field.value}
+                                          value={field.value}
                                           className="flex flex-col space-y-1"
                                         >
-                                          {testData.questions[index].options.map((option, optionIndex) => (
+                                          {currentQuestion.options.map((option, optionIndex) => (
                                               <FormItem key={optionIndex} className="flex items-center space-x-3 space-y-0">
                                                 <FormControl>
                                                   <RadioGroupItem value={String(optionIndex)} />
@@ -242,8 +265,20 @@ export default function AiTestPage() {
                                     </FormItem>
                                   )}
                                 />
-                            ))}
-                             <Button type="submit">Submit Test</Button>
+                             
+                             <div className="flex justify-between items-center">
+                                <Button type="button" variant="outline" onClick={goToPreviousQuestion} disabled={currentQuestionIndex === 0}>
+                                    <ArrowLeft className="mr-2"/> Previous
+                                </Button>
+                                
+                                {isLastQuestion ? (
+                                    <Button type="submit">Submit Test</Button>
+                                ) : (
+                                    <Button type="button" onClick={goToNextQuestion}>
+                                        Next <ArrowRight className="ml-2"/>
+                                    </Button>
+                                )}
+                             </div>
                         </form>
                     </Form>
                 </CardContent>
@@ -253,7 +288,7 @@ export default function AiTestPage() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6 pb-8">
+    <div className="max-w-2xl mx-auto space-y-6 p-4">
       <div className="text-center">
         <h1 className="text-3xl md:text-4xl font-bold font-headline bg-clip-text text-transparent bg-gradient-to-r from-blue-500 to-teal-400">
           AI Practice Test Generator
@@ -351,9 +386,9 @@ export default function AiTestPage() {
                   <FormItem>
                     <FormLabel>Number of Questions</FormLabel>
                     <FormControl>
-                      <Input type="number" min="3" max="20" {...field} />
+                      <Input type="number" min="3" max="50" {...field} />
                     </FormControl>
-                     <FormDescription>Choose between 3 and 20 questions.</FormDescription>
+                     <FormDescription>Choose between 3 and 50 questions.</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
