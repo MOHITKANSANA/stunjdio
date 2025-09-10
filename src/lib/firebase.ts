@@ -1,10 +1,8 @@
 
-// Import the functions you need from the SDKs you need
-import { initializeApp, getApps, getApp } from "firebase/app";
-import { initializeAuth, browserLocalPersistence, browserSessionPersistence } from "firebase/auth";
+import { initializeApp, getApps, getApp, FirebaseApp } from "firebase/app";
+import { getAuth, initializeAuth, browserLocalPersistence } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 
-// Your web app's Firebase configuration
 const firebaseConfig = {
   apiKey: "AIzaSyCowK1pgv_fGzCo65c-7_-9vTIkrO628yM",
   authDomain: "go-swami-coching-classes.firebaseapp.com",
@@ -14,10 +12,14 @@ const firebaseConfig = {
   appId: "1:1064325037320:web:d9ce26cc409e20702700bd"
 };
 
-// Initialize Firebase
-const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+let app: FirebaseApp;
 
-// Use browserLocalPersistence to keep the user signed in across browser sessions.
+if (!getApps().length) {
+  app = initializeApp(firebaseConfig);
+} else {
+  app = getApp();
+}
+
 const auth = initializeAuth(app, {
   persistence: browserLocalPersistence
 });
@@ -25,5 +27,3 @@ const auth = initializeAuth(app, {
 const firestore = getFirestore(app);
 
 export { app, auth, firestore };
-
-    

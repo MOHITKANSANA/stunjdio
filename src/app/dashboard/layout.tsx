@@ -96,7 +96,7 @@ const AppSidebar = () => {
 
     return (
         <Sidebar>
-            <SidebarContent className="bg-gradient-to-b from-red-500 to-orange-500 text-white border-none">
+            <SidebarContent className="bg-gradient-to-b from-primary to-orange-500 text-white border-none">
                 <SidebarHeader>
                      <div className='flex items-center gap-2'>
                         <Shield className="h-7 w-7 text-white" />
@@ -148,7 +148,7 @@ const AppSidebar = () => {
 
 const AppHeader = () => {
   return (
-      <header className={cn("flex h-16 shrink-0 items-center justify-between gap-4 px-4 md:px-6 bg-red-500 text-white")}>
+      <header className={cn("flex h-16 shrink-0 items-center justify-between gap-4 px-4 md:px-6 bg-primary text-white")}>
             <div className='flex items-center gap-2'>
                 <div className='md:hidden'>
                     <SidebarTrigger />
@@ -173,7 +173,7 @@ const AppBottomNav = () => {
                      href={item.href}
                      className={cn(
                        "flex flex-col items-center justify-center gap-1 rounded-md p-2 text-xs font-medium transition-colors hover:bg-accent hover:text-accent-foreground w-16 h-14",
-                       pathname === item.href ? "text-red-500" : "text-muted-foreground"
+                       pathname === item.href ? "text-primary" : "text-muted-foreground"
                      )}
                    >
                       <item.icon className="h-6 w-6" />
@@ -209,7 +209,7 @@ export default function DashboardLayout({
   }
 
   if (!user) {
-    router.push('/');
+    router.replace('/');
     return <LoadingScreen />;
   }
 
@@ -230,5 +230,3 @@ export default function DashboardLayout({
       </SidebarProvider>
   );
 }
-
-    

@@ -80,7 +80,7 @@ export default function CoursesPage() {
   const { user } = useAuth();
   
   const [coursesCollection, loading, error] = useCollection(
-    query(collection(firestore, 'courses'), orderBy('createdAt', 'desc'))
+    query(collection(firestore, 'courses'), where('isFree', '==', false), orderBy('createdAt', 'desc'))
   );
 
   const enrollmentsQuery = user 
@@ -119,5 +119,3 @@ export default function CoursesPage() {
     </div>
   );
 }
-
-    

@@ -69,6 +69,7 @@ export default function CourseDetailPage() {
   }
 
   const course = courseDoc.data();
+  const isFreeCourse = course.isFree === true;
 
   return (
     <div className="max-w-5xl mx-auto p-4 md:p-8">
@@ -132,17 +133,23 @@ export default function CourseDetailPage() {
           <Card className="sticky top-8 shadow-xl">
             <CardHeader>
               <CardTitle className="text-3xl flex items-center">
-                <IndianRupee className="h-7 w-7 mr-1" />
-                {course.price ? course.price.toLocaleString() : 'Free'}
+                {isFreeCourse ? 'Free' : (
+                    <>
+                        <IndianRupee className="h-7 w-7 mr-1" />
+                        {course.price ? course.price.toLocaleString() : 'N/A'}
+                    </>
+                )}
               </CardTitle>
-              <CardDescription>One-time payment</CardDescription>
+              <CardDescription>{isFreeCourse ? 'Enroll for free' : 'One-time payment'}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               {isEnrolled ? (
                 <Button size="lg" className="w-full text-lg" disabled>Enrolled</Button>
               ) : (
                 <Button asChild size="lg" className="w-full text-lg">
-                   <Link href={`/dashboard/payment-verification?courseId=${courseId}`}>Enroll Now</Link>
+                   <Link href={isFreeCourse ? `/dashboard/courses/free` : `/dashboard/payment-verification?courseId=${courseId}`}>
+                        {isFreeCourse ? 'Enroll for Free' : 'Enroll Now'}
+                   </Link>
                 </Button>
               )}
               <div className="space-y-3 pt-4 text-sm text-muted-foreground">
@@ -166,5 +173,3 @@ export default function CourseDetailPage() {
     </div>
   );
 }
-
-    

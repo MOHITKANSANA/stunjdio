@@ -1,12 +1,13 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { generateAiTestAction } from '@/app/actions/ai-test';
 import type { GenerateAiTestOutput } from '@/ai/flows/generate-ai-test';
+import { useSearchParams, useRouter } from 'next/navigation';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -40,6 +41,7 @@ import { Loader2, Sparkles, FileText, AlertTriangle, Award, Download, ArrowLeft,
 import { useAuth } from '@/hooks/use-auth';
 import Certificate from '@/components/certificate';
 import { Progress } from '@/components/ui/progress';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 
 const testGenerationSchema = z.object({
@@ -62,7 +64,7 @@ const testAnsweringSchema = z.object({
 type TestAnsweringValues = z.infer<typeof testAnsweringSchema>;
 
 
-export default function AiTestPage() {
+function AiTestPageContent() {
   const [isLoading, setIsLoading] = useState(false);
   const [testData, setTestData] = useState<GenerateAiTestOutput | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -70,6 +72,9 @@ export default function AiTestPage() {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
 
   const { user } = useAuth();
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const initialTab = searchParams.get('tab') || 'ai';
 
   const generationForm = useForm<TestGenerationValues>({
     resolver: zodResolver(testGenerationSchema),
@@ -163,6 +168,10 @@ export default function AiTestPage() {
     if (currentQuestionIndex > 0) {
       setCurrentQuestionIndex(prev => prev - 1);
     }
+  };
+
+  const onTabChange = (value: string) => {
+    router.push(`/dashboard/ai-test?tab=${value}`);
   };
 
 
@@ -291,127 +300,153 @@ export default function AiTestPage() {
     <div className="max-w-2xl mx-auto space-y-6 p-4">
       <div className="text-center">
         <h1 className="text-3xl md:text-4xl font-bold font-headline bg-clip-text text-transparent bg-gradient-to-r from-blue-500 to-teal-400">
-          AI Practice Test Generator
+          Practice Tests
         </h1>
         <p className="text-muted-foreground mt-2">
-          Create a personalized practice test for any subject and exam.
+          Create a personalized practice test with AI or take a pre-made test from our series.
         </p>
       </div>
 
-      <Card className="shadow-lg border-border/60">
-        <CardHeader>
-          <CardTitle>Create Your Test</CardTitle>
-          <CardDescription>
-            Fill in the details below to generate your personalized test.
-          </CardDescription>
-        </CardHeader>
-        <Form {...generationForm}>
-          <form onSubmit={generationForm.handleSubmit(onGenerateSubmit)}>
-            <CardContent className="space-y-6">
-              <FormField
-                control={generationForm.control}
-                name="subject"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Subject</FormLabel>
-                     <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select a subject" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="Maths">Maths</SelectItem>
-                          <SelectItem value="Science">Science</SelectItem>
-                          <SelectItem value="GK">General Knowledge (GK)</SelectItem>
-                          <SelectItem value="English">English</SelectItem>
-                          <SelectItem value="Reasoning">Reasoning</SelectItem>
-                          <SelectItem value="Indian History">Indian History</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={generationForm.control}
-                name="examType"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Competitive Exam Type</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select an exam type" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="UPSC">UPSC</SelectItem>
-                        <SelectItem value="Sainik School">Sainik School</SelectItem>
-                        <SelectItem value="Railway">Railway</SelectItem>
-                        <SelectItem value="National Military School">National Military School</SelectItem>
-                        <SelectItem value="General">General</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={generationForm.control}
-                name="language"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Language</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select a language" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="English">English</SelectItem>
-                        <SelectItem value="Hindi">Hindi</SelectItem>
-                        <SelectItem value="Kannada">Kannada</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-               <FormField
-                control={generationForm.control}
-                name="questionCount"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Number of Questions</FormLabel>
-                    <FormControl>
-                      <Input type="number" min="3" max="50" {...field} />
-                    </FormControl>
-                     <FormDescription>Choose between 3 and 50 questions.</FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </CardContent>
-            <CardFooter>
-              <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Generating Your Test...
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="mr-2 h-4 w-4" />
-                    Generate Test
-                  </>
-                )}
-              </Button>
-            </CardFooter>
-          </form>
-        </Form>
-      </Card>
+      <Tabs defaultValue={initialTab} onValueChange={onTabChange}>
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="ai">AI Generated Tests</TabsTrigger>
+          <TabsTrigger value="series">Practice Test Series</TabsTrigger>
+        </TabsList>
+        <TabsContent value="ai">
+            <Card className="shadow-lg border-border/60 mt-4">
+                <CardHeader>
+                <CardTitle>Create Your Custom Test</CardTitle>
+                <CardDescription>
+                    Fill in the details below to generate your personalized test using AI.
+                </CardDescription>
+                </CardHeader>
+                <Form {...generationForm}>
+                <form onSubmit={generationForm.handleSubmit(onGenerateSubmit)}>
+                    <CardContent className="space-y-6">
+                    <FormField
+                        control={generationForm.control}
+                        name="subject"
+                        render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Subject</FormLabel>
+                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                <FormControl>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Select a subject" />
+                                </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                <SelectItem value="Maths">Maths</SelectItem>
+                                <SelectItem value="Science">Science</SelectItem>
+                                <SelectItem value="GK">General Knowledge (GK)</SelectItem>
+                                <SelectItem value="English">English</SelectItem>
+                                <SelectItem value="Reasoning">Reasoning</SelectItem>
+                                <SelectItem value="Indian History">Indian History</SelectItem>
+                                </SelectContent>
+                            </Select>
+                            <FormMessage />
+                        </FormItem>
+                        )}
+                    />
+                    <FormField
+                        control={generationForm.control}
+                        name="examType"
+                        render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Competitive Exam Type</FormLabel>
+                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl>
+                                <SelectTrigger>
+                                <SelectValue placeholder="Select an exam type" />
+                                </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                                <SelectItem value="UPSC">UPSC</SelectItem>
+                                <SelectItem value="Sainik School">Sainik School</SelectItem>
+                                <SelectItem value="Railway">Railway</SelectItem>
+                                <SelectItem value="National Military School">National Military School</SelectItem>
+                                <SelectItem value="General">General</SelectItem>
+                            </SelectContent>
+                            </Select>
+                            <FormMessage />
+                        </FormItem>
+                        )}
+                    />
+                    <FormField
+                        control={generationForm.control}
+                        name="language"
+                        render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Language</FormLabel>
+                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl>
+                                <SelectTrigger>
+                                <SelectValue placeholder="Select a language" />
+                                </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                                <SelectItem value="English">English</SelectItem>
+                                <SelectItem value="Hindi">Hindi</SelectItem>
+                                <SelectItem value="Kannada">Kannada</SelectItem>
+                            </SelectContent>
+                            </Select>
+                            <FormMessage />
+                        </FormItem>
+                        )}
+                    />
+                    <FormField
+                        control={generationForm.control}
+                        name="questionCount"
+                        render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Number of Questions</FormLabel>
+                            <FormControl>
+                            <Input type="number" min="3" max="50" {...field} />
+                            </FormControl>
+                            <FormDescription>Choose between 3 and 50 questions.</FormDescription>
+                            <FormMessage />
+                        </FormItem>
+                        )}
+                    />
+                    </CardContent>
+                    <CardFooter>
+                    <Button type="submit" className="w-full" disabled={isLoading}>
+                        {isLoading ? (
+                        <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Generating Your Test...
+                        </>
+                        ) : (
+                        <>
+                            <Sparkles className="mr-2 h-4 w-4" />
+                            Generate Test
+                        </>
+                        )}
+                    </Button>
+                    </CardFooter>
+                </form>
+                </Form>
+            </Card>
+        </TabsContent>
+        <TabsContent value="series">
+            <Card className="shadow-lg border-border/60 mt-4">
+                 <CardHeader>
+                    <CardTitle>Test Series</CardTitle>
+                    <CardDescription>
+                        Select a test from our curated series to practice.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent>
+                    {/* Placeholder for Test Series List */}
+                    <div className="text-center p-8 text-muted-foreground">
+                        <FileText className="mx-auto h-12 w-12" />
+                        <p className="mt-4">Practice test series will be available here soon.</p>
+                    </div>
+                </CardContent>
+            </Card>
+        </TabsContent>
+      </Tabs>
+
         {error && (
             <Alert variant="destructive">
             <AlertTriangle className="h-4 w-4" />
@@ -421,4 +456,12 @@ export default function AiTestPage() {
         )}
     </div>
   );
+}
+
+export default function AiTestPage() {
+    return (
+        <Suspense fallback={<div>Loading...</div>}>
+            <AiTestPageContent />
+        </Suspense>
+    )
 }

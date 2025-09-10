@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * @fileOverview Generates AI-powered practice tests.
@@ -42,13 +43,15 @@ const prompt = ai.definePrompt({
   output: { schema: GenerateAiTestOutputSchema },
   prompt: `You are an expert test creator for competitive exams. Your task is to generate a practice test based on the user's specifications.
 
+The test, including all questions and options, must be entirely in the requested language: {{{language}}}.
+
 Subject: {{{subject}}}
 Exam Type: {{{examType}}}
 Language: {{{language}}}
 Question Format: {{{testType}}}
 Number of Questions: {{{questionCount}}}
 
-Please generate exactly {{{questionCount}}} high-quality, relevant multiple-choice questions. Each question must have exactly four options and a clearly identified correct answer index. Ensure the questions and options are in the requested language: {{{language}}}.
+Please generate exactly {{{questionCount}}} high-quality, relevant multiple-choice questions. Each question must have exactly four options and a clearly identified correct answer index. 
 `,
 });
 
