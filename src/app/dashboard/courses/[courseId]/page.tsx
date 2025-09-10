@@ -4,7 +4,7 @@
 import { doc } from 'firebase/firestore';
 import { useDocument, useCollection } from 'react-firebase-hooks/firestore';
 import { firestore } from '@/lib/firebase';
-import { notFound } from 'next/navigation';
+import { notFound, useParams } from 'next/navigation';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import Image from 'next/image';
@@ -23,9 +23,10 @@ const ContentIcon = ({ type }: { type: string }) => {
     }
 }
 
-export default function CourseDetailPage({ params }: { params: { courseId: string } }) {
+export default function CourseDetailPage() {
   const { user, loading: authLoading } = useAuth();
-  const courseId = params.courseId;
+  const params = useParams();
+  const courseId = params.courseId as string;
   
   const [courseDoc, courseLoading, courseError] = useDocument(doc(firestore, 'courses', courseId));
   const [courseContentCollection, courseContentLoading, courseContentError] = useCollection(
