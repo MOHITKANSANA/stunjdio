@@ -17,7 +17,7 @@ import { firestore } from '@/lib/firebase';
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Trash2, Check, X, Upload, Video, FileText, StickyNote, PlusCircle, Save, Download, ThumbsUp, ThumbsDown, Clock, CircleAlert, CheckCircle2, XCircle, KeyRound, Newspaper } from 'lucide-react';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -84,7 +84,7 @@ const jsonQuestionsSchema = z.object({
 type JsonQuestionsValues = z.infer<typeof jsonQuestionsSchema>;
 
 const accessKeySchema = z.object({
-    key: z.string().min(1, 'Access key is required.'),
+    key: z.string(),
 });
 type AccessKeyFormValues = z.infer<typeof accessKeySchema>;
 
@@ -713,4 +713,5 @@ function AdminDashboard() {
   );
 }
 
+    
     
