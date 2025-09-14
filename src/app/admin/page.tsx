@@ -16,7 +16,7 @@ import { collection, query, orderBy, doc, updateDoc, addDoc, deleteDoc, serverTi
 import { firestore } from '@/lib/firebase';
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Trash2, Check, X, Upload, Video, FileText, StickyNote, PlusCircle, Save, Download, ThumbsUp, ThumbsDown, Clock, CircleAlert, CheckCircle2, XCircle, KeyRound } from 'lucide-react';
+import { Loader2, Trash2, Check, X, Upload, Video, FileText, StickyNote, PlusCircle, Save, Download, ThumbsUp, ThumbsDown, Clock, CircleAlert, CheckCircle2, XCircle, KeyRound, Newspaper } from 'lucide-react';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -31,6 +31,7 @@ const courseFormSchema = z.object({
   description: z.string().min(10, 'Description must be at least 10 characters'),
   price: z.coerce.number().min(0, 'Price cannot be negative'),
   imageFile: z.instanceof(File).optional(),
+  isFree: z.boolean().default(false),
 });
 type CourseFormValues = z.infer<typeof courseFormSchema>;
 
@@ -87,6 +88,37 @@ const accessKeySchema = z.object({
 });
 type AccessKeyFormValues = z.infer<typeof accessKeySchema>;
 
+const previousPaperSchema = z.object({
+    title: z.string().min(3, 'Title is required.'),
+    year: z.coerce.number().min(2000).max(new Date().getFullYear()),
+    fileUrl: z.string().url('A valid file URL is required.'),
+});
+type PreviousPaperValues = z.infer<typeof previousPaperSchema>;
+
+const testSeriesSchema = z.object({
+    title: z.string().min(3, 'Title is required.'),
+    subject: z.string().min(2, 'Subject is required.'),
+    questions: z.array(z.object({
+        text: z.string().min(5),
+        options: z.array(z.string().min(1)).length(4),
+        correctAnswer: z.string().min(1),
+    })).min(1),
+});
+type TestSeriesValues = z.infer<typeof testSeriesSchema>;
+
+const jsonTestSeriesSchema = z.object({
+    jsonInput: z.string().refine((val) => {
+        try {
+            const parsed = JSON.parse(val);
+            return testSeriesSchema.safeParse(parsed).success;
+        } catch (e) {
+            return false;
+        }
+    }, 'Invalid JSON format or structure.'),
+});
+type JsonTestSeriesValues = z.infer<typeof jsonTestSeriesSchema>;
+
+
 const fileToDataUrl = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -115,7 +147,12 @@ export default function AdminPage() {
 }
 
 function AdminAccessGate({ setHasAccess }: { setHasAccess: (hasAccess: boolean) => void }) {
-    const accessKeyForm = useForm<AccessKeyFormValues>({ resolver: zodResolver(accessKeySchema) });
+    const accessKeyForm = useForm<AccessKeyFormValues>({ 
+        resolver: zodResolver(accessKeySchema),
+        defaultValues: {
+            key: '',
+        }
+    });
     const { toast } = useToast();
 
     const onAccessKeySubmit = (data: AccessKeyFormValues) => {
@@ -169,7 +206,7 @@ function AdminAccessGate({ setHasAccess }: { setHasAccess: (hasAccess: boolean) 
 function AdminDashboard() {
   const [enrollmentsCollection, enrollmentsLoading] = useCollection(query(collection(firestore, 'enrollments'), orderBy('createdAt', 'desc')));
   const [liveClassesCollection, liveClassesLoading] = useCollection(query(collection(firestore, 'live_classes'), orderBy('startTime', 'desc')));
-  const [coursesCollection] = useCollection(query(collection(firestore, 'courses'), orderBy('title', 'asc')));
+  const [coursesCollection, coursesLoading] = useCollection(query(collection(firestore, 'courses'), orderBy('title', 'asc')));
   const [qrCodeDoc] = useCollection(collection(firestore, 'settings'));
   const [scholarshipSettingsDoc, scholarshipSettingsLoading] = useCollection(collection(firestore, 'settings'));
   const [scholarshipQuestionsCollection, scholarshipQuestionsLoading] = useCollection(query(collection(firestore, 'scholarshipTest'), orderBy('createdAt', 'asc')));
@@ -196,6 +233,9 @@ function AdminDashboard() {
   });
   const scholarshipQuestionForm = useForm<ScholarshipQuestionValues>({ resolver: zodResolver(scholarshipQuestionSchema) });
   const jsonQuestionsForm = useForm<JsonQuestionsValues>({ resolver: zodResolver(jsonQuestionsSchema) });
+  const previousPaperForm = useForm<PreviousPaperValues>({ resolver: zodResolver(previousPaperSchema) });
+  const testSeriesForm = useForm<TestSeriesValues>({ resolver: zodResolver(testSeriesSchema) });
+  const jsonTestSeriesForm = useForm<JsonTestSeriesValues>({ resolver: zodResolver(jsonTestSeriesSchema) });
 
   const handleEnrollmentAction = async (id: string, newStatus: 'approved' | 'rejected') => {
     try {
@@ -220,6 +260,15 @@ function AdminDashboard() {
       toast({ variant: 'destructive', title: 'Error', description: 'Could not create course.' });
     }
   };
+  
+   const toggleCourseFreeStatus = async (courseId: string, currentStatus: boolean) => {
+    try {
+      await updateDoc(doc(firestore, 'courses', courseId), { isFree: !currentStatus });
+      toast({ title: 'Success', description: `Course status updated.` });
+    } catch (error) {
+      toast({ variant: 'destructive', title: 'Error', description: 'Could not update course status.' });
+    }
+  };
 
   const onLiveClassSubmit = async (data: LiveClassFormValues) => {
     try {
@@ -240,6 +289,28 @@ function AdminDashboard() {
         toast({ variant: 'destructive', title: 'Error', description: 'Could not add content.' });
     }
   };
+  
+  const onPreviousPaperSubmit = async (data: PreviousPaperValues) => {
+    try {
+        await addDoc(collection(firestore, 'previousPapers'), { ...data, createdAt: serverTimestamp() });
+        toast({ title: 'Success', description: 'Previous year paper added.' });
+        previousPaperForm.reset();
+    } catch (error) {
+        toast({ variant: 'destructive', title: 'Error', description: 'Could not add paper.' });
+    }
+  };
+  
+  const onTestSeriesSubmit = async (data: JsonTestSeriesValues) => {
+    try {
+        const testData = JSON.parse(data.jsonInput);
+        await addDoc(collection(firestore, 'testSeries'), { ...testData, createdAt: serverTimestamp() });
+        toast({ title: 'Success', description: 'Test series added successfully.' });
+        jsonTestSeriesForm.reset();
+    } catch (error) {
+        toast({ variant: 'destructive', title: 'Error', description: 'Could not add test series.' });
+    }
+  }
+
 
   const deleteLiveClass = async (id: string) => {
     if(window.confirm('Are you sure you want to delete this class?')) {
@@ -392,17 +463,36 @@ function AdminDashboard() {
         <TabsContent value="content">
           <div className="grid md:grid-cols-2 gap-6">
              <Card>
-              <CardHeader><CardTitle>Create New Course</CardTitle><CardDescription>Fill out the details below to add a new course.</CardDescription></CardHeader>
-              <CardContent><Form {...courseForm}><form onSubmit={courseForm.handleSubmit(onCourseSubmit)} className="grid gap-6">
-                  <FormField control={courseForm.control} name="title" render={({ field }) => (<FormItem><FormLabel>Course Title</FormLabel><FormControl><Input placeholder="e.g. Algebra Fundamentals" {...field} /></FormControl><FormMessage /></FormItem>)}/>
-                  <FormField control={courseForm.control} name="category" render={({ field }) => (<FormItem><FormLabel>Category</FormLabel><FormControl><Input placeholder="e.g. Maths" {...field} /></FormControl><FormMessage /></FormItem>)}/>
-                  <FormField control={courseForm.control} name="price" render={({ field }) => (<FormItem><FormLabel>Price (INR)</FormLabel><FormControl><Input type="number" placeholder="e.g. 499" {...field} /></FormControl><FormMessage /></FormItem>)}/>
-                  <FormField control={courseForm.control} name="imageFile" render={({ field }) => (
-                    <FormItem><FormLabel>Cover Image</FormLabel><FormControl><Input type="file" accept="image/*" onChange={(e) => field.onChange(e.target.files?.[0])} /></FormControl><FormMessage /></FormItem>
-                  )}/>
-                  <FormField control={courseForm.control} name="description" render={({ field }) => (<FormItem><FormLabel>Description</FormLabel><FormControl><Textarea placeholder="A short description of the course content." className="min-h-32" {...field} /></FormControl><FormMessage /></FormItem>)}/>
-                  <Button type="submit" disabled={courseForm.formState.isSubmitting}>{courseForm.formState.isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin"/>Creating...</> : "Create Course"}</Button>
-              </form></Form></CardContent>
+              <CardHeader><CardTitle>Create & Manage Courses</CardTitle><CardDescription>Fill out the details to add a new course or manage existing ones.</CardDescription></CardHeader>
+              <CardContent>
+                <Form {...courseForm}><form onSubmit={courseForm.handleSubmit(onCourseSubmit)} className="grid gap-6 mb-6">
+                    <FormField control={courseForm.control} name="title" render={({ field }) => (<FormItem><FormLabel>Course Title</FormLabel><FormControl><Input placeholder="e.g. Algebra Fundamentals" {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                    <FormField control={courseForm.control} name="category" render={({ field }) => (<FormItem><FormLabel>Category</FormLabel><FormControl><Input placeholder="e.g. Maths" {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                    <FormField control={courseForm.control} name="price" render={({ field }) => (<FormItem><FormLabel>Price (INR)</FormLabel><FormControl><Input type="number" placeholder="e.g. 499" {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                    <FormField control={courseForm.control} name="imageFile" render={({ field }) => (
+                      <FormItem><FormLabel>Cover Image</FormLabel><FormControl><Input type="file" accept="image/*" onChange={(e) => field.onChange(e.target.files?.[0])} /></FormControl><FormMessage /></FormItem>
+                    )}/>
+                    <FormField control={courseForm.control} name="isFree" render={({ field }) => (<FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm"><div className="space-y-0.5"><FormLabel>Mark as Free</FormLabel><FormDescription>If checked, this course will be available for free.</FormDescription></div><FormControl><input type="checkbox" checked={field.value} onChange={field.onChange} className="h-5 w-5"/></FormControl></FormItem>)}/>
+                    <FormField control={courseForm.control} name="description" render={({ field }) => (<FormItem><FormLabel>Description</FormLabel><FormControl><Textarea placeholder="A short description of the course content." className="min-h-32" {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                    <Button type="submit" disabled={courseForm.formState.isSubmitting}>{courseForm.formState.isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin"/>Creating...</> : "Create Course"}</Button>
+                </form></Form>
+                 <Separator/>
+                 <div className="mt-6">
+                    <h4 className="font-semibold mb-2">Existing Courses</h4>
+                    <div className="max-h-60 overflow-y-auto pr-2 space-y-2">
+                      {coursesLoading && <Skeleton className="h-9 w-full" />}
+                      {coursesCollection?.docs.map(doc => (
+                        <div key={doc.id} className="text-sm p-2 border rounded flex justify-between items-center">
+                          <span>{doc.data().title}</span>
+                          <Button size="sm" variant={doc.data().isFree ? "secondary" : "outline"} onClick={() => toggleCourseFreeStatus(doc.id, doc.data().isFree)}>
+                            {doc.data().isFree ? 'Mark as Paid' : 'Mark as Free'}
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                </div>
+
+              </CardContent>
             </Card>
 
             <div className="space-y-6">
@@ -451,6 +541,27 @@ function AdminDashboard() {
                           </TableCell></TableRow>)
                       })}
                   </TableBody></Table></div></CardContent>
+                </Card>
+
+                 <Card>
+                    <CardHeader><CardTitle>Previous Year Papers</CardTitle><CardDescription>Add and manage previous year papers.</CardDescription></CardHeader>
+                    <CardContent>
+                        <Form {...previousPaperForm}><form onSubmit={previousPaperForm.handleSubmit(onPreviousPaperSubmit)} className="grid gap-4">
+                            <FormField control={previousPaperForm.control} name="title" render={({ field }) => (<FormItem><FormLabel>Paper Title</FormLabel><FormControl><Input placeholder="e.g. UPSC Prelims 2023" {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                            <FormField control={previousPaperForm.control} name="year" render={({ field }) => (<FormItem><FormLabel>Year</FormLabel><FormControl><Input type="number" placeholder="e.g. 2023" {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                            <FormField control={previousPaperForm.control} name="fileUrl" render={({ field }) => (<FormItem><FormLabel>File URL</FormLabel><FormControl><Input placeholder="https://example.com/paper.pdf" {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                            <Button type="submit" disabled={previousPaperForm.formState.isSubmitting}>{previousPaperForm.formState.isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin"/>Adding...</> : <><Newspaper className="mr-2"/>Add Paper</>}</Button>
+                        </form></Form>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardHeader><CardTitle>Test Series Manager</CardTitle><CardDescription>Add new test series from a JSON file.</CardDescription></CardHeader>
+                    <CardContent>
+                        <Form {...jsonTestSeriesForm}><form onSubmit={jsonTestSeriesForm.handleSubmit(onTestSeriesSubmit)} className="grid gap-4">
+                            <FormField control={jsonTestSeriesForm.control} name="jsonInput" render={({ field }) => (<FormItem><FormLabel>JSON Input</FormLabel><FormControl><Textarea {...field} rows={10} placeholder='{"title": "...", "subject": "...", "questions": [{"text": "...", "options": [...], "correctAnswer": "..."}]}' /></FormControl><FormMessage /></FormItem>)}/>
+                            <Button type="submit" disabled={jsonTestSeriesForm.formState.isSubmitting}><Upload className="mr-2"/>{jsonTestSeriesForm.formState.isSubmitting ? 'Uploading...' : 'Upload Test Series'}</Button>
+                        </form></Form>
+                    </CardContent>
                 </Card>
             </div>
            
