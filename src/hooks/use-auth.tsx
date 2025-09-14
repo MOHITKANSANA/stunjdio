@@ -2,14 +2,12 @@
 "use client";
 
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { onIdTokenChanged, User, signInWithEmailAndPassword, createUserWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, signOut, RecaptchaVerifier, signInWithPhoneNumber, ConfirmationResult, UserCredential, updateProfile } from 'firebase/auth';
+import { onAuthStateChanged, User, signInWithEmailAndPassword, createUserWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, signOut, RecaptchaVerifier, signInWithPhoneNumber, ConfirmationResult, UserCredential, updateProfile } from 'firebase/auth';
 import { doc, setDoc, serverTimestamp, getDoc } from 'firebase/firestore';
 import { auth, firestore } from '@/lib/firebase';
 import { useRouter } from 'next/navigation';
 
-
-// Helper function to create/update user in Firestore
-const updateUserInFirestore = async (user: User) => {
+const updateUserInFirestore = async (user: User, additionalData: Record<string, any> = {}) => {
     const userRef = doc(firestore, 'users', user.uid);
     const docSnap = await getDoc(userRef);
 
@@ -19,6 +17,7 @@ const updateUserInFirestore = async (user: User) => {
         displayName: user.displayName,
         photoURL: user.photoURL,
         lastLogin: serverTimestamp(),
+        ...additionalData
     };
 
     if (!docSnap.exists()) {
@@ -31,12 +30,12 @@ const updateUserInFirestore = async (user: User) => {
     }
 };
 
-
 interface AuthContextType {
   user: User | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<UserCredential>;
   signup: (email: string, password: string) => Promise<UserCredential>;
+  signupWithDetails: (email: string, password: string, name: string, photoURL: string | null, details: Record<string, any>) => Promise<UserCredential>;
   googleLogin: () => Promise<UserCredential>;
   logout: () => Promise<void>;
   setupRecaptcha: (elementId: string) => RecaptchaVerifier;
@@ -52,8 +51,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const router = useRouter();
 
   useEffect(() => {
-    const unsubscribe = onIdTokenChanged(auth, async (currentUser) => {
-      setUser(currentUser); // Set user immediately
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+      setUser(currentUser);
       if (currentUser) {
         await updateUserInFirestore(currentUser);
       }
@@ -62,29 +61,35 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return () => unsubscribe();
   }, []);
   
-  const handleAuthSuccess = async (userCredential: UserCredential) => {
-      await updateUserInFirestore(userCredential.user);
-      // Manually set user state to trigger re-render with latest data
+  const handleAuthSuccess = async (userCredential: UserCredential, additionalData: Record<string, any> = {}) => {
+      await updateUserInFirestore(userCredential.user, additionalData);
       setUser(userCredential.user);
       return userCredential;
   };
 
   const login = (email: string, password: string) => {
-    return signInWithEmailAndPassword(auth, email, password).then(handleAuthSuccess);
+    return signInWithEmailAndPassword(auth, email, password).then((cred) => handleAuthSuccess(cred));
   };
 
   const signup = (email: string, password: string) => {
-    return createUserWithEmailAndPassword(auth, email, password).then(handleAuthSuccess);
+    return createUserWithEmailAndPassword(auth, email, password).then((cred) => handleAuthSuccess(cred));
   };
+
+  const signupWithDetails = async (email: string, password: string, name: string, photoURL: string | null, details: Record<string, any>) => {
+    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+    await updateProfile(userCredential.user, { displayName: name, photoURL: photoURL });
+    return handleAuthSuccess(userCredential, { ...details, displayName: name, photoURL: photoURL });
+  };
+
 
   const googleLogin = () => {
     const provider = new GoogleAuthProvider();
-    return signInWithPopup(auth, provider).then(handleAuthSuccess);
+    return signInWithPopup(auth, provider).then((cred) => handleAuthSuccess(cred));
   };
 
   const logout = async () => {
     await signOut(auth);
-    router.push('/');
+    router.push('/login');
   };
   
   const setupRecaptcha = (elementId: string) => {
@@ -110,11 +115,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const verifyOtp = (confirmationResult: ConfirmationResult, otp: string) => {
-    return confirmationResult.confirm(otp).then(handleAuthSuccess);
+    return confirmationResult.confirm(otp).then((cred) => handleAuthSuccess(cred));
   };
 
 
-  const value = { user, loading, login, signup, googleLogin, logout, setupRecaptcha, sendOtp, verifyOtp };
+  const value = { user, loading, login, signup, signupWithDetails, googleLogin, logout, setupRecaptcha, sendOtp, verifyOtp };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
@@ -126,5 +131,3 @@ export const useAuth = () => {
   }
   return context;
 };
-
-    

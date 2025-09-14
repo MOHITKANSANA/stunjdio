@@ -14,6 +14,7 @@ import {
   BookCopy,
   Video,
   Award,
+  Bell,
 } from 'lucide-react';
 
 import { useAuth } from '@/hooks/use-auth';
@@ -36,6 +37,7 @@ import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { useLanguage } from '@/hooks/use-language';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Button } from '@/components/ui/button';
 
 const bottomNavItems = [
     { href: '/dashboard', icon: Home, label: 'Home' },
@@ -148,14 +150,20 @@ const AppSidebar = () => {
 
 const AppHeader = () => {
   return (
-      <header className={cn("flex h-16 shrink-0 items-center justify-between gap-4 px-4 md:px-6 bg-primary text-white")}>
+      <header className={cn("flex h-16 shrink-0 items-center justify-between gap-4 px-4 md:px-6 bg-primary text-white sticky top-0 z-20")}>
             <div className='flex items-center gap-2'>
                 <div className='md:hidden'>
                     <SidebarTrigger />
                 </div>
-                 <div className="flex items-center gap-2 text-lg font-semibold font-headline">
+                 <div className="hidden md:flex items-center gap-2 text-lg font-semibold font-headline">
                     Go Swami Coaching Classes
                  </div>
+            </div>
+            <div className="flex items-center gap-2">
+                <Button variant="ghost" size="icon" className="rounded-full text-white hover:bg-white/20 hover:text-white">
+                    <Bell />
+                    <span className="sr-only">Notifications</span>
+                </Button>
             </div>
         </header>
   )

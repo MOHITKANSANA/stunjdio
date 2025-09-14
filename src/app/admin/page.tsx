@@ -16,7 +16,7 @@ import { collection, query, orderBy, doc, updateDoc, addDoc, deleteDoc, serverTi
 import { firestore } from '@/lib/firebase';
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Trash2, Check, X, Upload, Video, FileText, StickyNote, PlusCircle, Save, Download, ThumbsUp, ThumbsDown, Clock, CircleAlert, CheckCircle2, XCircle, KeyRound, Newspaper } from 'lucide-react';
+import { Loader2, Trash2, Check, X, Upload, Video, FileText, StickyNote, PlusCircle, Save, Download, ThumbsUp, ThumbsDown, Clock, CircleAlert, CheckCircle2, XCircle, KeyRound, Newspaper, Image as ImageIcon } from 'lucide-react';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -84,14 +84,14 @@ const jsonQuestionsSchema = z.object({
 type JsonQuestionsValues = z.infer<typeof jsonQuestionsSchema>;
 
 const accessKeySchema = z.object({
-    key: z.string(),
+    key: z.string().min(1, "Access key cannot be empty."),
 });
 type AccessKeyFormValues = z.infer<typeof accessKeySchema>;
 
 const previousPaperSchema = z.object({
     title: z.string().min(3, 'Title is required.'),
     year: z.coerce.number().min(2000).max(new Date().getFullYear()),
-    fileUrl: z.string().url('A valid file URL is required.'),
+    file: z.instanceof(File, { message: 'A PDF file is required.' }),
 });
 type PreviousPaperValues = z.infer<typeof previousPaperSchema>;
 
@@ -118,6 +118,12 @@ const jsonTestSeriesSchema = z.object({
 });
 type JsonTestSeriesValues = z.infer<typeof jsonTestSeriesSchema>;
 
+const carouselItemSchema = z.object({
+    title: z.string().min(3, "Title is required."),
+    imageUrl: z.string().url("A valid image URL is required."),
+    linkUrl: z.string().url("A valid link URL is required."),
+});
+type CarouselItemValues = z.infer<typeof carouselItemSchema>;
 
 const fileToDataUrl = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
@@ -211,6 +217,8 @@ function AdminDashboard() {
   const [scholarshipSettingsDoc, scholarshipSettingsLoading] = useCollection(collection(firestore, 'settings'));
   const [scholarshipQuestionsCollection, scholarshipQuestionsLoading] = useCollection(query(collection(firestore, 'scholarshipTest'), orderBy('createdAt', 'asc')));
   const [scholarshipApplicants, scholarshipApplicantsLoading] = useCollection(query(collection(firestore, 'scholarshipApplications'), orderBy('appliedAt', 'desc')));
+  const [carouselItemsCollection, carouselItemsLoading] = useCollection(query(collection(firestore, 'homepageCarousel'), orderBy('createdAt', 'asc')));
+
 
   const qrCodeUrl = qrCodeDoc?.docs.find(d => d.id === 'paymentQrCode')?.data().url;
   const scholarshipSettings = scholarshipSettingsDoc?.docs.find(d => d.id === 'scholarship')?.data();
@@ -234,8 +242,9 @@ function AdminDashboard() {
   const scholarshipQuestionForm = useForm<ScholarshipQuestionValues>({ resolver: zodResolver(scholarshipQuestionSchema) });
   const jsonQuestionsForm = useForm<JsonQuestionsValues>({ resolver: zodResolver(jsonQuestionsSchema) });
   const previousPaperForm = useForm<PreviousPaperValues>({ resolver: zodResolver(previousPaperSchema) });
-  const testSeriesForm = useForm<TestSeriesValues>({ resolver: zodResolver(testSeriesSchema) });
   const jsonTestSeriesForm = useForm<JsonTestSeriesValues>({ resolver: zodResolver(jsonTestSeriesSchema) });
+  const carouselItemForm = useForm<CarouselItemValues>({ resolver: zodResolver(carouselItemSchema) });
+
 
   const handleEnrollmentAction = async (id: string, newStatus: 'approved' | 'rejected') => {
     try {
@@ -248,12 +257,12 @@ function AdminDashboard() {
   
   const onCourseSubmit = async (data: CourseFormValues) => {
     try {
-      let imageUrl = 'https://picsum.photos/600/400';
+      let imageUrl = `https://picsum.photos/seed/${new Date().getTime()}/600/400`;
       if (data.imageFile) {
         imageUrl = await fileToDataUrl(data.imageFile);
       }
       
-      await addDoc(collection(firestore, 'courses'), { ...data, imageUrl, createdAt: serverTimestamp() });
+      await addDoc(collection(firestore, 'courses'), { ...data, imageUrl, createdAt: serverTimestamp(), imageFile: null });
       toast({ title: 'Success', description: 'Course created successfully.' });
       courseForm.reset();
     } catch (error) {
@@ -292,7 +301,8 @@ function AdminDashboard() {
   
   const onPreviousPaperSubmit = async (data: PreviousPaperValues) => {
     try {
-        await addDoc(collection(firestore, 'previousPapers'), { ...data, createdAt: serverTimestamp() });
+        const fileUrl = await fileToDataUrl(data.file);
+        await addDoc(collection(firestore, 'previousPapers'), { title: data.title, year: data.year, fileUrl, createdAt: serverTimestamp() });
         toast({ title: 'Success', description: 'Previous year paper added.' });
         previousPaperForm.reset();
     } catch (error) {
@@ -308,6 +318,23 @@ function AdminDashboard() {
         jsonTestSeriesForm.reset();
     } catch (error) {
         toast({ variant: 'destructive', title: 'Error', description: 'Could not add test series.' });
+    }
+  }
+
+  const onCarouselItemSubmit = async (data: CarouselItemValues) => {
+    try {
+        await addDoc(collection(firestore, 'homepageCarousel'), { ...data, createdAt: serverTimestamp() });
+        toast({ title: 'Success', description: 'Carousel item added.' });
+        carouselItemForm.reset();
+    } catch (error) {
+        toast({ variant: 'destructive', title: 'Error', description: 'Could not add carousel item.' });
+    }
+  };
+
+  const deleteCarouselItem = async (id: string) => {
+    if (window.confirm('Are you sure you want to delete this carousel item?')) {
+        await deleteDoc(doc(firestore, 'homepageCarousel', id));
+        toast({ description: 'Carousel item deleted.' });
     }
   }
 
@@ -549,7 +576,7 @@ function AdminDashboard() {
                         <Form {...previousPaperForm}><form onSubmit={previousPaperForm.handleSubmit(onPreviousPaperSubmit)} className="grid gap-4">
                             <FormField control={previousPaperForm.control} name="title" render={({ field }) => (<FormItem><FormLabel>Paper Title</FormLabel><FormControl><Input placeholder="e.g. UPSC Prelims 2023" {...field} /></FormControl><FormMessage /></FormItem>)}/>
                             <FormField control={previousPaperForm.control} name="year" render={({ field }) => (<FormItem><FormLabel>Year</FormLabel><FormControl><Input type="number" placeholder="e.g. 2023" {...field} /></FormControl><FormMessage /></FormItem>)}/>
-                            <FormField control={previousPaperForm.control} name="fileUrl" render={({ field }) => (<FormItem><FormLabel>File URL</FormLabel><FormControl><Input placeholder="https://example.com/paper.pdf" {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                            <FormField control={previousPaperForm.control} name="file" render={({ field: { onChange, ...rest } }) => (<FormItem><FormLabel>File (PDF)</FormLabel><FormControl><Input type="file" accept=".pdf" onChange={(e) => onChange(e.target.files?.[0])} {...rest} /></FormControl><FormMessage /></FormItem>)}/>
                             <Button type="submit" disabled={previousPaperForm.formState.isSubmitting}>{previousPaperForm.formState.isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin"/>Adding...</> : <><Newspaper className="mr-2"/>Add Paper</>}</Button>
                         </form></Form>
                     </CardContent>
@@ -684,34 +711,60 @@ function AdminDashboard() {
             </div>
         </TabsContent>
         <TabsContent value="settings">
-          <Card>
-            <CardHeader><CardTitle>Payment QR Code</CardTitle><CardDescription>Upload or update the QR code for payments.</CardDescription></CardHeader>
-            <CardContent className="grid md:grid-cols-2 gap-6 items-start">
-              <Form {...qrCodeForm}>
-                <form onSubmit={qrCodeForm.handleSubmit(onQrCodeSubmit)} className="space-y-4">
-                   <FormField control={qrCodeForm.control} name="imageFile" render={({ field }) => (
-                      <FormItem><FormLabel>New QR Code Image</FormLabel><FormControl><Input type="file" accept="image/*" onChange={(e) => field.onChange(e.target.files?.[0])} /></FormControl><FormMessage /></FormItem>
-                    )}/>
-                  <Button type="submit" disabled={qrCodeForm.formState.isSubmitting}>
-                    {qrCodeForm.formState.isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin"/>Uploading...</> : <><Upload className="mr-2 h-4 w-4"/>Upload QR Code</>}
-                  </Button>
-                </form>
-              </Form>
-              <div>
-                <h4 className="font-semibold mb-2">Current QR Code</h4>
-                {qrCodeUrl ? (
-                  <Image src={qrCodeUrl} alt="Payment QR Code" width={200} height={200} className="rounded-md border p-2" />
-                ) : (
-                  <p className="text-muted-foreground">No QR code uploaded yet.</p>
-                )}
-              </div>
-            </CardContent>
-          </Card>
+          <div className="grid md:grid-cols-2 gap-6 items-start">
+              <Card>
+                <CardHeader><CardTitle>Payment QR Code</CardTitle><CardDescription>Upload or update the QR code for payments.</CardDescription></CardHeader>
+                <CardContent>
+                  <Form {...qrCodeForm}>
+                    <form onSubmit={qrCodeForm.handleSubmit(onQrCodeSubmit)} className="space-y-4">
+                       <FormField control={qrCodeForm.control} name="imageFile" render={({ field }) => (
+                          <FormItem><FormLabel>New QR Code Image</FormLabel><FormControl><Input type="file" accept="image/*" onChange={(e) => field.onChange(e.target.files?.[0])} /></FormControl><FormMessage /></FormItem>
+                        )}/>
+                      <Button type="submit" disabled={qrCodeForm.formState.isSubmitting}>
+                        {qrCodeForm.formState.isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin"/>Uploading...</> : <><Upload className="mr-2 h-4 w-4"/>Upload QR Code</>}
+                      </Button>
+                    </form>
+                  </Form>
+                  <div className="mt-6">
+                    <h4 className="font-semibold mb-2">Current QR Code</h4>
+                    {qrCodeUrl ? (
+                      <Image src={qrCodeUrl} alt="Payment QR Code" width={200} height={200} className="rounded-md border p-2" />
+                    ) : (
+                      <p className="text-muted-foreground">No QR code uploaded yet.</p>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                  <CardHeader><CardTitle>Homepage Settings</CardTitle><CardDescription>Manage the items in the homepage carousel.</CardDescription></CardHeader>
+                  <CardContent>
+                      <Form {...carouselItemForm}>
+                          <form onSubmit={carouselItemForm.handleSubmit(onCarouselItemSubmit)} className="grid gap-4 mb-6">
+                              <FormField control={carouselItemForm.control} name="title" render={({ field }) => (<FormItem><FormLabel>Title</FormLabel><FormControl><Input placeholder="e.g. New Maths Course" {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                              <FormField control={carouselItemForm.control} name="imageUrl" render={({ field }) => (<FormItem><FormLabel>Image URL</FormLabel><FormControl><Input placeholder="https://example.com/image.png" {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                              <FormField control={carouselItemForm.control} name="linkUrl" render={({ field }) => (<FormItem><FormLabel>Link URL</FormLabel><FormControl><Input placeholder="/dashboard/courses" {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                              <Button type="submit" disabled={carouselItemForm.formState.isSubmitting}>{carouselItemForm.formState.isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin"/>Adding...</> : <><PlusCircle className="mr-2"/>Add Item</>}</Button>
+                          </form>
+                      </Form>
+                      <Separator />
+                       <h4 className="font-semibold my-4">Current Carousel Items</h4>
+                        <div className="max-h-60 overflow-y-auto pr-2 space-y-2">
+                            {carouselItemsLoading && <Skeleton className="h-9 w-full" />}
+                            {carouselItemsCollection?.docs.map(doc => (
+                                <div key={doc.id} className="text-sm p-2 border rounded flex justify-between items-center gap-2">
+                                    <ImageIcon className="h-5 w-5 text-muted-foreground"/>
+                                    <span className="flex-1 truncate">{doc.data().title}</span>
+                                    <Button variant="ghost" size="icon" onClick={() => deleteCarouselItem(doc.id)}><Trash2 className="h-4 w-4 text-destructive"/></Button>
+                                </div>
+                            ))}
+                        </div>
+
+                  </CardContent>
+              </Card>
+          </div>
         </TabsContent>
       </Tabs>
     </div>
   );
 }
-
-    
-    

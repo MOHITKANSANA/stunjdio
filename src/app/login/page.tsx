@@ -5,10 +5,9 @@ import { useAuth } from "@/hooks/use-auth";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { LoginForm } from "@/components/login-form";
-import { SignupForm } from "@/components/signup-form";
 import { BookOpenCheck, Loader2 } from "lucide-react";
 
-export default function WelcomePage() {
+export default function LoginPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
 
@@ -28,7 +27,6 @@ export default function WelcomePage() {
       </div>
     );
   }
-
-  // If not loading and no user, show the signup form
-  return <SignupForm />;
+  
+  return <LoginForm />;
 }
