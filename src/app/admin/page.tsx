@@ -252,10 +252,10 @@ function AdminDashboard() {
 
   const { toast } = useToast();
   
-  const courseForm = useForm<CourseFormValues>({ resolver: zodResolver(courseFormSchema) });
-  const liveClassForm = useForm<LiveClassFormValues>({ resolver: zodResolver(liveClassFormSchema) });
+  const courseForm = useForm<CourseFormValues>({ resolver: zodResolver(courseFormSchema), defaultValues: { title: '', category: '', description: '', price: 0, isFree: false, imageFile: undefined } });
+  const liveClassForm = useForm<LiveClassFormValues>({ resolver: zodResolver(liveClassFormSchema), defaultValues: { title: '', youtubeUrl: '', startTime: '' } });
   const qrCodeForm = useForm<QrCodeFormValues>({ resolver: zodResolver(qrCodeFormSchema) });
-  const courseContentForm = useForm<CourseContentValues>({ resolver: zodResolver(courseContentSchema) });
+  const courseContentForm = useForm<CourseContentValues>({ resolver: zodResolver(courseContentSchema), defaultValues: { courseId: '', contentType: 'video', title: '', url: '' } });
   const scholarshipSettingsForm = useForm<ScholarshipSettingsValues>({
     resolver: zodResolver(scholarshipSettingsSchema),
     values: {
@@ -266,11 +266,11 @@ function AdminDashboard() {
       resultDate: scholarshipSettings?.resultDate?.toDate()?.toISOString().substring(0, 16) || '',
     },
   });
-  const scholarshipQuestionForm = useForm<ScholarshipQuestionValues>({ resolver: zodResolver(scholarshipQuestionSchema) });
-  const jsonQuestionsForm = useForm<JsonQuestionsValues>({ resolver: zodResolver(jsonQuestionsSchema) });
-  const previousPaperForm = useForm<PreviousPaperValues>({ resolver: zodResolver(previousPaperSchema) });
-  const jsonTestSeriesForm = useForm<JsonTestSeriesValues>({ resolver: zodResolver(jsonTestSeriesSchema) });
-  const carouselItemForm = useForm<CarouselItemValues>({ resolver: zodResolver(carouselItemSchema) });
+  const scholarshipQuestionForm = useForm<ScholarshipQuestionValues>({ resolver: zodResolver(scholarshipQuestionSchema), defaultValues: { text: '', options: ['', '', '', ''], correctAnswer: '' } });
+  const jsonQuestionsForm = useForm<JsonQuestionsValues>({ resolver: zodResolver(jsonQuestionsSchema), defaultValues: { jsonInput: '' } });
+  const previousPaperForm = useForm<PreviousPaperValues>({ resolver: zodResolver(previousPaperSchema), defaultValues: { title: '', year: new Date().getFullYear(), file: undefined } });
+  const jsonTestSeriesForm = useForm<JsonTestSeriesValues>({ resolver: zodResolver(jsonTestSeriesSchema), defaultValues: { jsonInput: '' } });
+  const carouselItemForm = useForm<CarouselItemValues>({ resolver: zodResolver(carouselItemSchema), defaultValues: { title: '', imageUrl: '', linkUrl: '' } });
 
 
   const handleEnrollmentAction = async (id: string, newStatus: 'approved' | 'rejected') => {
@@ -289,7 +289,17 @@ function AdminDashboard() {
         imageUrl = await fileToDataUrl(data.imageFile);
       }
       
-      await addDoc(collection(firestore, 'courses'), { ...data, imageUrl, createdAt: serverTimestamp(), imageFile: null });
+      const courseData = {
+        title: data.title,
+        category: data.category,
+        description: data.description,
+        price: data.price,
+        isFree: data.isFree,
+        imageUrl,
+        createdAt: serverTimestamp(),
+      };
+
+      await addDoc(collection(firestore, 'courses'), courseData);
       toast({ title: 'Success', description: 'Course created successfully.' });
       courseForm.reset();
     } catch (error) {
@@ -523,8 +533,14 @@ function AdminDashboard() {
                     <FormField control={courseForm.control} name="title" render={({ field }) => (<FormItem><FormLabel>Course Title</FormLabel><FormControl><Input placeholder="e.g. Algebra Fundamentals" {...field} /></FormControl><FormMessage /></FormItem>)}/>
                     <FormField control={courseForm.control} name="category" render={({ field }) => (<FormItem><FormLabel>Category</FormLabel><FormControl><Input placeholder="e.g. Maths" {...field} /></FormControl><FormMessage /></FormItem>)}/>
                     <FormField control={courseForm.control} name="price" render={({ field }) => (<FormItem><FormLabel>Price (INR)</FormLabel><FormControl><Input type="number" placeholder="e.g. 499" {...field} /></FormControl><FormMessage /></FormItem>)}/>
-                    <FormField control={courseForm.control} name="imageFile" render={({ field: { value, onChange, ...fieldProps } }) => (
-                      <FormItem><FormLabel>Cover Image</FormLabel><FormControl><Input type="file" accept="image/*" onChange={(e) => onChange(e.target.files?.[0])} {...fieldProps} /></FormControl><FormMessage /></FormItem>
+                    <FormField control={courseForm.control} name="imageFile" render={({ field: { onChange, ...fieldProps } }) => (
+                      <FormItem>
+                        <FormLabel>Cover Image</FormLabel>
+                        <FormControl>
+                          <Input type="file" accept="image/*" onChange={(e) => onChange(e.target.files?.[0])} {...fieldProps} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
                     )}/>
                     <FormField control={courseForm.control} name="isFree" render={({ field }) => (<FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm"><div className="space-y-0.5"><FormLabel>Mark as Free</FormLabel><FormDescription>If checked, this course will be available for free.</FormDescription></div><FormControl><input type="checkbox" checked={field.value} onChange={field.onChange} className="h-5 w-5"/></FormControl></FormItem>)}/>
                     <FormField control={courseForm.control} name="description" render={({ field }) => (<FormItem><FormLabel>Description</FormLabel><FormControl><Textarea placeholder="A short description of the course content." className="min-h-32" {...field} /></FormControl><FormMessage /></FormItem>)}/>
@@ -603,7 +619,7 @@ function AdminDashboard() {
                         <Form {...previousPaperForm}><form onSubmit={previousPaperForm.handleSubmit(onPreviousPaperSubmit)} className="grid gap-4">
                             <FormField control={previousPaperForm.control} name="title" render={({ field }) => (<FormItem><FormLabel>Paper Title</FormLabel><FormControl><Input placeholder="e.g. UPSC Prelims 2023" {...field} /></FormControl><FormMessage /></FormItem>)}/>
                             <FormField control={previousPaperForm.control} name="year" render={({ field }) => (<FormItem><FormLabel>Year</FormLabel><FormControl><Input type="number" placeholder="e.g. 2023" {...field} /></FormControl><FormMessage /></FormItem>)}/>
-                            <FormField control={previousPaperForm.control} name="file" render={({ field: { value, onChange, ...rest } }) => (<FormItem><FormLabel>File (PDF)</FormLabel><FormControl><Input type="file" accept=".pdf" onChange={(e) => onChange(e.target.files?.[0])} {...rest} /></FormControl><FormMessage /></FormItem>)}/>
+                            <FormField control={previousPaperForm.control} name="file" render={({ field: { onChange, ...rest } }) => (<FormItem><FormLabel>File (PDF)</FormLabel><FormControl><Input type="file" accept=".pdf" onChange={(e) => onChange(e.target.files?.[0])} {...rest} /></FormControl><FormMessage /></FormItem>)}/>
                             <Button type="submit" disabled={previousPaperForm.formState.isSubmitting}>{previousPaperForm.formState.isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin"/>Adding...</> : <><Newspaper className="mr-2"/>Add Paper</>}</Button>
                         </form></Form>
                     </CardContent>
@@ -795,5 +811,3 @@ function AdminDashboard() {
     </div>
   );
 }
-
-    
