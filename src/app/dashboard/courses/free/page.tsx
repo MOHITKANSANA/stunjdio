@@ -64,7 +64,7 @@ const FreeCourseCard = ({ course, courseId }: { course: any, courseId: string })
 
 export default function FreeCoursesPage() {
   const [coursesCollection, loading, error] = useCollection(
-    query(collection(firestore, 'courses'), where('isFree', '==', true))
+    query(collection(firestore, 'courses'), where('isFree', '==', true), orderBy('title', 'asc'))
   );
 
   return (

@@ -34,20 +34,20 @@ export default function DashboardPage() {
     
     const quickAccessItems = [
       { label: "Paid Courses", icon: Wallet, href: "/dashboard/courses"},
+      { label: "Free Courses", icon: BookOpen, href: "/dashboard/courses/free"},
       { label: "Live Class", icon: Video, href: "/dashboard/live-class"},
       { label: "Test Series", icon: BookCopy, href: "/dashboard/ai-test?tab=series" },
+      { label: "AI Tests", icon: Award, href: "/dashboard/ai-test?tab=ai" },
       { label: "Previous Papers", icon: Newspaper, href: "/dashboard/papers" },
       { label: "Current Affairs", icon: Globe, href: "#" },
       { label: "Quiz & Games", icon: Puzzle, href: "#"},
-      { label: "AI Tests", icon: Award, href: "/dashboard/ai-test?tab=ai" },
       { label: "Scholarship", icon: Award, href: "/dashboard/scholarship" },
-      { label: "Free Courses", icon: BookOpen, href: "/dashboard/courses/free"},
     ];
     
   return (
     <div className="flex flex-col h-full bg-background space-y-6">
-      <div className="p-4 bg-primary/10 rounded-lg">
-          <h2 className="text-2xl font-bold text-primary">Hello, {user?.displayName || 'Student'}!</h2>
+      <div className="text-left">
+          <h2 className="text-2xl font-bold text-foreground">Hello, {user?.displayName || 'Student'}!</h2>
           <p className="text-muted-foreground">{t('motivational_line')}</p>
       </div>
 
@@ -58,7 +58,7 @@ export default function DashboardPage() {
              <CarouselItem key={item.id}>
                 <Link href={item.data().linkUrl || "#"}>
                     <div className="relative h-48 w-full rounded-lg overflow-hidden">
-                        <Image src={item.data().imageUrl} alt={item.data().title || "Carousel Image"} layout="fill" objectFit="cover" />
+                        <Image src={item.data().imageUrl} alt={item.data().title || "Carousel Image"} layout="fill" objectFit="cover" data-ai-hint="advertisement" />
                     </div>
                 </Link>
             </CarouselItem>

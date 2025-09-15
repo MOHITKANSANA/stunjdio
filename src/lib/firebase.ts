@@ -12,17 +12,21 @@ const firebaseConfig = {
   appId: "1:1064325037320:web:d9ce26cc409e20702700bd"
 };
 
-let app: FirebaseApp;
+const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 
-if (!getApps().length) {
-  app = initializeApp(firebaseConfig);
+let auth;
+if (typeof window !== 'undefined') {
+  try {
+      auth = initializeAuth(app, {
+        persistence: browserLocalPersistence
+      });
+  } catch (error) {
+      console.error("Firebase Auth initialization error on client", error);
+      auth = getAuth(app);
+  }
 } else {
-  app = getApp();
+  auth = getAuth(app);
 }
-
-const auth = initializeAuth(app, {
-  persistence: browserLocalPersistence
-});
 
 const firestore = getFirestore(app);
 

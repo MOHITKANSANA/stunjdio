@@ -537,7 +537,7 @@ function AdminDashboard() {
                       <FormItem>
                         <FormLabel>Cover Image</FormLabel>
                         <FormControl>
-                          <Input type="file" accept="image/*" onChange={(e) => onChange(e.target.files?.[0])} {...fieldProps} />
+                          <Input type="file" accept="image/*" onChange={(e) => onChange(e.target.files?.[0])} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -619,7 +619,7 @@ function AdminDashboard() {
                         <Form {...previousPaperForm}><form onSubmit={previousPaperForm.handleSubmit(onPreviousPaperSubmit)} className="grid gap-4">
                             <FormField control={previousPaperForm.control} name="title" render={({ field }) => (<FormItem><FormLabel>Paper Title</FormLabel><FormControl><Input placeholder="e.g. UPSC Prelims 2023" {...field} /></FormControl><FormMessage /></FormItem>)}/>
                             <FormField control={previousPaperForm.control} name="year" render={({ field }) => (<FormItem><FormLabel>Year</FormLabel><FormControl><Input type="number" placeholder="e.g. 2023" {...field} /></FormControl><FormMessage /></FormItem>)}/>
-                            <FormField control={previousPaperForm.control} name="file" render={({ field: { onChange, ...rest } }) => (<FormItem><FormLabel>File (PDF)</FormLabel><FormControl><Input type="file" accept=".pdf" onChange={(e) => onChange(e.target.files?.[0])} {...rest} /></FormControl><FormMessage /></FormItem>)}/>
+                            <FormField control={previousPaperForm.control} name="file" render={({ field: { onChange, ...rest } }) => (<FormItem><FormLabel>File (PDF)</FormLabel><FormControl><Input type="file" accept=".pdf" onChange={(e) => onChange(e.target.files?.[0])} /></FormControl><FormMessage /></FormItem>)}/>
                             <Button type="submit" disabled={previousPaperForm.formState.isSubmitting}>{previousPaperForm.formState.isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin"/>Adding...</> : <><Newspaper className="mr-2"/>Add Paper</>}</Button>
                         </form></Form>
                     </CardContent>
@@ -761,7 +761,7 @@ function AdminDashboard() {
                   <Form {...qrCodeForm}>
                     <form onSubmit={qrCodeForm.handleSubmit(onQrCodeSubmit)} className="space-y-4">
                        <FormField control={qrCodeForm.control} name="imageFile" render={({ field: { value, onChange, ...fieldProps } }) => (
-                          <FormItem><FormLabel>New QR Code Image</FormLabel><FormControl><Input type="file" accept="image/*" onChange={(e) => onChange(e.target.files?.[0])} {...fieldProps} /></FormControl><FormMessage /></FormItem>
+                          <FormItem><FormLabel>New QR Code Image</FormLabel><FormControl><Input type="file" accept="image/*" onChange={(e) => onChange(e.target.files?.[0])} /></FormControl><FormMessage /></FormItem>
                         )}/>
                       <Button type="submit" disabled={qrCodeForm.formState.isSubmitting}>
                         {qrCodeForm.formState.isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin"/>Uploading...</> : <><Upload className="mr-2 h-4 w-4"/>Upload QR Code</>}
