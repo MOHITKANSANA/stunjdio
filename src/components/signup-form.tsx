@@ -15,7 +15,7 @@ import { BookOpenCheck, Loader2, Upload } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
 import type { UserCredential } from "firebase/auth";
-import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import Link from "next/link";
 import { statesAndDistricts } from "@/lib/states-districts";
 
