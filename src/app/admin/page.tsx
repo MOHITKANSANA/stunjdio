@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { useCollection } from 'react-firebase-hooks/firestore';
-import { collection, query, orderBy, doc, updateDoc, addDoc, deleteDoc, serverTimestamp, setDoc, writeBatch } from 'firebase/firestore';
+import { collection, query, orderBy, doc, updateDoc, addDoc, deleteDoc, serverTimestamp, setDoc, writeBatch, getDocs, where } from 'firebase/firestore';
 import { firestore } from '@/lib/firebase';
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
@@ -216,12 +216,39 @@ function AdminDashboard() {
   const [qrCodeDoc] = useCollection(collection(firestore, 'settings'));
   const [scholarshipSettingsDoc, scholarshipSettingsLoading] = useCollection(collection(firestore, 'settings'));
   const [scholarshipQuestionsCollection, scholarshipQuestionsLoading] = useCollection(query(collection(firestore, 'scholarshipTest'), orderBy('createdAt', 'asc')));
-  const [scholarshipApplicants, scholarshipApplicantsLoading] = useCollection(query(collection(firestore, 'scholarshipApplications'), orderBy('appliedAt', 'desc')));
+  const [scholarshipApplicants, scholarshipApplicantsLoading, scholarshipApplicantsError] = useCollection(query(collection(firestore, 'scholarshipApplications'), orderBy('appliedAt', 'desc')));
   const [carouselItemsCollection, carouselItemsLoading] = useCollection(query(collection(firestore, 'homepageCarousel'), orderBy('createdAt', 'asc')));
 
 
   const qrCodeUrl = qrCodeDoc?.docs.find(d => d.id === 'paymentQrCode')?.data().url;
   const scholarshipSettings = scholarshipSettingsDoc?.docs.find(d => d.id === 'scholarship')?.data();
+  
+  const [applicantTestScores, setApplicantTestScores] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    const fetchScores = async () => {
+        if (scholarshipApplicants) {
+            const scores: Record<string, string> = {};
+            for (const appDoc of scholarshipApplicants.docs) {
+                const app = appDoc.data();
+                if (app.status === 'test_taken') {
+                    const q = query(
+                        collection(firestore, 'scholarshipTestResults'), 
+                        where('applicationNumber', '==', app.applicationNumber)
+                    );
+                    const resultsSnapshot = await getDocs(q);
+                    if (!resultsSnapshot.empty) {
+                        const resultData = resultsSnapshot.docs[0].data();
+                        scores[appDoc.id] = `${resultData.score}/${resultData.totalQuestions}`;
+                    }
+                }
+            }
+            setApplicantTestScores(scores);
+        }
+    };
+    fetchScores();
+  }, [scholarshipApplicants]);
+
 
   const { toast } = useToast();
   
@@ -490,14 +517,14 @@ function AdminDashboard() {
         <TabsContent value="content">
           <div className="grid md:grid-cols-2 gap-6">
              <Card>
-              <CardHeader><CardTitle>Create & Manage Courses</CardTitle><CardDescription>Fill out the details to add a new course or manage existing ones.</CardDescription></CardHeader>
+              <CardHeader><CardTitle>Create &amp; Manage Courses</CardTitle><CardDescription>Fill out the details to add a new course or manage existing ones.</CardDescription></CardHeader>
               <CardContent>
                 <Form {...courseForm}><form onSubmit={courseForm.handleSubmit(onCourseSubmit)} className="grid gap-6 mb-6">
                     <FormField control={courseForm.control} name="title" render={({ field }) => (<FormItem><FormLabel>Course Title</FormLabel><FormControl><Input placeholder="e.g. Algebra Fundamentals" {...field} /></FormControl><FormMessage /></FormItem>)}/>
                     <FormField control={courseForm.control} name="category" render={({ field }) => (<FormItem><FormLabel>Category</FormLabel><FormControl><Input placeholder="e.g. Maths" {...field} /></FormControl><FormMessage /></FormItem>)}/>
                     <FormField control={courseForm.control} name="price" render={({ field }) => (<FormItem><FormLabel>Price (INR)</FormLabel><FormControl><Input type="number" placeholder="e.g. 499" {...field} /></FormControl><FormMessage /></FormItem>)}/>
-                    <FormField control={courseForm.control} name="imageFile" render={({ field }) => (
-                      <FormItem><FormLabel>Cover Image</FormLabel><FormControl><Input type="file" accept="image/*" onChange={(e) => field.onChange(e.target.files?.[0])} /></FormControl><FormMessage /></FormItem>
+                    <FormField control={courseForm.control} name="imageFile" render={({ field: { value, onChange, ...fieldProps } }) => (
+                      <FormItem><FormLabel>Cover Image</FormLabel><FormControl><Input type="file" accept="image/*" onChange={(e) => onChange(e.target.files?.[0])} {...fieldProps} /></FormControl><FormMessage /></FormItem>
                     )}/>
                     <FormField control={courseForm.control} name="isFree" render={({ field }) => (<FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm"><div className="space-y-0.5"><FormLabel>Mark as Free</FormLabel><FormDescription>If checked, this course will be available for free.</FormDescription></div><FormControl><input type="checkbox" checked={field.value} onChange={field.onChange} className="h-5 w-5"/></FormControl></FormItem>)}/>
                     <FormField control={courseForm.control} name="description" render={({ field }) => (<FormItem><FormLabel>Description</FormLabel><FormControl><Textarea placeholder="A short description of the course content." className="min-h-32" {...field} /></FormControl><FormMessage /></FormItem>)}/>
@@ -576,7 +603,7 @@ function AdminDashboard() {
                         <Form {...previousPaperForm}><form onSubmit={previousPaperForm.handleSubmit(onPreviousPaperSubmit)} className="grid gap-4">
                             <FormField control={previousPaperForm.control} name="title" render={({ field }) => (<FormItem><FormLabel>Paper Title</FormLabel><FormControl><Input placeholder="e.g. UPSC Prelims 2023" {...field} /></FormControl><FormMessage /></FormItem>)}/>
                             <FormField control={previousPaperForm.control} name="year" render={({ field }) => (<FormItem><FormLabel>Year</FormLabel><FormControl><Input type="number" placeholder="e.g. 2023" {...field} /></FormControl><FormMessage /></FormItem>)}/>
-                            <FormField control={previousPaperForm.control} name="file" render={({ field: { onChange, ...rest } }) => (<FormItem><FormLabel>File (PDF)</FormLabel><FormControl><Input type="file" accept=".pdf" onChange={(e) => onChange(e.target.files?.[0])} {...rest} /></FormControl><FormMessage /></FormItem>)}/>
+                            <FormField control={previousPaperForm.control} name="file" render={({ field: { value, onChange, ...rest } }) => (<FormItem><FormLabel>File (PDF)</FormLabel><FormControl><Input type="file" accept=".pdf" onChange={(e) => onChange(e.target.files?.[0])} {...rest} /></FormControl><FormMessage /></FormItem>)}/>
                             <Button type="submit" disabled={previousPaperForm.formState.isSubmitting}>{previousPaperForm.formState.isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin"/>Adding...</> : <><Newspaper className="mr-2"/>Add Paper</>}</Button>
                         </form></Form>
                     </CardContent>
@@ -664,9 +691,10 @@ function AdminDashboard() {
                     <CardContent>
                          <div className="max-h-[1200px] overflow-y-auto">
                             <Table>
-                                <TableHeader><TableRow><TableHead>Applicant</TableHead><TableHead>Payment</TableHead><TableHead>Status</TableHead><TableHead>Result</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
+                                <TableHeader><TableRow><TableHead>Applicant</TableHead><TableHead>Score</TableHead><TableHead>Status</TableHead><TableHead>Result</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
                                 <TableBody>
                                     {scholarshipApplicantsLoading && <TableRow><TableCell colSpan={5}><Skeleton className="h-12 w-full"/></TableCell></TableRow>}
+                                    {scholarshipApplicantsError && <TableRow><TableCell colSpan={5} className="text-destructive text-center">Error loading applicants.</TableCell></TableRow>}
                                     {scholarshipApplicants?.docs.map(doc => {
                                         const app = doc.data();
                                         return (
@@ -674,15 +702,14 @@ function AdminDashboard() {
                                                 <TableCell>
                                                     <div className="font-medium">{app.name}</div>
                                                     <div className="text-sm text-muted-foreground">{app.applicationNumber}</div>
+                                                    {app.paymentScreenshotDataUrl ? (
+                                                        <Link href={app.paymentScreenshotDataUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-500 hover:underline">
+                                                            View Payment
+                                                        </Link>
+                                                    ) : null}
                                                 </TableCell>
                                                 <TableCell>
-                                                    {app.paymentScreenshotDataUrl ? (
-                                                        <Link href={app.paymentScreenshotDataUrl} target="_blank" rel="noopener noreferrer">
-                                                            <Image src={app.paymentScreenshotDataUrl} alt="Payment" width={60} height={60} className="rounded-md object-cover"/>
-                                                        </Link>
-                                                    ) : (
-                                                        <span className="text-xs text-muted-foreground">Not Uploaded</span>
-                                                    )}
+                                                    <Badge variant="outline">{applicantTestScores[doc.id] || 'N/A'}</Badge>
                                                 </TableCell>
                                                 <TableCell>{getStatusBadge(app.status)}</TableCell>
                                                 <TableCell>{getResultBadge(app.resultStatus)}</TableCell>
@@ -717,8 +744,8 @@ function AdminDashboard() {
                 <CardContent>
                   <Form {...qrCodeForm}>
                     <form onSubmit={qrCodeForm.handleSubmit(onQrCodeSubmit)} className="space-y-4">
-                       <FormField control={qrCodeForm.control} name="imageFile" render={({ field }) => (
-                          <FormItem><FormLabel>New QR Code Image</FormLabel><FormControl><Input type="file" accept="image/*" onChange={(e) => field.onChange(e.target.files?.[0])} /></FormControl><FormMessage /></FormItem>
+                       <FormField control={qrCodeForm.control} name="imageFile" render={({ field: { value, onChange, ...fieldProps } }) => (
+                          <FormItem><FormLabel>New QR Code Image</FormLabel><FormControl><Input type="file" accept="image/*" onChange={(e) => onChange(e.target.files?.[0])} {...fieldProps} /></FormControl><FormMessage /></FormItem>
                         )}/>
                       <Button type="submit" disabled={qrCodeForm.formState.isSubmitting}>
                         {qrCodeForm.formState.isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin"/>Uploading...</> : <><Upload className="mr-2 h-4 w-4"/>Upload QR Code</>}
@@ -768,3 +795,5 @@ function AdminDashboard() {
     </div>
   );
 }
+
+    
