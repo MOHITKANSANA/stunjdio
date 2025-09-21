@@ -17,7 +17,7 @@ import { firestore } from '@/lib/firebase';
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Trash2, Check, X, Upload, Video, FileText, StickyNote, PlusCircle, Save, Download, ThumbsUp, ThumbsDown, Clock, CircleAlert, CheckCircle2, XCircle, KeyRound, Newspaper, Image as ImageIcon } from 'lucide-react';
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -505,6 +505,15 @@ function AdminDashboard() {
             return <Badge variant="secondary"><CircleAlert className="mr-1.5 h-3 w-3"/>Pending</Badge>;
     }
   }
+  
+  const isValidUrl = (url: string) => {
+    try {
+        new URL(url);
+        return true;
+    } catch (e) {
+        return false;
+    }
+  };
 
 
   return (
@@ -530,14 +539,19 @@ function AdminDashboard() {
                     ))}
                     {enrollmentsCollection?.docs.map((doc) => {
                       const enrollment = doc.data();
+                      const hasValidScreenshot = enrollment.screenshotDataUrl && isValidUrl(enrollment.screenshotDataUrl);
                       return (
                         <TableRow key={doc.id}>
                           <TableCell><div className="font-medium">{enrollment.userDisplayName}</div><div className="text-sm text-muted-foreground">{enrollment.userEmail}</div></TableCell>
                           <TableCell>{enrollment.courseTitle}</TableCell>
                           <TableCell>
-                            <Link href={enrollment.screenshotDataUrl} target="_blank" rel="noopener noreferrer">
-                              <Image src={enrollment.screenshotDataUrl} alt="Payment Screenshot" width={80} height={80} className="rounded-md object-cover" />
-                            </Link>
+                            {hasValidScreenshot ? (
+                              <Link href={enrollment.screenshotDataUrl} target="_blank" rel="noopener noreferrer">
+                                <Image src={enrollment.screenshotDataUrl} alt="Payment Screenshot" width={80} height={80} className="rounded-md object-cover" />
+                              </Link>
+                            ) : (
+                                <span className="text-xs text-muted-foreground">No Screenshot</span>
+                            )}
                           </TableCell>
                           <TableCell><Badge variant={enrollment.status === 'pending' ? 'secondary' : enrollment.status === 'approved' ? 'default' : 'destructive'}>{enrollment.status}</Badge></TableCell>
                           <TableCell className="text-right">
@@ -566,11 +580,11 @@ function AdminDashboard() {
                     <FormField control={courseForm.control} name="title" render={({ field }) => (<FormItem><FormLabel>Course Title</FormLabel><FormControl><Input placeholder="e.g. Algebra Fundamentals" {...field} /></FormControl><FormMessage /></FormItem>)}/>
                     <FormField control={courseForm.control} name="category" render={({ field }) => (<FormItem><FormLabel>Category</FormLabel><FormControl><Input placeholder="e.g. Maths" {...field} /></FormControl><FormMessage /></FormItem>)}/>
                     <FormField control={courseForm.control} name="price" render={({ field }) => (<FormItem><FormLabel>Price (INR)</FormLabel><FormControl><Input type="number" placeholder="e.g. 499" {...field} /></FormControl><FormMessage /></FormItem>)}/>
-                    <FormField control={courseForm.control} name="imageFile" render={({ field: { onChange, ...fieldProps } }) => (
+                    <FormField control={courseForm.control} name="imageFile" render={({ field: { onChange, value, ...fieldProps } }) => (
                       <FormItem>
                         <FormLabel>Cover Image</FormLabel>
                         <FormControl>
-                          <Input type="file" accept="image/*" onChange={(e) => onChange(e.target.files?.[0])} />
+                          <Input type="file" accept="image/*" onChange={(e) => onChange(e.target.files?.[0])} {...fieldProps} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -652,7 +666,7 @@ function AdminDashboard() {
                         <Form {...previousPaperForm}><form onSubmit={previousPaperForm.handleSubmit(onPreviousPaperSubmit)} className="grid gap-4">
                             <FormField control={previousPaperForm.control} name="title" render={({ field }) => (<FormItem><FormLabel>Paper Title</FormLabel><FormControl><Input placeholder="e.g. UPSC Prelims 2023" {...field} /></FormControl><FormMessage /></FormItem>)}/>
                             <FormField control={previousPaperForm.control} name="year" render={({ field }) => (<FormItem><FormLabel>Year</FormLabel><FormControl><Input type="number" placeholder="e.g. 2023" {...field} /></FormControl><FormMessage /></FormItem>)}/>
-                            <FormField control={previousPaperForm.control} name="file" render={({ field: { onChange, ...rest } }) => (<FormItem><FormLabel>Upload File (PDF)</FormLabel><FormControl><Input type="file" accept=".pdf" onChange={(e) => onChange(e.target.files?.[0])} /></FormControl><FormMessage /></FormItem>)}/>
+                            <FormField control={previousPaperForm.control} name="file" render={({ field: { onChange, value, ...rest } }) => (<FormItem><FormLabel>Upload File (PDF)</FormLabel><FormControl><Input type="file" accept=".pdf" onChange={(e) => onChange(e.target.files?.[0])} {...rest} /></FormControl><FormMessage /></FormItem>)}/>
                             <div className="text-center text-xs text-muted-foreground">OR</div>
                             <FormField control={previousPaperForm.control} name="fileUrl" render={({ field }) => (<FormItem><FormLabel>File URL (PDF)</FormLabel><FormControl><Input placeholder="https://example.com/paper.pdf" {...field} /></FormControl><FormMessage /></FormItem>)}/>
                             <Button type="submit" disabled={previousPaperForm.formState.isSubmitting}>{previousPaperForm.formState.isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin"/>Adding...</> : <><Newspaper className="mr-2"/>Add Paper</>}</Button>
@@ -796,7 +810,7 @@ function AdminDashboard() {
                   <Form {...qrCodeForm}>
                     <form onSubmit={qrCodeForm.handleSubmit(onQrCodeSubmit)} className="space-y-4">
                        <FormField control={qrCodeForm.control} name="imageFile" render={({ field: { value, onChange, ...fieldProps } }) => (
-                          <FormItem><FormLabel>New QR Code Image</FormLabel><FormControl><Input type="file" accept="image/*" onChange={(e) => onChange(e.target.files?.[0])} /></FormControl><FormMessage /></FormItem>
+                          <FormItem><FormLabel>New QR Code Image</FormLabel><FormControl><Input type="file" accept="image/*" onChange={(e) => onChange(e.target.files?.[0])} {...fieldProps} /></FormControl><FormMessage /></FormItem>
                         )}/>
                       <Button type="submit" disabled={qrCodeForm.formState.isSubmitting}>
                         {qrCodeForm.formState.isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin"/>Uploading...</> : <><Upload className="mr-2 h-4 w-4"/>Upload QR Code</>}
@@ -819,10 +833,10 @@ function AdminDashboard() {
                   <CardContent>
                       <Form {...carouselItemForm}>
                           <form onSubmit={carouselItemForm.handleSubmit(onCarouselItemSubmit)} className="grid gap-4 mb-6">
-                              <FormField control={carouselItemForm.control} name="imageFile" render={({ field: { onChange, ...fieldProps } }) => (
+                              <FormField control={carouselItemForm.control} name="imageFile" render={({ field: { value, onChange, ...fieldProps } }) => (
                                 <FormItem>
                                     <FormLabel>Image</FormLabel>
-                                    <FormControl><Input type="file" accept="image/*" onChange={(e) => onChange(e.target.files?.[0])} /></FormControl>
+                                    <FormControl><Input type="file" accept="image/*" onChange={(e) => onChange(e.target.files?.[0])} {...fieldProps} /></FormControl>
                                     <FormDescription>Recommended size: 800x400 pixels.</FormDescription>
                                     <FormMessage />
                                 </FormItem>

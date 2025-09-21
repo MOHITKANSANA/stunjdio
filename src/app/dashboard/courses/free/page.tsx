@@ -30,7 +30,7 @@ const FreeCourseCard = ({ course, courseId }: { course: any, courseId: string })
                 enrollmentType: 'Course Enrollment',
                 courseId: courseId,
                 courseTitle: course.title,
-                screenshotDataUrl: 'FREE_COURSE',
+                screenshotDataUrl: 'https://placehold.co/600x400/E0FFFF/000000?text=Free+Course',
                 userId: user.uid,
                 userEmail: user.email,
                 userDisplayName: user.displayName,
