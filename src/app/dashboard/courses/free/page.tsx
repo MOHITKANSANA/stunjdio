@@ -2,17 +2,18 @@
 'use client';
 
 import { useCollection } from 'react-firebase-hooks/firestore';
-import { collection, query, orderBy, where, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, query, orderBy, addDoc, serverTimestamp } from 'firebase/firestore';
 import { firestore } from '@/lib/firebase';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from '@/components/ui/skeleton';
 import { BookOpenCheck } from 'lucide-react';
-import Link from 'next/link';
 import Image from 'next/image';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
+import type { DocumentData, QueryDocumentSnapshot } from 'firebase/firestore';
+
 
 const FreeCourseCard = ({ course, courseId }: { course: any, courseId: string }) => {
     const { user } = useAuth();
@@ -63,9 +64,14 @@ const FreeCourseCard = ({ course, courseId }: { course: any, courseId: string })
 };
 
 export default function FreeCoursesPage() {
+  // Fetch all courses without filtering by isFree to avoid composite index requirement.
+  // We will filter and sort on the client side.
   const [coursesCollection, loading, error] = useCollection(
-    query(collection(firestore, 'courses'), where('isFree', '==', true), orderBy('title', 'asc'))
+    query(collection(firestore, 'courses'), orderBy('title', 'asc'))
   );
+
+  // Client-side filtering for free courses
+  const freeCourses = coursesCollection?.docs.filter(doc => doc.data().isFree);
 
   return (
     <div className="space-y-8 p-4 md:p-8">
@@ -81,7 +87,7 @@ export default function FreeCoursesPage() {
       )}
       {error && <p className="text-destructive">Error loading courses: {error.message}</p>}
 
-      {coursesCollection && coursesCollection.docs.length === 0 && (
+      {!loading && freeCourses && freeCourses.length === 0 && (
           <div className="text-center py-12">
             <BookOpenCheck className="mx-auto h-12 w-12 text-muted-foreground" />
             <h3 className="mt-4 text-lg font-semibold">No Free Courses Available</h3>
@@ -90,7 +96,7 @@ export default function FreeCoursesPage() {
       )}
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {coursesCollection?.docs.map((doc) => (
+        {freeCourses?.map((doc) => (
           <FreeCourseCard key={doc.id} course={doc.data()} courseId={doc.id} />
         ))}
       </div>

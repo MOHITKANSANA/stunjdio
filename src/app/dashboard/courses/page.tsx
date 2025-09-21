@@ -2,7 +2,7 @@
 'use client';
 
 import { useCollection } from 'react-firebase-hooks/firestore';
-import { collection, query, orderBy, where } from 'firebase/firestore';
+import { collection, query, orderBy } from 'firebase/firestore';
 import { firestore } from '@/lib/firebase';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,6 +12,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/hooks/use-auth';
+import type { DocumentData, QueryDocumentSnapshot } from 'firebase/firestore';
 
 const CourseCard = ({ course, courseId, isEnrolled }: { course: any, courseId: string, isEnrolled: boolean }) => {
     return (
@@ -26,24 +27,26 @@ const CourseCard = ({ course, courseId, isEnrolled }: { course: any, courseId: s
             <CardContent className="flex-grow">
                 <p className="text-muted-foreground line-clamp-3">{course.description}</p>
                 <div className="flex items-center font-bold text-lg mt-4">
-                    <IndianRupee className="h-5 w-5 mr-1" />
-                    {course.price ? course.price.toLocaleString() : 'Free'}
+                    {course.isFree ? 'Free' : (
+                        <>
+                            <IndianRupee className="h-5 w-5 mr-1" />
+                            {course.price ? course.price.toLocaleString() : 'N/A'}
+                        </>
+                    )}
                 </div>
             </CardContent>
             <CardFooter>
                  <Button asChild className="w-full">
-                    {isEnrolled ? (
-                        <Link href={`/dashboard/courses/${courseId}`}>View Details</Link>
-                    ) : (
-                        <Link href={`/dashboard/payment-verification?courseId=${courseId}`}>Enroll Now</Link>
-                    )}
+                    <Link href={`/dashboard/courses/${courseId}`}>
+                        {isEnrolled ? 'View Details' : 'Enroll Now'}
+                    </Link>
                  </Button>
             </CardFooter>
         </Card>
     );
 };
 
-const CourseGrid = ({ courses, enrollments }: { courses: any[] | undefined, enrollments: any }) => {
+const CourseGrid = ({ courses, enrollments }: { courses: QueryDocumentSnapshot<DocumentData>[] | undefined, enrollments: any }) => {
     if (!courses) {
         return (
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
@@ -79,8 +82,10 @@ const CourseGrid = ({ courses, enrollments }: { courses: any[] | undefined, enro
 export default function CoursesPage() {
   const { user } = useAuth();
   
+  // Fetch all courses without filtering by isFree to avoid composite index requirement.
+  // We will filter and sort on the client side.
   const [coursesCollection, loading, error] = useCollection(
-    query(collection(firestore, 'courses'), where('isFree', '==', false), orderBy('title', 'asc'))
+    query(collection(firestore, 'courses'), orderBy('title', 'asc'))
   );
 
   const enrollmentsQuery = user 
@@ -90,10 +95,13 @@ export default function CoursesPage() {
         where('status', '==', 'approved')
       )
     : null;
-  const [enrollments, enrollmentsLoading] = useCollection(enrollmentsQuery);
+  const [enrollments] = useCollection(enrollmentsQuery);
   
-  const enrolledCourseIds = enrollments?.docs.map(doc => doc.data().courseId) || [];
-  const myCourses = coursesCollection?.docs.filter(doc => enrolledCourseIds.includes(doc.id));
+  const enrolledCourseIds = new Set(enrollments?.docs.map(doc => doc.data().courseId) || []);
+
+  // Client-side filtering
+  const allPaidCourses = coursesCollection?.docs.filter(doc => !doc.data().isFree);
+  const myCourses = coursesCollection?.docs.filter(doc => enrolledCourseIds.has(doc.id));
 
 
   return (
@@ -110,10 +118,22 @@ export default function CoursesPage() {
         </TabsList>
         <TabsContent value="all-courses" className="mt-6">
             {error && <p className="text-destructive">Error loading courses: {error.message}</p>}
-            <CourseGrid courses={coursesCollection?.docs} enrollments={enrollments} />
+            {loading ? (
+                <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                    {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-96 w-full" />)}
+                </div>
+            ) : (
+                <CourseGrid courses={allPaidCourses} enrollments={enrollments} />
+            )}
         </TabsContent>
          <TabsContent value="my-courses" className="mt-6">
-            <CourseGrid courses={myCourses} enrollments={enrollments} />
+            {loading ? (
+                 <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                    {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-96 w-full" />)}
+                </div>
+            ) : (
+                <CourseGrid courses={myCourses} enrollments={enrollments} />
+            )}
         </TabsContent>
       </Tabs>
     </div>

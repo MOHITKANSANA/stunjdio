@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, type ChangeEvent } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -91,7 +91,11 @@ type AccessKeyFormValues = z.infer<typeof accessKeySchema>;
 const previousPaperSchema = z.object({
     title: z.string().min(3, 'Title is required.'),
     year: z.coerce.number().min(2000).max(new Date().getFullYear()),
-    file: z.instanceof(File, { message: 'A PDF file is required.' }),
+    file: z.instanceof(File).optional(),
+    fileUrl: z.string().url().optional(),
+}).refine(data => data.file || data.fileUrl, {
+    message: 'Either a file upload or a file URL is required.',
+    path: ['file'],
 });
 type PreviousPaperValues = z.infer<typeof previousPaperSchema>;
 
@@ -119,9 +123,12 @@ const jsonTestSeriesSchema = z.object({
 type JsonTestSeriesValues = z.infer<typeof jsonTestSeriesSchema>;
 
 const carouselItemSchema = z.object({
-    title: z.string().min(3, "Title is required."),
-    imageUrl: z.string().url("A valid image URL is required."),
-    linkUrl: z.string().url("A valid link URL is required."),
+    imageFile: z.instanceof(File, { message: "An image file is required." }),
+    internalLink: z.string().optional(),
+    externalLink: z.string().optional(),
+}).refine(data => data.internalLink || data.externalLink, {
+    message: 'Please select an internal link or provide an external one.',
+    path: ['internalLink'],
 });
 type CarouselItemValues = z.infer<typeof carouselItemSchema>;
 
@@ -135,6 +142,19 @@ const fileToDataUrl = (file: File): Promise<string> => {
 };
 
 const ADMIN_ACCESS_KEY = "GSC_ADMIN_2024";
+
+const APP_PAGES = [
+    { label: 'Home / Dashboard', value: '/dashboard' },
+    { label: 'All Courses', value: '/dashboard/courses' },
+    { label: 'Free Courses', value: '/dashboard/courses/free' },
+    { label: 'Live Classes', value: '/dashboard/live-class' },
+    { label: 'AI Tutor', value: '/dashboard/tutor' },
+    { label: 'AI Tests', value: '/dashboard/ai-test' },
+    { label: 'Test Series', value: '/dashboard/ai-test?tab=series' },
+    { label: 'Previous Papers', value: '/dashboard/papers' },
+    { label: 'Scholarship', value: '/dashboard/scholarship' },
+    { label: 'Profile', value: '/dashboard/profile' },
+];
 
 export default function AdminPage() {
   const [hasAccess, setHasAccess] = useState(false);
@@ -240,6 +260,8 @@ function AdminDashboard() {
                     if (!resultsSnapshot.empty) {
                         const resultData = resultsSnapshot.docs[0].data();
                         scores[appDoc.id] = `${resultData.score}/${resultData.totalQuestions}`;
+                    } else {
+                        scores[appDoc.id] = 'N/A';
                     }
                 }
             }
@@ -252,7 +274,7 @@ function AdminDashboard() {
 
   const { toast } = useToast();
   
-  const courseForm = useForm<CourseFormValues>({ resolver: zodResolver(courseFormSchema), defaultValues: { title: '', category: '', description: '', price: 0, isFree: false, imageFile: undefined } });
+  const courseForm = useForm<CourseFormValues>({ resolver: zodResolver(courseFormSchema), defaultValues: { title: '', category: '', description: '', price: 0, isFree: false } });
   const liveClassForm = useForm<LiveClassFormValues>({ resolver: zodResolver(liveClassFormSchema), defaultValues: { title: '', youtubeUrl: '', startTime: '' } });
   const qrCodeForm = useForm<QrCodeFormValues>({ resolver: zodResolver(qrCodeFormSchema) });
   const courseContentForm = useForm<CourseContentValues>({ resolver: zodResolver(courseContentSchema), defaultValues: { courseId: '', contentType: 'video', title: '', url: '' } });
@@ -268,9 +290,9 @@ function AdminDashboard() {
   });
   const scholarshipQuestionForm = useForm<ScholarshipQuestionValues>({ resolver: zodResolver(scholarshipQuestionSchema), defaultValues: { text: '', options: ['', '', '', ''], correctAnswer: '' } });
   const jsonQuestionsForm = useForm<JsonQuestionsValues>({ resolver: zodResolver(jsonQuestionsSchema), defaultValues: { jsonInput: '' } });
-  const previousPaperForm = useForm<PreviousPaperValues>({ resolver: zodResolver(previousPaperSchema), defaultValues: { title: '', year: new Date().getFullYear(), file: undefined } });
+  const previousPaperForm = useForm<PreviousPaperValues>({ resolver: zodResolver(previousPaperSchema), defaultValues: { title: '', year: new Date().getFullYear(), fileUrl: '' } });
   const jsonTestSeriesForm = useForm<JsonTestSeriesValues>({ resolver: zodResolver(jsonTestSeriesSchema), defaultValues: { jsonInput: '' } });
-  const carouselItemForm = useForm<CarouselItemValues>({ resolver: zodResolver(carouselItemSchema), defaultValues: { title: '', imageUrl: '', linkUrl: '' } });
+  const carouselItemForm = useForm<CarouselItemValues>({ resolver: zodResolver(carouselItemSchema), defaultValues: { internalLink: '', externalLink: '' } });
 
 
   const handleEnrollmentAction = async (id: string, newStatus: 'approved' | 'rejected') => {
@@ -338,8 +360,11 @@ function AdminDashboard() {
   
   const onPreviousPaperSubmit = async (data: PreviousPaperValues) => {
     try {
-        const fileUrl = await fileToDataUrl(data.file);
-        await addDoc(collection(firestore, 'previousPapers'), { title: data.title, year: data.year, fileUrl, createdAt: serverTimestamp() });
+        let finalFileUrl = data.fileUrl;
+        if (data.file) {
+            finalFileUrl = await fileToDataUrl(data.file);
+        }
+        await addDoc(collection(firestore, 'previousPapers'), { title: data.title, year: data.year, fileUrl: finalFileUrl, createdAt: serverTimestamp() });
         toast({ title: 'Success', description: 'Previous year paper added.' });
         previousPaperForm.reset();
     } catch (error) {
@@ -360,10 +385,18 @@ function AdminDashboard() {
 
   const onCarouselItemSubmit = async (data: CarouselItemValues) => {
     try {
-        await addDoc(collection(firestore, 'homepageCarousel'), { ...data, createdAt: serverTimestamp() });
+        const imageUrl = await fileToDataUrl(data.imageFile);
+        const linkUrl = data.externalLink || data.internalLink || '#';
+        
+        await addDoc(collection(firestore, 'homepageCarousel'), {
+            imageUrl,
+            linkUrl,
+            createdAt: serverTimestamp() 
+        });
         toast({ title: 'Success', description: 'Carousel item added.' });
         carouselItemForm.reset();
     } catch (error) {
+        console.error("Carousel submit error:", error);
         toast({ variant: 'destructive', title: 'Error', description: 'Could not add carousel item.' });
     }
   };
@@ -619,7 +652,9 @@ function AdminDashboard() {
                         <Form {...previousPaperForm}><form onSubmit={previousPaperForm.handleSubmit(onPreviousPaperSubmit)} className="grid gap-4">
                             <FormField control={previousPaperForm.control} name="title" render={({ field }) => (<FormItem><FormLabel>Paper Title</FormLabel><FormControl><Input placeholder="e.g. UPSC Prelims 2023" {...field} /></FormControl><FormMessage /></FormItem>)}/>
                             <FormField control={previousPaperForm.control} name="year" render={({ field }) => (<FormItem><FormLabel>Year</FormLabel><FormControl><Input type="number" placeholder="e.g. 2023" {...field} /></FormControl><FormMessage /></FormItem>)}/>
-                            <FormField control={previousPaperForm.control} name="file" render={({ field: { onChange, ...rest } }) => (<FormItem><FormLabel>File (PDF)</FormLabel><FormControl><Input type="file" accept=".pdf" onChange={(e) => onChange(e.target.files?.[0])} /></FormControl><FormMessage /></FormItem>)}/>
+                            <FormField control={previousPaperForm.control} name="file" render={({ field: { onChange, ...rest } }) => (<FormItem><FormLabel>Upload File (PDF)</FormLabel><FormControl><Input type="file" accept=".pdf" onChange={(e) => onChange(e.target.files?.[0])} /></FormControl><FormMessage /></FormItem>)}/>
+                            <div className="text-center text-xs text-muted-foreground">OR</div>
+                            <FormField control={previousPaperForm.control} name="fileUrl" render={({ field }) => (<FormItem><FormLabel>File URL (PDF)</FormLabel><FormControl><Input placeholder="https://example.com/paper.pdf" {...field} /></FormControl><FormMessage /></FormItem>)}/>
                             <Button type="submit" disabled={previousPaperForm.formState.isSubmitting}>{previousPaperForm.formState.isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin"/>Adding...</> : <><Newspaper className="mr-2"/>Add Paper</>}</Button>
                         </form></Form>
                     </CardContent>
@@ -784,9 +819,34 @@ function AdminDashboard() {
                   <CardContent>
                       <Form {...carouselItemForm}>
                           <form onSubmit={carouselItemForm.handleSubmit(onCarouselItemSubmit)} className="grid gap-4 mb-6">
-                              <FormField control={carouselItemForm.control} name="title" render={({ field }) => (<FormItem><FormLabel>Title</FormLabel><FormControl><Input placeholder="e.g. New Maths Course" {...field} /></FormControl><FormMessage /></FormItem>)}/>
-                              <FormField control={carouselItemForm.control} name="imageUrl" render={({ field }) => (<FormItem><FormLabel>Image URL</FormLabel><FormControl><Input placeholder="https://example.com/image.png" {...field} /></FormControl><FormMessage /></FormItem>)}/>
-                              <FormField control={carouselItemForm.control} name="linkUrl" render={({ field }) => (<FormItem><FormLabel>Link URL</FormLabel><FormControl><Input placeholder="/dashboard/courses" {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                              <FormField control={carouselItemForm.control} name="imageFile" render={({ field: { onChange, ...fieldProps } }) => (
+                                <FormItem>
+                                    <FormLabel>Image</FormLabel>
+                                    <FormControl><Input type="file" accept="image/*" onChange={(e) => onChange(e.target.files?.[0])} /></FormControl>
+                                    <FormDescription>Recommended size: 800x400 pixels.</FormDescription>
+                                    <FormMessage />
+                                </FormItem>
+                                )}/>
+                              <FormField control={carouselItemForm.control} name="internalLink" render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Link to App Page</FormLabel>
+                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                        <FormControl><SelectTrigger><SelectValue placeholder="Select a page to link to" /></SelectTrigger></FormControl>
+                                        <SelectContent>
+                                            {APP_PAGES.map(page => <SelectItem key={page.value} value={page.value}>{page.label}</SelectItem>)}
+                                        </SelectContent>
+                                    </Select>
+                                    <FormMessage />
+                                </FormItem>
+                                )}/>
+                                <div className="text-center text-xs text-muted-foreground">OR</div>
+                              <FormField control={carouselItemForm.control} name="externalLink" render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>External Link (Optional)</FormLabel>
+                                    <FormControl><Input placeholder="https://example.com" {...field} /></FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                                )}/>
                               <Button type="submit" disabled={carouselItemForm.formState.isSubmitting}>{carouselItemForm.formState.isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin"/>Adding...</> : <><PlusCircle className="mr-2"/>Add Item</>}</Button>
                           </form>
                       </Form>
@@ -796,8 +856,10 @@ function AdminDashboard() {
                             {carouselItemsLoading && <Skeleton className="h-9 w-full" />}
                             {carouselItemsCollection?.docs.map(doc => (
                                 <div key={doc.id} className="text-sm p-2 border rounded flex justify-between items-center gap-2">
-                                    <ImageIcon className="h-5 w-5 text-muted-foreground"/>
-                                    <span className="flex-1 truncate">{doc.data().title}</span>
+                                    <Image src={doc.data().imageUrl} alt="Carousel item" width={40} height={20} className="rounded" />
+                                    <span className="flex-1 truncate text-blue-500 hover:underline">
+                                        <a href={doc.data().linkUrl} target="_blank" rel="noopener noreferrer">{doc.data().linkUrl}</a>
+                                    </span>
                                     <Button variant="ghost" size="icon" onClick={() => deleteCarouselItem(doc.id)}><Trash2 className="h-4 w-4 text-destructive"/></Button>
                                 </div>
                             ))}
