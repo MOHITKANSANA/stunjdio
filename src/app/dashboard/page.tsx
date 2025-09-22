@@ -60,7 +60,7 @@ const MainDashboard = () => {
                     <CarouselItem key={item.id}>
                         <Link href={item.data().linkUrl || "#"}>
                             <div className="relative h-48 w-full rounded-lg overflow-hidden">
-                                <Image src={item.data().imageUrl} alt={item.data().title || "Carousel Image"} layout="fill" objectFit="cover" data-ai-hint="advertisement" />
+                                <Image src={item.data().imageUrl} alt={item.data().title || "Carousel Image"} fill style={{objectFit: "cover"}} data-ai-hint="advertisement" />
                             </div>
                         </Link>
                     </CarouselItem>
@@ -118,10 +118,10 @@ const KidsTubeDashboard = () => {
     }
 
     useEffect(() => {
-        if (videos && !videos.empty) {
+        if (videos && !videos.empty && !selectedVideo) {
             setSelectedVideo(videos.docs[0].data());
         }
-    }, [videos]);
+    }, [videos, selectedVideo]);
     
     if (loading) return <div><Skeleton className="w-full aspect-video rounded-lg mb-4" /><Skeleton className="h-8 w-3/4 mb-4" /><Skeleton className="h-40 w-full" /></div>
     if (error) return <p className="text-destructive">Error loading videos.</p>
@@ -153,14 +153,15 @@ const KidsTubeDashboard = () => {
                 {videos.docs.map(doc => {
                     const video = doc.data();
                     const videoId = getYoutubeVideoId(video.videoUrl);
+                    if (!videoId) return null;
                     return (
                         <div key={doc.id} className="flex items-center gap-4 cursor-pointer" onClick={() => setSelectedVideo(video)}>
-                           <div className="relative w-32 h-20 rounded-lg overflow-hidden shrink-0">
-                               <Image src={`https://img.youtube.com/vi/${videoId}/mqdefault.jpg`} alt={video.title} layout="fill" objectFit="cover" />
+                           <div className="relative w-32 h-20 rounded-lg overflow-hidden shrink-0 bg-muted">
+                               <Image src={`https://img.youtube.com/vi/${videoId}/mqdefault.jpg`} alt={video.title} fill style={{objectFit: "cover"}} />
                            </div>
                            <div>
                                <h3 className="font-semibold line-clamp-2">{video.title}</h3>
-                               <p className="text-sm text-muted-foreground">{video.description}</p>
+                               <p className="text-sm text-muted-foreground line-clamp-1">{video.description}</p>
                            </div>
                         </div>
                     )

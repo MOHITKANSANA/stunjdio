@@ -18,7 +18,7 @@ const CourseCard = ({ course, courseId, isEnrolled }: { course: any, courseId: s
     return (
         <Card className="flex flex-col overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300">
             <div className="relative h-48 w-full">
-                <Image src={course.imageUrl || `https://picsum.photos/seed/${courseId}/600/400`} alt={course.title} layout="fill" objectFit="cover" data-ai-hint="online course" />
+                <Image src={course.imageUrl || `https://picsum.photos/seed/${courseId}/600/400`} alt={course.title} fill style={{objectFit: "cover"}} data-ai-hint="online course" />
             </div>
             <CardHeader>
                 <CardTitle className="text-xl">{course.title}</CardTitle>
@@ -82,8 +82,6 @@ const CourseGrid = ({ courses, enrollments }: { courses: QueryDocumentSnapshot<D
 export default function CoursesPage() {
   const { user } = useAuth();
   
-  // Fetch all courses without filtering by isFree to avoid composite index requirement.
-  // We will filter and sort on the client side.
   const [coursesCollection, loading, error] = useCollection(
     query(collection(firestore, 'courses'), orderBy('title', 'asc'))
   );
@@ -99,7 +97,6 @@ export default function CoursesPage() {
   
   const enrolledCourseIds = new Set(enrollments?.docs.map(doc => doc.data().courseId) || []);
 
-  // Client-side filtering
   const allPaidCourses = coursesCollection?.docs.filter(doc => !doc.data().isFree);
   const myCourses = coursesCollection?.docs.filter(doc => enrolledCourseIds.has(doc.id));
 

@@ -26,7 +26,7 @@ export function ViewResult() {
     const [isLoading, setIsLoading] = useState(false);
     const [result, setResult] = useState<any>(null);
     const [applicant, setApplicant] = useState<any>(null);
-    const [isResultAvailable, setIsResultAvailable] = useState(true); // Default to true, check on load
+    const [isResultAvailable, setIsResultAvailable] = useState(true);
 
     useEffect(() => {
         const checkResultDate = async () => {
@@ -58,7 +58,6 @@ export function ViewResult() {
         setResult(null);
         setApplicant(null);
         try {
-             // 1. Find the applicant to check their resultStatus
             const applicantQuery = query(
                 collection(firestore, 'scholarshipApplications'), 
                 where('applicationNumber', '==', data.applicationNumber)
@@ -70,12 +69,11 @@ export function ViewResult() {
                 setIsLoading(false);
                 return;
             }
-            const applicantData = applicantSnapshot.docs[0].data();
+            const applicantDoc = applicantSnapshot.docs[0];
+            const applicantData = { id: applicantDoc.id, ...applicantDoc.data() };
             setApplicant(applicantData);
             
-            // 2. Check the resultStatus
-            if (applicantData.resultStatus === 'pass' || applicantData.resultStatus === 'fail') {
-                // 3. If passed/failed, fetch the detailed test result
+            if (applicantData.resultStatus && applicantData.resultStatus !== 'pending') {
                 const resultQuery = query(
                     collection(firestore, 'scholarshipTestResults'), 
                     where('applicationNumber', '==', data.applicationNumber),
@@ -86,8 +84,7 @@ export function ViewResult() {
                 if (resultSnapshot.empty) {
                      toast({ variant: 'destructive', title: 'Result Missing', description: 'Your result status is updated, but detailed test data is missing. Please contact support.' });
                 } else {
-                    const resultData = resultSnapshot.docs[0].data();
-                    setResult(resultData);
+                    setResult({ id: resultSnapshot.docs[0].id, ...resultSnapshot.docs[0].data() });
                 }
             } else {
                  toast({ title: 'Result Pending', description: 'Your result is still pending. Please check back later.' });

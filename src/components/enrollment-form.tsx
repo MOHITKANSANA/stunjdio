@@ -23,7 +23,6 @@ interface EnrollmentFormProps {
   course: DocumentData;
 }
 
-// This is now a pure Client Component. It handles all state and user interactions.
 export function EnrollmentForm({ courseId, course }: EnrollmentFormProps) {
   const { user, loading: authLoading } = useAuth();
   const { toast } = useToast();
