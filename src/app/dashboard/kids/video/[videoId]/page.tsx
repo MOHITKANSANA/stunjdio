@@ -4,7 +4,7 @@
 import { useState } from 'react';
 import { useAuth } from '@/hooks/use-auth';
 import { firestore } from '@/lib/firebase';
-import { doc, collection, query, orderBy } from 'firebase/firestore';
+import { doc, collection, query, orderBy, where } from 'firebase/firestore';
 import { useDocument, useCollection } from 'react-firebase-hooks/firestore';
 import { notFound, useParams } from 'next/navigation';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -15,6 +15,8 @@ import { ThumbsUp, ThumbsDown, MessageSquare, Send } from 'lucide-react';
 import { handleLikeDislikeAction, addDoubtAction, addReplyAction, handleFollowAction } from '@/app/actions/kids-tube';
 import { useToast } from '@/hooks/use-toast';
 import { Separator } from '@/components/ui/separator';
+import { Input } from '@/components/ui/input';
+import { cn } from '@/lib/utils';
 
 const VideoPlayer = ({ videoUrl }: { videoUrl: string }) => {
     // A simple heuristic to check if it's a YouTube URL
