@@ -1,10 +1,10 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/use-auth';
 import { firestore } from '@/lib/firebase';
-import { doc, collection, query, orderBy, where } from 'firebase/firestore';
+import { doc, collection, query, orderBy, where, getDoc, limit, onSnapshot } from 'firebase/firestore';
 import { useDocument, useCollection } from 'react-firebase-hooks/firestore';
 import { notFound, useParams } from 'next/navigation';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -17,6 +17,8 @@ import { useToast } from '@/hooks/use-toast';
 import { Separator } from '@/components/ui/separator';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
+import Image from 'next/image';
+import Link from 'next/link';
 
 const VideoPlayer = ({ videoUrl }: { videoUrl: string }) => {
     // A simple heuristic to check if it's a YouTube URL
@@ -116,22 +118,56 @@ export default function VideoPage() {
     const { toast } = useToast();
     const [doubtText, setDoubtText] = useState('');
     const [showDescription, setShowDescription] = useState(false);
+    const [hasFollowed, setHasFollowed] = useState(false);
+    const [followers, setFollowers] = useState(0);
 
     const [videoDoc, loading, error] = useDocument(doc(firestore, 'kidsTubeVideos', videoId));
     const [doubts, doubtsLoading] = useCollection(query(collection(firestore, 'kidsTubeDoubts'), where('videoId', '==', videoId), orderBy('createdAt', 'desc')));
+    
+    // For "Up Next" videos
+    const [relatedVideos, relatedVideosLoading] = useCollection(
+        query(collection(firestore, 'kidsTubeVideos'), where('__name__', '!=', videoId), limit(5))
+    );
+
+    useEffect(() => {
+        if (user) {
+            // Check if user has followed
+            const userDocRef = doc(firestore, 'users', user.uid);
+            getDoc(userDocRef).then(doc => {
+                if (doc.exists() && doc.data().hasFollowed) {
+                    setHasFollowed(true);
+                }
+            });
+        }
+
+        // Get follower count
+        const channelDocRef = doc(firestore, 'channels', 'gsc');
+        const unsubscribe = onSnapshot(channelDocRef, (doc) => {
+             if (doc.exists()) {
+                setFollowers(doc.data().followers || 0);
+            }
+        });
+        
+        return () => unsubscribe();
+
+    }, [user]);
 
     const handleLikeDislike = async (action: 'like' | 'dislike') => {
         if (!user) return toast({ variant: 'destructive', description: "You must be logged in." });
         const result = await handleLikeDislikeAction(videoId, user.uid, action);
         if (result.success && result.points) {
             toast({ description: `+${result.points} points for your feedback!` });
+        } else if (result.error) {
+            toast({ variant: 'destructive', description: result.error });
         }
     };
 
     const handleFollow = async () => {
          if (!user) return toast({ variant: 'destructive', description: "You must be logged in." });
+         if (hasFollowed) return;
          const result = await handleFollowAction(user.uid);
          if (result.success) {
+            setHasFollowed(true);
             toast({ description: result.message });
          } else if (result.error) {
             toast({ variant: 'destructive', description: result.error });
@@ -168,9 +204,11 @@ export default function VideoPage() {
                              </Avatar>
                              <div>
                                 <p className="font-semibold">Go Swami Coaching Classes</p>
-                                <p className="text-xs text-muted-foreground">1.2K Followers</p>
+                                <p className="text-xs text-muted-foreground">{followers} Followers</p>
                              </div>
-                             <Button onClick={handleFollow} size="sm">Follow</Button>
+                             <Button onClick={handleFollow} size="sm" disabled={hasFollowed} variant={hasFollowed ? 'secondary' : 'default'}>
+                                {hasFollowed ? "Followed" : "Follow"}
+                            </Button>
                          </div>
                         <div className="flex items-center gap-2">
                             <Button variant="outline" onClick={() => handleLikeDislike('like')}>
@@ -220,9 +258,8 @@ export default function VideoPage() {
             </div>
              <div className="w-full md:w-80 lg:w-96 shrink-0">
                 <h3 className="text-lg font-bold mb-4">Up Next</h3>
-                 {/* Placeholder for related videos */}
                  <div className="space-y-3">
-                     {[...Array(5)].map((_, i) => (
+                     {relatedVideosLoading && [...Array(5)].map((_, i) => (
                         <div key={i} className="flex gap-3">
                             <Skeleton className="w-32 h-20 shrink-0" />
                             <div className="space-y-2">
@@ -231,6 +268,20 @@ export default function VideoPage() {
                             </div>
                         </div>
                      ))}
+                     {relatedVideos?.docs.map(doc => {
+                         const nextVideo = doc.data();
+                         return (
+                            <Link href={`/dashboard/kids/video/${doc.id}`} key={doc.id} className="flex gap-3 group">
+                                <div className="w-32 h-20 shrink-0 relative rounded-lg overflow-hidden bg-muted">
+                                    <Image src={nextVideo.thumbnailUrl || `https://picsum.photos/seed/${doc.id}/128/80`} alt={nextVideo.title} fill style={{objectFit: "cover"}} />
+                                </div>
+                                <div>
+                                    <h4 className="font-semibold line-clamp-2 group-hover:text-primary">{nextVideo.title}</h4>
+                                    <p className="text-xs text-muted-foreground">Go Swami Coaching</p>
+                                </div>
+                            </Link>
+                         )
+                     })}
                  </div>
             </div>
         </div>

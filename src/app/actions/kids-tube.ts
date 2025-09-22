@@ -1,3 +1,4 @@
+
 'use server';
 
 import { firestore } from '@/lib/firebase';
@@ -13,7 +14,8 @@ import {
   serverTimestamp,
   getDocs,
   query,
-  where
+  where,
+  runTransaction
 } from 'firebase/firestore';
 
 // Points configuration
@@ -40,6 +42,11 @@ export async function handleFollowAction(userId: string) {
     if (userSnap.exists() && !userSnap.data().hasFollowed) {
       await updateDoc(userRef, { hasFollowed: true });
       await updateUserPoints(userId, POINTS.FOLLOW);
+      
+      // Also increment the global channel follower count
+      const channelRef = doc(firestore, 'channels', 'gsc');
+      await updateDoc(channelRef, { followers: increment(1) });
+
       return { success: true, message: `+${POINTS.FOLLOW} points for following!` };
     }
     return { success: false, message: 'Already followed or user not found.' };
@@ -53,41 +60,44 @@ export async function handleLikeDislikeAction(
   userId: string,
   action: 'like' | 'dislike'
 ) {
-  try {
-    const videoRef = doc(firestore, 'kidsTubeVideos', videoId);
-    const userRef = doc(firestore, 'users', userId);
+    try {
+        const videoRef = doc(firestore, 'kidsTubeVideos', videoId);
+        const userInteractionRef = doc(firestore, 'userVideoInteractions', `${userId}_${videoId}`);
 
-    const userInteractionsRef = collection(firestore, 'userInteractions');
-    const q = query(userInteractionsRef, where('userId', '==', userId), where('videoId', '==', videoId));
-    const querySnapshot = await getDocs(q);
+        return await runTransaction(firestore, async (transaction) => {
+            const interactionDoc = await transaction.get(userInteractionRef);
 
-    if (!querySnapshot.empty) {
-        // User has interacted before, can't get more points
-        return { success: true, message: 'Interaction updated.' };
+            if (interactionDoc.exists()) {
+                // User has already interacted (liked/disliked)
+                return { success: false, error: "You have already liked or disliked this video." };
+            }
+
+            // First time interaction for this user and video
+            if (action === 'like') {
+                transaction.update(videoRef, { likes: increment(1) });
+                await updateUserPoints(userId, POINTS.LIKE);
+            } else {
+                transaction.update(videoRef, { dislikes: increment(1) });
+                await updateUserPoints(userId, POINTS.DISLIKE);
+            }
+
+            // Record the interaction to prevent future points
+            transaction.set(userInteractionRef, {
+                userId,
+                videoId,
+                action,
+                interactedAt: serverTimestamp()
+            });
+            
+            return { success: true, points: action === 'like' ? POINTS.LIKE : POINTS.DISLIKE };
+        });
+
+    } catch (error: any) {
+        console.error('Error in handleLikeDislikeAction:', error);
+        return { success: false, error: error.message };
     }
-    
-    // First time interaction, give points
-    await addDoc(userInteractionsRef, { userId, videoId, interactedAt: serverTimestamp() });
-    
-    if (action === 'like') {
-      await updateDoc(videoRef, {
-        likes: increment(1),
-      });
-      await updateUserPoints(userId, POINTS.LIKE);
-      return { success: true, points: POINTS.LIKE };
-    } else {
-      await updateDoc(videoRef, {
-        dislikes: increment(1),
-      });
-       await updateUserPoints(userId, POINTS.DISLIKE);
-       return { success: true, points: POINTS.DISLIKE };
-    }
-
-  } catch (error: any) {
-    console.error('Error in handleLikeDislikeAction:', error);
-    return { success: false, error: error.message };
-  }
 }
+
 
 export async function addDoubtAction(videoId: string, userId: string, userName: string, userPhoto: string | null, text: string) {
     try {
