@@ -234,32 +234,44 @@ export default function DashboardLayout({
 }) {
   const { user, loading } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
   const [isKidsMode, setIsKidsMode] = useState(false);
   const [checkingProfile, setCheckingProfile] = useState(true);
   
   useEffect(() => {
-    if (loading) return;
+    if (loading) {
+        return;
+    }
 
     if (!user) {
         router.replace('/');
         return;
     }
 
+    // Only run profile check if user is logged in
     const checkUserProfile = async () => {
         try {
             const userDocRef = doc(firestore, 'users', user.uid);
             const userDoc = await getDoc(userDocRef);
+
+            // If the user is already on the complete-profile page, do nothing.
+            if (pathname === '/dashboard/complete-profile') {
+                setCheckingProfile(false);
+                return;
+            }
+
             if (userDoc.exists()) {
                 const userData = userDoc.data();
-                if (!userData.ageGroup) {
-                    router.replace('/dashboard/complete-profile');
-                } else {
+                if (userData.ageGroup) {
                     setIsKidsMode(userData.ageGroup === '1-9');
                     setCheckingProfile(false);
+                } else {
+                    // Profile exists but is incomplete
+                    router.replace('/dashboard/complete-profile');
                 }
             } else {
-                // This case might happen for brand new users who just signed up.
-                // The document might not have been created yet. Redirect to complete profile.
+                // This case handles brand new users whose doc might not be created yet.
+                // We redirect them to complete their profile.
                 router.replace('/dashboard/complete-profile');
             }
         } catch (error) {
@@ -271,7 +283,7 @@ export default function DashboardLayout({
     
     checkUserProfile();
 
-  }, [user, loading, router]);
+  }, [user, loading, router, pathname]);
   
   if (loading || checkingProfile) {
     return <LoadingScreen />;
@@ -295,5 +307,3 @@ export default function DashboardLayout({
       </SidebarProvider>
   );
 }
-
-    

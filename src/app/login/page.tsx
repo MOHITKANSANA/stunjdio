@@ -12,30 +12,14 @@ import { firestore } from '@/lib/firebase';
 export default function LoginPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
-  const [checkingProfile, setCheckingProfile] = useState(true);
 
   useEffect(() => {
-    if (loading) {
-        return;
-    }
-
     if (user) {
-        const checkProfile = async () => {
-            const userDocRef = doc(firestore, 'users', user.uid);
-            const docSnap = await getDoc(userDocRef);
-            if (docSnap.exists() && docSnap.data().ageGroup) {
-                router.replace('/dashboard');
-            } else {
-                router.replace('/dashboard/complete-profile');
-            }
-        };
-        checkProfile();
-    } else {
-        setCheckingProfile(false);
+        router.replace('/dashboard');
     }
-  }, [user, loading, router]);
+  }, [user, router]);
 
-  if (loading || checkingProfile) {
+  if (loading || user) {
     return (
       <div className="flex min-h-screen w-full items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-4">
