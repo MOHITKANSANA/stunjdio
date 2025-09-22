@@ -221,7 +221,7 @@ const LoadingScreen = () => (
     <div className="flex h-screen w-full items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-4">
             <Shield className="h-12 w-12 animate-pulse text-primary" />
-            <Skeleton className="h-4 w-48" />
+            <p className="text-muted-foreground">Loading your experience...</p>
         </div>
     </div>
 );
@@ -246,18 +246,25 @@ export default function DashboardLayout({
     }
 
     const checkUserProfile = async () => {
-        const userDocRef = doc(firestore, 'users', user.uid);
-        const userDoc = await getDoc(userDocRef);
-        if (userDoc.exists()) {
-            const userData = userDoc.data();
-            if (!userData.ageGroup) {
-                router.replace('/dashboard/complete-profile');
+        try {
+            const userDocRef = doc(firestore, 'users', user.uid);
+            const userDoc = await getDoc(userDocRef);
+            if (userDoc.exists()) {
+                const userData = userDoc.data();
+                if (!userData.ageGroup) {
+                    router.replace('/dashboard/complete-profile');
+                } else {
+                    setIsKidsMode(userData.ageGroup === '1-9');
+                    setCheckingProfile(false);
+                }
             } else {
-                setIsKidsMode(userData.ageGroup === '1-9');
-                setCheckingProfile(false);
+                // This case might happen for brand new users who just signed up.
+                // The document might not have been created yet. Redirect to complete profile.
+                router.replace('/dashboard/complete-profile');
             }
-        } else {
-            // This case might happen for users who signed up before the new fields were added
+        } catch (error) {
+            console.error("Error checking user profile:", error);
+            // Fallback to complete profile on error
             router.replace('/dashboard/complete-profile');
         }
     };
@@ -288,3 +295,5 @@ export default function DashboardLayout({
       </SidebarProvider>
   );
 }
+
+    
