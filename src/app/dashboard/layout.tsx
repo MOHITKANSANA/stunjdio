@@ -19,6 +19,7 @@ import {
   MessageSquareQuestion,
   Sparkles,
   HelpCircle,
+  Library,
 } from 'lucide-react';
 
 import { useAuth } from '@/hooks/use-auth';
@@ -47,7 +48,7 @@ import { firestore } from '@/lib/firebase';
 
 const bottomNavItems = [
     { href: '/dashboard', icon: Home, label: 'Home' },
-    { href: '/dashboard/courses', icon: BookCopy, label: 'My Courses' },
+    { href: '/dashboard/library', icon: Library, label: 'My Library' },
     { href: '/dashboard/live-class', icon: Video, label: 'Live Class' },
     { href: '/dashboard/profile', icon: User, label: 'Profile' },
 ];
@@ -250,18 +251,19 @@ export default function DashboardLayout({
 
     // Only run profile check if user is logged in
     const checkUserProfile = async () => {
+        // If the user is already on the complete-profile page, do nothing.
+        if (pathname === '/dashboard/complete-profile') {
+            setCheckingProfile(false);
+            return;
+        }
+
         try {
             const userDocRef = doc(firestore, 'users', user.uid);
             const userDoc = await getDoc(userDocRef);
 
-            // If the user is already on the complete-profile page, do nothing.
-            if (pathname === '/dashboard/complete-profile') {
-                setCheckingProfile(false);
-                return;
-            }
-
             if (userDoc.exists()) {
                 const userData = userDoc.data();
+                // Check for a specific field that is only set after profile completion
                 if (userData.ageGroup) {
                     setIsKidsMode(userData.ageGroup === '1-9');
                     setCheckingProfile(false);
@@ -276,8 +278,12 @@ export default function DashboardLayout({
             }
         } catch (error) {
             console.error("Error checking user profile:", error);
-            // Fallback to complete profile on error
-            router.replace('/dashboard/complete-profile');
+            // Fallback to complete profile on error, but don't get stuck in a loop
+             if (pathname !== '/dashboard/complete-profile') {
+                router.replace('/dashboard/complete-profile');
+            } else {
+                setCheckingProfile(false); // Already on the page, stop checking
+            }
         }
     };
     
@@ -307,3 +313,5 @@ export default function DashboardLayout({
       </SidebarProvider>
   );
 }
+
+    

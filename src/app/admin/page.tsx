@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useRef, useEffect, type ChangeEvent } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,7 +16,7 @@ import { collection, query, orderBy, doc, updateDoc, addDoc, deleteDoc, serverTi
 import { firestore } from '@/lib/firebase';
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Trash2, Check, X, Upload, Video, FileText, StickyNote, PlusCircle, Save, Download, ThumbsUp, ThumbsDown, Clock, CircleAlert, CheckCircle2, XCircle, KeyRound, Newspaper, Image as ImageIcon } from 'lucide-react';
+import { Loader2, Trash2, Check, X, Upload, Video, FileText, StickyNote, PlusCircle, Save, Download, ThumbsUp, ThumbsDown, Clock, CircleAlert, CheckCircle2, XCircle, KeyRound, Newspaper, Image as ImageIcon, MinusCircle } from 'lucide-react';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -99,38 +99,51 @@ const previousPaperSchema = z.object({
 });
 type PreviousPaperValues = z.infer<typeof previousPaperSchema>;
 
+const testSeriesQuestionSchema = z.object({
+    text: z.string().min(5, "Question text is required."),
+    options: z.array(z.string().min(1, "Option cannot be empty.")).length(4, "Must have 4 options."),
+    correctAnswer: z.string().min(1, "Please select the correct answer."),
+});
+
 const testSeriesSchema = z.object({
     title: z.string().min(3, 'Title is required.'),
     subject: z.string().min(2, 'Subject is required.'),
-    questions: z.array(z.object({
-        text: z.string().min(5),
-        options: z.array(z.string().min(1)).length(4),
-        correctAnswer: z.string().min(1),
-    })).min(1),
+    questions: z.array(testSeriesQuestionSchema).min(1, "At least one question is required."),
 });
 type TestSeriesValues = z.infer<typeof testSeriesSchema>;
+
 
 const jsonTestSeriesSchema = z.object({
     jsonInput: z.string().refine((val) => {
         try {
             const parsed = JSON.parse(val);
+            // This is a simplified check. Zod's .success check is more reliable.
             return testSeriesSchema.safeParse(parsed).success;
         } catch (e) {
             return false;
         }
-    }, 'Invalid JSON format or structure.'),
+    }, 'Invalid JSON format or structure for a Test Series.'),
 });
 type JsonTestSeriesValues = z.infer<typeof jsonTestSeriesSchema>;
+
 
 const carouselItemSchema = z.object({
     imageFile: z.instanceof(File, { message: "An image file is required." }),
     internalLink: z.string().optional(),
-    externalLink: z.string().optional(),
+    externalLink: z.string().url().optional(),
 }).refine(data => data.internalLink || data.externalLink, {
     message: 'Please select an internal link or provide an external one.',
     path: ['internalLink'],
 });
 type CarouselItemValues = z.infer<typeof carouselItemSchema>;
+
+const kidsTubeVideoSchema = z.object({
+    title: z.string().min(3, "Title is required."),
+    description: z.string().optional(),
+    videoUrl: z.string().url("Must be a valid YouTube or video URL."),
+});
+type KidsTubeVideoValues = z.infer<typeof kidsTubeVideoSchema>;
+
 
 const fileToDataUrl = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
@@ -238,6 +251,7 @@ function AdminDashboard() {
   const [scholarshipQuestionsCollection, scholarshipQuestionsLoading] = useCollection(query(collection(firestore, 'scholarshipTest'), orderBy('createdAt', 'asc')));
   const [scholarshipApplicants, scholarshipApplicantsLoading, scholarshipApplicantsError] = useCollection(query(collection(firestore, 'scholarshipApplications'), orderBy('appliedAt', 'desc')));
   const [carouselItemsCollection, carouselItemsLoading] = useCollection(query(collection(firestore, 'homepageCarousel'), orderBy('createdAt', 'asc')));
+  const [kidsVideosCollection, kidsVideosLoading] = useCollection(query(collection(firestore, 'kidsTubeVideos'), orderBy('createdAt', 'desc')));
 
 
   const qrCodeUrl = qrCodeDoc?.docs.find(d => d.id === 'paymentQrCode')?.data().url;
@@ -291,8 +305,16 @@ function AdminDashboard() {
   const scholarshipQuestionForm = useForm<ScholarshipQuestionValues>({ resolver: zodResolver(scholarshipQuestionSchema), defaultValues: { text: '', options: ['', '', '', ''], correctAnswer: '' } });
   const jsonQuestionsForm = useForm<JsonQuestionsValues>({ resolver: zodResolver(jsonQuestionsSchema), defaultValues: { jsonInput: '' } });
   const previousPaperForm = useForm<PreviousPaperValues>({ resolver: zodResolver(previousPaperSchema), defaultValues: { title: '', year: new Date().getFullYear(), fileUrl: '', file: undefined } });
+  
+  const testSeriesForm = useForm<TestSeriesValues>({
+    resolver: zodResolver(testSeriesSchema),
+    defaultValues: { title: '', subject: '', questions: [{ text: '', options: ['', '', '', ''], correctAnswer: '' }] },
+  });
+  const { fields, append, remove } = useFieldArray({ control: testSeriesForm.control, name: "questions" });
+
   const jsonTestSeriesForm = useForm<JsonTestSeriesValues>({ resolver: zodResolver(jsonTestSeriesSchema), defaultValues: { jsonInput: '' } });
   const carouselItemForm = useForm<CarouselItemValues>({ resolver: zodResolver(carouselItemSchema), defaultValues: { internalLink: '', externalLink: '', imageFile: undefined } });
+  const kidsTubeVideoForm = useForm<KidsTubeVideoValues>({ resolver: zodResolver(kidsTubeVideoSchema), defaultValues: { title: '', description: '', videoUrl: '' } });
 
 
   const handleEnrollmentAction = async (id: string, newStatus: 'approved' | 'rejected') => {
@@ -372,7 +394,18 @@ function AdminDashboard() {
     }
   };
   
-  const onTestSeriesSubmit = async (data: JsonTestSeriesValues) => {
+  const onTestSeriesSubmit = async (data: TestSeriesValues) => {
+    try {
+        await addDoc(collection(firestore, 'testSeries'), { ...data, createdAt: serverTimestamp() });
+        toast({ title: 'Success', description: 'Test series added successfully.' });
+        testSeriesForm.reset({ title: '', subject: '', questions: [{ text: '', options: ['', '', '', ''], correctAnswer: '' }] });
+    } catch (error) {
+        console.error("Test series submit error:", error)
+        toast({ variant: 'destructive', title: 'Error', description: 'Could not add test series.' });
+    }
+  }
+
+  const onJsonTestSeriesSubmit = async (data: JsonTestSeriesValues) => {
     try {
         const testData = JSON.parse(data.jsonInput);
         await addDoc(collection(firestore, 'testSeries'), { ...testData, createdAt: serverTimestamp() });
@@ -484,6 +517,27 @@ function AdminDashboard() {
       toast({ variant: 'destructive', title: 'Error', description: 'Could not update applicant status.' });
     }
   };
+  
+  const onKidsTubeVideoSubmit = async (data: KidsTubeVideoValues) => {
+    try {
+        await addDoc(collection(firestore, 'kidsTubeVideos'), {
+            ...data,
+            createdAt: serverTimestamp(),
+        });
+        toast({ title: 'Success', description: 'Kids Tube video added.' });
+        kidsTubeVideoForm.reset();
+    } catch (error) {
+        toast({ variant: 'destructive', title: 'Error', description: 'Could not add video.' });
+    }
+  };
+
+  const deleteKidsTubeVideo = async (id: string) => {
+      if (window.confirm("Are you sure you want to delete this video?")) {
+          await deleteDoc(doc(firestore, 'kidsTubeVideos', id));
+          toast({ description: 'Video deleted from Kids Tube.' });
+      }
+  };
+
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -520,9 +574,10 @@ function AdminDashboard() {
     <div className="mx-auto grid w-full max-w-7xl gap-6">
       <h1 className="text-3xl font-semibold font-headline">Administration</h1>
       <Tabs defaultValue="enrollments">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="enrollments">Enrollments</TabsTrigger>
-          <TabsTrigger value="content">Content Management</TabsTrigger>
+          <TabsTrigger value="main_content">Main App Content</TabsTrigger>
+          <TabsTrigger value="kids_content">Kids Tube Content</TabsTrigger>
           <TabsTrigger value="scholarship">Scholarship</TabsTrigger>
           <TabsTrigger value="settings">Settings</TabsTrigger>
         </TabsList>
@@ -571,7 +626,7 @@ function AdminDashboard() {
             </CardContent>
           </Card>
         </TabsContent>
-        <TabsContent value="content">
+        <TabsContent value="main_content">
           <div className="grid md:grid-cols-2 gap-6">
              <Card>
               <CardHeader><CardTitle>Create &amp; Manage Courses</CardTitle><CardDescription>Fill out the details to add a new course or manage existing ones.</CardDescription></CardHeader>
@@ -674,17 +729,99 @@ function AdminDashboard() {
                     </CardContent>
                 </Card>
                 <Card>
-                    <CardHeader><CardTitle>Test Series Manager</CardTitle><CardDescription>Add new test series from a JSON file.</CardDescription></CardHeader>
+                    <CardHeader><CardTitle>Test Series Manager</CardTitle><CardDescription>Add new test series manually or from JSON.</CardDescription></CardHeader>
                     <CardContent>
-                        <Form {...jsonTestSeriesForm}><form onSubmit={jsonTestSeriesForm.handleSubmit(onTestSeriesSubmit)} className="grid gap-4">
-                            <FormField control={jsonTestSeriesForm.control} name="jsonInput" render={({ field }) => (<FormItem><FormLabel>JSON Input</FormLabel><FormControl><Textarea {...field} rows={10} placeholder='{"title": "...", "subject": "...", "questions": [{"text": "...", "options": [...], "correctAnswer": "..."}]}' /></FormControl><FormMessage /></FormItem>)}/>
-                            <Button type="submit" disabled={jsonTestSeriesForm.formState.isSubmitting}><Upload className="mr-2"/>{jsonTestSeriesForm.formState.isSubmitting ? 'Uploading...' : 'Upload Test Series'}</Button>
-                        </form></Form>
+                      <Tabs defaultValue="manual">
+                        <TabsList className="grid w-full grid-cols-2">
+                          <TabsTrigger value="manual">Add Manually</TabsTrigger>
+                          <TabsTrigger value="json">Add from JSON</TabsTrigger>
+                        </TabsList>
+                        <TabsContent value="manual" className="pt-4">
+                           <Form {...testSeriesForm}>
+                              <form onSubmit={testSeriesForm.handleSubmit(onTestSeriesSubmit)} className="space-y-6">
+                                <FormField control={testSeriesForm.control} name="title" render={({ field }) => (<FormItem><FormLabel>Test Series Title</FormLabel><FormControl><Input {...field} placeholder="e.g. Maths Full Syllabus Test" /></FormControl><FormMessage /></FormItem>)} />
+                                <FormField control={testSeriesForm.control} name="subject" render={({ field }) => (<FormItem><FormLabel>Subject</FormLabel><FormControl><Input {...field} placeholder="e.g. Maths" /></FormControl><FormMessage /></FormItem>)} />
+                                <Separator />
+                                {fields.map((field, index) => (
+                                  <div key={field.id} className="space-y-4 p-4 border rounded-lg relative">
+                                    <h4 className="font-semibold">Question {index + 1}</h4>
+                                     <Button type="button" variant="ghost" size="icon" className="absolute top-2 right-2" onClick={() => remove(index)} disabled={fields.length <= 1}>
+                                        <MinusCircle className="h-5 w-5 text-destructive" />
+                                     </Button>
+                                    <FormField control={testSeriesForm.control} name={`questions.${index}.text`} render={({ field }) => (<FormItem><FormLabel>Question Text</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                    {/* Options */}
+                                    {[0, 1, 2, 3].map(optIndex => (
+                                      <FormField key={optIndex} control={testSeriesForm.control} name={`questions.${index}.options.${optIndex}`} render={({ field }) => (<FormItem><FormLabel>Option {optIndex + 1}</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                    ))}
+                                    <FormField control={testSeriesForm.control} name={`questions.${index}.correctAnswer`} render={({ field }) => (<FormItem><FormLabel>Correct Answer</FormLabel>
+                                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                            <FormControl><SelectTrigger><SelectValue placeholder="Select correct option" /></SelectTrigger></FormControl>
+                                            <SelectContent>
+                                                {testSeriesForm.watch(`questions.${index}.options`)?.map((opt, i) => opt && (<SelectItem key={i} value={opt}>Option {i + 1}: {opt}</SelectItem>))}
+                                            </SelectContent>
+                                        </Select><FormMessage /></FormItem>
+                                    )}/>
+                                  </div>
+                                ))}
+                                <div className="flex justify-between">
+                                <Button type="button" variant="outline" onClick={() => append({ text: '', options: ['', '', '', ''], correctAnswer: '' })}><PlusCircle className="mr-2" />Add Question</Button>
+                                <Button type="submit" disabled={testSeriesForm.formState.isSubmitting}>
+                                    {testSeriesForm.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                    Save Test Series
+                                </Button>
+                                </div>
+                              </form>
+                           </Form>
+                        </TabsContent>
+                        <TabsContent value="json" className="pt-4">
+                          <Form {...jsonTestSeriesForm}><form onSubmit={jsonTestSeriesForm.handleSubmit(onJsonTestSeriesSubmit)} className="grid gap-4">
+                              <FormField control={jsonTestSeriesForm.control} name="jsonInput" render={({ field }) => (<FormItem><FormLabel>JSON Input</FormLabel><FormControl><Textarea {...field} rows={10} placeholder='{"title": "...", "subject": "...", "questions": [{"text": "...", "options": [...], "correctAnswer": "..."}]}' /></FormControl><FormMessage /></FormItem>)}/>
+                              <Button type="submit" disabled={jsonTestSeriesForm.formState.isSubmitting}><Upload className="mr-2"/>{jsonTestSeriesForm.formState.isSubmitting ? 'Uploading...' : 'Upload Test Series'}</Button>
+                          </form></Form>
+                        </TabsContent>
+                      </Tabs>
                     </CardContent>
                 </Card>
+
             </div>
            
           </div>
+        </TabsContent>
+        <TabsContent value="kids_content">
+           <div className="grid md:grid-cols-2 gap-6 items-start">
+              <Card>
+                  <CardHeader><CardTitle>Add Video to Kids Tube</CardTitle><CardDescription>Upload videos for the 1-9 years age group.</CardDescription></CardHeader>
+                  <CardContent>
+                      <Form {...kidsTubeVideoForm}>
+                          <form onSubmit={kidsTubeVideoForm.handleSubmit(onKidsTubeVideoSubmit)} className="space-y-4">
+                              <FormField control={kidsTubeVideoForm.control} name="title" render={({ field }) => (<FormItem><FormLabel>Video Title</FormLabel><FormControl><Input {...field} placeholder="e.g. Learning Alphabets" /></FormControl><FormMessage /></FormItem>)} />
+                              <FormField control={kidsTubeVideoForm.control} name="description" render={({ field }) => (<FormItem><FormLabel>Description (Optional)</FormLabel><FormControl><Textarea {...field} placeholder="A short description about the video." /></FormControl><FormMessage /></FormItem>)} />
+                              <FormField control={kidsTubeVideoForm.control} name="videoUrl" render={({ field }) => (<FormItem><FormLabel>YouTube/Video URL</FormLabel><FormControl><Input {...field} placeholder="https://www.youtube.com/watch?v=..." /></FormControl><FormMessage /></FormItem>)} />
+                              <Button type="submit" disabled={kidsTubeVideoForm.formState.isSubmitting}>
+                                  {kidsTubeVideoForm.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                  Add Video
+                              </Button>
+                          </form>
+                      </Form>
+                  </CardContent>
+              </Card>
+               <Card>
+                  <CardHeader><CardTitle>Existing Kids Tube Videos</CardTitle></CardHeader>
+                  <CardContent>
+                      <div className="max-h-[600px] overflow-y-auto pr-2 space-y-2">
+                         {kidsVideosLoading && <Skeleton className="h-12 w-full" />}
+                         {kidsVideosCollection?.docs.map((doc) => (
+                           <div key={doc.id} className="flex items-center justify-between p-2 border rounded-lg">
+                             <span className="font-medium">{doc.data().title}</span>
+                             <Button variant="ghost" size="icon" onClick={() => deleteKidsTubeVideo(doc.id)}>
+                               <Trash2 className="h-4 w-4 text-destructive" />
+                             </Button>
+                           </div>
+                         ))}
+                      </div>
+                  </CardContent>
+              </Card>
+           </div>
         </TabsContent>
         <TabsContent value="scholarship">
             <div className="grid md:grid-cols-2 gap-6 items-start">
@@ -887,5 +1024,7 @@ function AdminDashboard() {
     </div>
   );
 }
+
+    
 
     

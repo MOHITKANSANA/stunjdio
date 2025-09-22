@@ -26,7 +26,7 @@ export function ViewResult() {
     const [isLoading, setIsLoading] = useState(false);
     const [result, setResult] = useState<any>(null);
     const [applicant, setApplicant] = useState<any>(null);
-    const [isResultAvailable, setIsResultAvailable] = useState(true);
+    const [isResultAvailable, setIsResultAvailable] = useState<boolean | null>(null);
 
     useEffect(() => {
         const checkResultDate = async () => {
@@ -37,10 +37,15 @@ export function ViewResult() {
                     const resultDate = settings.resultDate?.toDate();
                     if (resultDate && new Date() < resultDate) {
                         setIsResultAvailable(false);
+                    } else {
+                        setIsResultAvailable(true);
                     }
+                } else {
+                    setIsResultAvailable(true); // Default to available if not set
                 }
             } catch (error) {
                 console.error("Error fetching result date settings: ", error);
+                setIsResultAvailable(true); // Default to available on error
             }
         };
         checkResultDate();
@@ -125,7 +130,7 @@ export function ViewResult() {
                 <CardDescription>Enter your application number to see your test score.</CardDescription>
             </CardHeader>
             <CardContent>
-                {!isResultAvailable ? (
+                {isResultAvailable === false ? (
                      <Alert variant="destructive">
                         <AlertTriangle className="h-4 w-4" />
                         <AlertTitle>Results Not Declared</AlertTitle>
@@ -180,3 +185,5 @@ export function ViewResult() {
         </Card>
     )
 }
+
+    
