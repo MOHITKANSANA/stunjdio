@@ -20,6 +20,7 @@ import {
   Sparkles,
   HelpCircle,
   Library,
+  Trophy,
 } from 'lucide-react';
 
 import { useAuth } from '@/hooks/use-auth';
@@ -74,6 +75,7 @@ const sidebarNavItems = [
 const kidsSidebarNavItems = [
     { href: '/dashboard', icon: Sparkles, label: 'Kids Tube' },
     { href: '/dashboard/profile', icon: User, label: 'My Profile' },
+    { href: '/dashboard/kids/rewards', icon: Trophy, label: 'My Rewards' },
     { href: '/dashboard/kids/doubts', icon: HelpCircle, label: 'My Doubts' },
 ]
 
@@ -121,7 +123,7 @@ const AppSidebar = ({ isKidsMode }: { isKidsMode: boolean }) => {
 
     return (
         <Sidebar>
-            <SidebarContent className="bg-gradient-to-b from-primary to-orange-500 text-white border-none">
+            <SidebarContent className="bg-primary text-primary-foreground border-none">
                 <SidebarHeader>
                      <div className='flex items-center gap-2'>
                         <Shield className="h-7 w-7 text-white" />
@@ -313,5 +315,3 @@ export default function DashboardLayout({
       </SidebarProvider>
   );
 }
-
-    

@@ -17,8 +17,8 @@ import { collection, query, orderBy, doc, updateDoc, addDoc, deleteDoc, serverTi
 import { firestore } from '@/lib/firebase';
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Trash2, Check, X, Upload, Video, FileText, StickyNote, PlusCircle, Save, Download, ThumbsUp, ThumbsDown, Clock, CircleAlert, CheckCircle2, XCircle, KeyRound, Newspaper, Image as ImageIcon, MinusCircle, BookMarked } from 'lucide-react';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Loader2, Trash2, Check, X, Upload, Video, FileText, StickyNote, PlusCircle, Save, Download, ThumbsUp, ThumbsDown, Clock, CircleAlert, CheckCircle2, XCircle, KeyRound, Newspaper, Image as ImageIcon, MinusCircle, BookMarked, Award } from 'lucide-react';
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -263,6 +263,7 @@ function AdminDashboard() {
   const [carouselItemsCollection, carouselItemsLoading] = useCollection(query(collection(firestore, 'homepageCarousel'), orderBy('createdAt', 'asc')));
   const [kidsVideosCollection, kidsVideosLoading] = useCollection(query(collection(firestore, 'kidsTubeVideos'), orderBy('createdAt', 'desc')));
   const [ebooksCollection, ebooksLoading] = useCollection(query(collection(firestore, 'ebooks'), orderBy('createdAt', 'desc')));
+  const [rewardRedemptions, rewardRedemptionsLoading] = useCollection(query(collection(firestore, 'rewardRedemptions'), orderBy('redeemedAt', 'desc')));
 
 
   const qrCodeUrl = qrCodeDoc?.docs.find(d => d.id === 'paymentQrCode')?.data().url;
@@ -618,11 +619,12 @@ function AdminDashboard() {
     <div className="mx-auto grid w-full max-w-7xl gap-6">
       <h1 className="text-3xl font-semibold font-headline">Administration</h1>
       <Tabs defaultValue="enrollments">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="enrollments">Enrollments</TabsTrigger>
           <TabsTrigger value="main_content">Main App Content</TabsTrigger>
           <TabsTrigger value="kids_content">Kids Tube Content</TabsTrigger>
           <TabsTrigger value="scholarship">Scholarship</TabsTrigger>
+          <TabsTrigger value="rewards">Rewards</TabsTrigger>
           <TabsTrigger value="settings">Settings</TabsTrigger>
         </TabsList>
         <TabsContent value="enrollments">
@@ -868,7 +870,7 @@ function AdminDashboard() {
                               <FormField control={kidsTubeVideoForm.control} name="title" render={({ field }) => (<FormItem><FormLabel>Video Title</FormLabel><FormControl><Input {...field} placeholder="e.g. Learning Alphabets" /></FormControl><FormMessage /></FormItem>)} />
                               <FormField control={kidsTubeVideoForm.control} name="description" render={({ field }) => (<FormItem><FormLabel>Description (Optional)</FormLabel><FormControl><Textarea {...field} placeholder="A short description about the video." /></FormControl><FormMessage /></FormItem>)} />
                               <FormField control={kidsTubeVideoForm.control} name="videoUrl" render={({ field }) => (<FormItem><FormLabel>Video URL</FormLabel><FormControl><Input {...field} placeholder="https://www.youtube.com/watch?v=... or https://example.com/video.mp4" /></FormControl><FormMessage /></FormItem>)} />
-                              <FormField control={kidsTubeVideoForm.control} name="thumbnailFile" render={({ field: { onChange, value, ...rest } }) => (<FormItem><FormLabel>Thumbnail Image</FormLabel><FormControl><Input type="file" accept="image/*" onChange={(e) => onChange(e.target.files?.[0])} {...rest} /></FormControl><FormMessage /></FormItem>)} />
+                              <FormField control={kidsTubeVideoForm.control} name="thumbnailFile" render={({ field: { onChange, value, ...rest } }) => (<FormItem><FormLabel>Thumbnail Image (Optional)</FormLabel><FormControl><Input type="file" accept="image/*" onChange={(e) => onChange(e.target.files?.[0])} {...rest} /></FormControl><FormMessage /></FormItem>)} />
                               <Button type="submit" disabled={kidsTubeVideoForm.formState.isSubmitting}>
                                   {kidsTubeVideoForm.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                   Add Video
@@ -1010,6 +1012,43 @@ function AdminDashboard() {
                     </CardContent>
                 </Card>
             </div>
+        </TabsContent>
+         <TabsContent value="rewards">
+           <Card>
+            <CardHeader><CardTitle>Reward Redemptions</CardTitle><CardDescription>Review and process student reward redemption requests.</CardDescription></CardHeader>
+            <CardContent>
+              <div className="max-h-[800px] overflow-y-auto">
+                <Table>
+                  <TableHeader><TableRow><TableHead>Student</TableHead><TableHead>Paytm Number</TableHead><TableHead>Points Redeemed</TableHead><TableHead>Amount</TableHead><TableHead>Date</TableHead></TableRow></TableHeader>
+                  <TableBody>
+                    {rewardRedemptionsLoading && Array.from({ length: 3 }).map((_, i) => (
+                      <TableRow key={i}><TableCell colSpan={5}><Skeleton className="h-12 w-full" /></TableCell></TableRow>
+                    ))}
+                    {rewardRedemptions?.docs.map((doc) => {
+                      const redemption = doc.data();
+                      return (
+                        <TableRow key={doc.id}>
+                          <TableCell>
+                            <div className="font-medium">{redemption.userName}</div>
+                            <div className="text-sm text-muted-foreground">{redemption.userEmail}</div>
+                          </TableCell>
+                          <TableCell>{redemption.paytmNumber}</TableCell>
+                           <TableCell><Badge variant="secondary">{redemption.points} pts</Badge></TableCell>
+                           <TableCell>₹{redemption.amount}</TableCell>
+                           <TableCell>{redemption.redeemedAt?.toDate()?.toLocaleDateString()}</TableCell>
+                        </TableRow>
+                      )
+                    })}
+                    {!rewardRedemptionsLoading && rewardRedemptions?.empty && (
+                        <TableRow>
+                            <TableCell colSpan={5} className="text-center text-muted-foreground">No redemption requests yet.</TableCell>
+                        </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
         <TabsContent value="settings">
           <div className="grid md:grid-cols-2 gap-6 items-start">

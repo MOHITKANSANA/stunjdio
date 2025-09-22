@@ -25,6 +25,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ThumbsUp, MessageCircleQuestion, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { useRouter } from 'next/navigation';
 
 // Main App Dashboard Component
 const MainDashboard = () => {
@@ -92,103 +93,35 @@ const MainDashboard = () => {
     );
 };
 
-const VideoPlayer = ({ videoUrl, title }: { videoUrl: string, title: string }) => {
-    const getYoutubeVideoId = (url: string): string | null => {
-      if (!url) return null;
-      let videoId: string | null = null;
-      try {
-          const patterns = [
-              /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/|v\/|live\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/,
-              /youtube\.com\/shorts\/([a-zA-Z0-9_-]{11})/,
-          ];
-          for (const pattern of patterns) {
-              const match = url.match(pattern);
-              if (match && match[1]) {
-                  videoId = match[1];
-                  break;
-              }
-          }
-      } catch (e) { console.error("Error parsing YouTube URL", e); return null; }
-      return videoId;
-    }
-
-    const youtubeVideoId = getYoutubeVideoId(videoUrl);
-
-    if (youtubeVideoId) {
-        return (
-            <iframe
-                width="100%"
-                height="100%"
-                src={`https://www.youtube.com/embed/${youtubeVideoId}?autoplay=1`}
-                title={title}
-                frameBorder="0"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                allowFullScreen
-            ></iframe>
-        )
-    }
-    
-    return (
-        <video controls autoPlay src={videoUrl} className="w-full h-full bg-black">
-            Your browser does not support the video tag.
-        </video>
-    )
-}
-
-
 // Kids Tube Dashboard Component
 const KidsTubeDashboard = () => {
     const [videos, loading, error] = useCollection(
         query(collection(firestore, 'kidsTubeVideos'), orderBy('createdAt', 'desc'))
     );
-    const [selectedVideo, setSelectedVideo] = useState<any>(null);
-
-    useEffect(() => {
-        if (videos && !videos.empty && !selectedVideo) {
-            setSelectedVideo(videos.docs[0].data());
-        }
-    }, [videos, selectedVideo]);
+    const router = useRouter();
     
     if (loading) return <div><Skeleton className="w-full aspect-video rounded-lg mb-4" /><Skeleton className="h-8 w-3/4 mb-4" /><Skeleton className="h-40 w-full" /></div>
     if (error) return <p className="text-destructive">Error loading videos.</p>
     if (!videos || videos.empty) return <p>No videos available right now. Check back soon!</p>
 
+    const handleVideoClick = (videoId: string) => {
+        router.push(`/dashboard/kids/video/${videoId}`);
+    };
+
     return (
-        <div className="flex flex-col h-full">
-            {selectedVideo && (
-                <div className="sticky top-0 z-10 bg-background pb-4">
-                    <div className="aspect-video w-full rounded-lg overflow-hidden mb-4 bg-black">
-                        <VideoPlayer videoUrl={selectedVideo.videoUrl} title={selectedVideo.title} />
-                    </div>
-                    <h2 className="text-xl font-bold">{selectedVideo.title}</h2>
-                    <div className="flex items-center gap-4 mt-2">
-                        <Button variant="outline" size="sm"><ThumbsUp className="mr-2"/> Like</Button>
-                    </div>
-                     <div className="mt-4">
-                        <h3 className="font-semibold mb-2">Ask a Doubt</h3>
-                        <div className="flex gap-2">
-                            <Input placeholder="Type your doubt here..." />
-                            <Button><Send /></Button>
-                        </div>
-                        <div className="mt-4 space-y-2 text-sm">
-                           {/* Placeholder for doubts */}
-                           <p className="text-muted-foreground">No doubts asked yet.</p>
-                        </div>
-                    </div>
-                </div>
-            )}
-            <div className="flex-grow space-y-4 pt-4">
-                <h3 className="font-bold text-lg">Up Next</h3>
+        <div className="flex flex-col h-full space-y-4">
+             <h1 className="text-2xl font-bold">Kids Tube</h1>
+            <div className="flex-grow grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {videos.docs.map(doc => {
                     const video = doc.data();
                     return (
-                        <div key={doc.id} className="flex items-center gap-4 cursor-pointer" onClick={() => setSelectedVideo(video)}>
-                           <div className="relative w-32 h-20 rounded-lg overflow-hidden shrink-0 bg-muted">
-                               <Image src={video.thumbnailUrl || `https://picsum.photos/seed/${doc.id}/200/120`} alt={video.title} fill style={{objectFit: "cover"}} />
+                        <div key={doc.id} className="flex flex-col gap-2 cursor-pointer" onClick={() => handleVideoClick(doc.id)}>
+                           <div className="relative w-full aspect-video rounded-lg overflow-hidden shrink-0 bg-muted">
+                               <Image src={video.thumbnailUrl || `https://picsum.photos/seed/${doc.id}/300/180`} alt={video.title} fill style={{objectFit: "cover"}} />
                            </div>
                            <div>
                                <h3 className="font-semibold line-clamp-2">{video.title}</h3>
-                               <p className="text-sm text-muted-foreground line-clamp-1">{video.description}</p>
+                               <p className="text-sm text-muted-foreground line-clamp-1">{video.description || "Fun learning video"}</p>
                            </div>
                         </div>
                     )

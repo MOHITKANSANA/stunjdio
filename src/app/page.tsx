@@ -3,11 +3,9 @@
 
 import { useAuth } from "@/hooks/use-auth";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { SignupForm } from "@/components/signup-form";
 import { BookOpenCheck } from "lucide-react";
-import { doc, getDoc } from 'firebase/firestore';
-import { firestore } from '@/lib/firebase';
 
 export default function WelcomePage() {
   const { user, loading } = useAuth();
