@@ -540,11 +540,14 @@ function AdminDashboard() {
         await addDoc(collection(firestore, 'kidsTubeVideos'), {
             ...data,
             thumbnailUrl,
+            likes: 0,
+            dislikes: 0,
             createdAt: serverTimestamp(),
         });
         toast({ title: 'Success', description: 'Kids Tube video added.' });
         kidsTubeVideoForm.reset();
     } catch (error) {
+        console.error("Error adding video:", error);
         toast({ variant: 'destructive', title: 'Error', description: 'Could not add video.' });
     }
   };
@@ -1139,3 +1142,4 @@ function AdminDashboard() {
     
 
     
+
