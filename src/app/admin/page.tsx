@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useRef, useEffect, type ChangeEvent } from 'react';
@@ -16,8 +17,8 @@ import { collection, query, orderBy, doc, updateDoc, addDoc, deleteDoc, serverTi
 import { firestore } from '@/lib/firebase';
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Trash2, Check, X, Upload, Video, FileText, StickyNote, PlusCircle, Save, Download, ThumbsUp, ThumbsDown, Clock, CircleAlert, CheckCircle2, XCircle, KeyRound, Newspaper, Image as ImageIcon, MinusCircle } from 'lucide-react';
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Loader2, Trash2, Check, X, Upload, Video, FileText, StickyNote, PlusCircle, Save, Download, ThumbsUp, ThumbsDown, Clock, CircleAlert, CheckCircle2, XCircle, KeyRound, Newspaper, Image as ImageIcon, MinusCircle, BookMarked } from 'lucide-react';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -140,9 +141,18 @@ type CarouselItemValues = z.infer<typeof carouselItemSchema>;
 const kidsTubeVideoSchema = z.object({
     title: z.string().min(3, "Title is required."),
     description: z.string().optional(),
-    videoUrl: z.string().url("Must be a valid YouTube or video URL."),
+    videoUrl: z.string().url("Must be a valid video URL."),
+    thumbnailFile: z.instanceof(File).optional(),
 });
 type KidsTubeVideoValues = z.infer<typeof kidsTubeVideoSchema>;
+
+const eBookSchema = z.object({
+    title: z.string().min(3, "Title is required."),
+    description: z.string().optional(),
+    thumbnailFile: z.instanceof(File, { message: 'Thumbnail is required.' }),
+    pdfFile: z.instanceof(File, { message: 'PDF file is required.' }).refine(file => file.type === 'application/pdf', 'File must be a PDF.'),
+});
+type EBookValues = z.infer<typeof eBookSchema>;
 
 
 const fileToDataUrl = (file: File): Promise<string> => {
@@ -252,6 +262,7 @@ function AdminDashboard() {
   const [scholarshipApplicants, scholarshipApplicantsLoading, scholarshipApplicantsError] = useCollection(query(collection(firestore, 'scholarshipApplications'), orderBy('appliedAt', 'desc')));
   const [carouselItemsCollection, carouselItemsLoading] = useCollection(query(collection(firestore, 'homepageCarousel'), orderBy('createdAt', 'asc')));
   const [kidsVideosCollection, kidsVideosLoading] = useCollection(query(collection(firestore, 'kidsTubeVideos'), orderBy('createdAt', 'desc')));
+  const [ebooksCollection, ebooksLoading] = useCollection(query(collection(firestore, 'ebooks'), orderBy('createdAt', 'desc')));
 
 
   const qrCodeUrl = qrCodeDoc?.docs.find(d => d.id === 'paymentQrCode')?.data().url;
@@ -315,7 +326,7 @@ function AdminDashboard() {
   const jsonTestSeriesForm = useForm<JsonTestSeriesValues>({ resolver: zodResolver(jsonTestSeriesSchema), defaultValues: { jsonInput: '' } });
   const carouselItemForm = useForm<CarouselItemValues>({ resolver: zodResolver(carouselItemSchema), defaultValues: { internalLink: '', externalLink: '', imageFile: undefined } });
   const kidsTubeVideoForm = useForm<KidsTubeVideoValues>({ resolver: zodResolver(kidsTubeVideoSchema), defaultValues: { title: '', description: '', videoUrl: '' } });
-
+  const eBookForm = useForm<EBookValues>({ resolver: zodResolver(eBookSchema) });
 
   const handleEnrollmentAction = async (id: string, newStatus: 'approved' | 'rejected') => {
     try {
@@ -520,8 +531,14 @@ function AdminDashboard() {
   
   const onKidsTubeVideoSubmit = async (data: KidsTubeVideoValues) => {
     try {
+        let thumbnailUrl = `https://picsum.photos/seed/${new Date().getTime()}/200/120`;
+        if (data.thumbnailFile) {
+            thumbnailUrl = await fileToDataUrl(data.thumbnailFile);
+        }
+
         await addDoc(collection(firestore, 'kidsTubeVideos'), {
             ...data,
+            thumbnailUrl,
             createdAt: serverTimestamp(),
         });
         toast({ title: 'Success', description: 'Kids Tube video added.' });
@@ -535,6 +552,33 @@ function AdminDashboard() {
       if (window.confirm("Are you sure you want to delete this video?")) {
           await deleteDoc(doc(firestore, 'kidsTubeVideos', id));
           toast({ description: 'Video deleted from Kids Tube.' });
+      }
+  };
+  
+  const onEBookSubmit = async (data: EBookValues) => {
+    try {
+        const thumbnailUrl = await fileToDataUrl(data.thumbnailFile);
+        const fileUrl = await fileToDataUrl(data.pdfFile);
+
+        await addDoc(collection(firestore, 'ebooks'), {
+            title: data.title,
+            description: data.description,
+            thumbnailUrl,
+            fileUrl,
+            createdAt: serverTimestamp(),
+        });
+        toast({ title: 'Success', description: 'E-book added successfully.' });
+        eBookForm.reset();
+    } catch (error) {
+        console.error("E-book submit error:", error);
+        toast({ variant: 'destructive', title: 'Error', description: 'Could not add e-book.' });
+    }
+  };
+
+  const deleteEBook = async (id: string) => {
+      if (window.confirm("Are you sure you want to delete this e-book?")) {
+          await deleteDoc(doc(firestore, 'ebooks', id));
+          toast({ description: 'E-book deleted.' });
       }
   };
 
@@ -644,7 +688,7 @@ function AdminDashboard() {
                         <FormMessage />
                       </FormItem>
                     )}/>
-                    <FormField control={courseForm.control} name="isFree" render={({ field }) => (<FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm"><div className="space-y-0.5"><FormLabel>Mark as Free</FormLabel><FormDescription>If checked, this course will be available for free.</FormDescription></div><FormControl><input type="checkbox" checked={field.value} onChange={field.onChange} className="h-5 w-5"/></FormControl></FormItem>)}/>
+                    <FormField control={courseForm.control} name="isFree" render={({ field }) => (<FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm"><div className="space-y-0.5"><FormLabel>Mark as Free</FormLabel><p className="text-sm text-muted-foreground">If checked, this course will be available for free.</p></div><FormControl><input type="checkbox" checked={field.value} onChange={field.onChange} className="h-5 w-5"/></FormControl></FormItem>)}/>
                     <FormField control={courseForm.control} name="description" render={({ field }) => (<FormItem><FormLabel>Description</FormLabel><FormControl><Textarea placeholder="A short description of the course content." className="min-h-32" {...field} /></FormControl><FormMessage /></FormItem>)}/>
                     <Button type="submit" disabled={courseForm.formState.isSubmitting}>{courseForm.formState.isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin"/>Creating...</> : "Create Course"}</Button>
                 </form></Form>
@@ -690,6 +734,33 @@ function AdminDashboard() {
                         </form></Form>
                     </CardContent>
                 </Card>
+                
+                 <Card>
+                  <CardHeader><CardTitle>E-Books Management</CardTitle><CardDescription>Add, view, and manage E-books.</CardDescription></CardHeader>
+                  <CardContent>
+                    <Form {...eBookForm}>
+                        <form onSubmit={eBookForm.handleSubmit(onEBookSubmit)} className="space-y-4 mb-6">
+                           <FormField control={eBookForm.control} name="title" render={({ field }) => (<FormItem><FormLabel>E-Book Title</FormLabel><FormControl><Input {...field} placeholder="e.g. Complete Guide to History" /></FormControl><FormMessage /></FormItem>)} />
+                           <FormField control={eBookForm.control} name="description" render={({ field }) => (<FormItem><FormLabel>Description</FormLabel><FormControl><Textarea {...field} placeholder="Short description of the e-book" /></FormControl><FormMessage /></FormItem>)} />
+                           <FormField control={eBookForm.control} name="thumbnailFile" render={({ field: { onChange, value, ...rest } }) => (<FormItem><FormLabel>Thumbnail Image</FormLabel><FormControl><Input type="file" accept="image/*" onChange={(e) => onChange(e.target.files?.[0])} {...rest} /></FormControl><FormMessage /></FormItem>)} />
+                           <FormField control={eBookForm.control} name="pdfFile" render={({ field: { onChange, value, ...rest } }) => (<FormItem><FormLabel>PDF File</FormLabel><FormControl><Input type="file" accept=".pdf" onChange={(e) => onChange(e.target.files?.[0])} {...rest} /></FormControl><FormMessage /></FormItem>)} />
+                           <Button type="submit" disabled={eBookForm.formState.isSubmitting}>{eBookForm.formState.isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin"/>Adding...</> : <><BookMarked className="mr-2"/>Add E-Book</>}</Button>
+                        </form>
+                    </Form>
+                     <h4 className="font-semibold mb-2">Existing E-Books</h4>
+                     <div className="max-h-60 overflow-y-auto pr-2 space-y-2">
+                        {ebooksLoading && <Skeleton className="h-12 w-full" />}
+                        {ebooksCollection?.docs.map((doc) => (
+                           <div key={doc.id} className="flex items-center justify-between p-2 border rounded-lg">
+                             <span className="font-medium">{doc.data().title}</span>
+                             <Button variant="ghost" size="icon" onClick={() => deleteEBook(doc.id)}>
+                               <Trash2 className="h-4 w-4 text-destructive" />
+                             </Button>
+                           </div>
+                         ))}
+                     </div>
+                  </CardContent>
+                 </Card>
 
                  <Card>
                   <CardHeader><CardTitle>Live Class Management</CardTitle><CardDescription>Add, view, and manage live classes.</CardDescription></CardHeader>
@@ -796,7 +867,8 @@ function AdminDashboard() {
                           <form onSubmit={kidsTubeVideoForm.handleSubmit(onKidsTubeVideoSubmit)} className="space-y-4">
                               <FormField control={kidsTubeVideoForm.control} name="title" render={({ field }) => (<FormItem><FormLabel>Video Title</FormLabel><FormControl><Input {...field} placeholder="e.g. Learning Alphabets" /></FormControl><FormMessage /></FormItem>)} />
                               <FormField control={kidsTubeVideoForm.control} name="description" render={({ field }) => (<FormItem><FormLabel>Description (Optional)</FormLabel><FormControl><Textarea {...field} placeholder="A short description about the video." /></FormControl><FormMessage /></FormItem>)} />
-                              <FormField control={kidsTubeVideoForm.control} name="videoUrl" render={({ field }) => (<FormItem><FormLabel>YouTube/Video URL</FormLabel><FormControl><Input {...field} placeholder="https://www.youtube.com/watch?v=..." /></FormControl><FormMessage /></FormItem>)} />
+                              <FormField control={kidsTubeVideoForm.control} name="videoUrl" render={({ field }) => (<FormItem><FormLabel>Video URL</FormLabel><FormControl><Input {...field} placeholder="https://www.youtube.com/watch?v=... or https://example.com/video.mp4" /></FormControl><FormMessage /></FormItem>)} />
+                              <FormField control={kidsTubeVideoForm.control} name="thumbnailFile" render={({ field: { onChange, value, ...rest } }) => (<FormItem><FormLabel>Thumbnail Image</FormLabel><FormControl><Input type="file" accept="image/*" onChange={(e) => onChange(e.target.files?.[0])} {...rest} /></FormControl><FormMessage /></FormItem>)} />
                               <Button type="submit" disabled={kidsTubeVideoForm.formState.isSubmitting}>
                                   {kidsTubeVideoForm.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                   Add Video
@@ -974,7 +1046,7 @@ function AdminDashboard() {
                                 <FormItem>
                                     <FormLabel>Image</FormLabel>
                                     <FormControl><Input type="file" accept="image/*" onChange={(e) => onChange(e.target.files?.[0])} {...fieldProps} /></FormControl>
-                                    <FormDescription>Recommended size: 800x400 pixels.</FormDescription>
+                                    <p className="text-xs text-muted-foreground">Recommended size: 800x400 pixels.</p>
                                     <FormMessage />
                                 </FormItem>
                                 )}/>
