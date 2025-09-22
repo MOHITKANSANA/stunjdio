@@ -18,7 +18,7 @@ import { firestore } from '@/lib/firebase';
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Trash2, Check, X, Upload, Video, FileText, StickyNote, PlusCircle, Save, Download, ThumbsUp, ThumbsDown, Clock, CircleAlert, CheckCircle2, XCircle, KeyRound, Newspaper, Image as ImageIcon, MinusCircle, BookMarked, Award } from 'lucide-react';
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -537,13 +537,17 @@ function AdminDashboard() {
             thumbnailUrl = await fileToDataUrl(data.thumbnailFile);
         }
 
-        await addDoc(collection(firestore, 'kidsTubeVideos'), {
-            ...data,
+        const videoData = {
+            title: data.title,
+            description: data.description || '',
+            videoUrl: data.videoUrl,
             thumbnailUrl,
             likes: 0,
             dislikes: 0,
             createdAt: serverTimestamp(),
-        });
+        };
+
+        await addDoc(collection(firestore, 'kidsTubeVideos'), videoData);
         toast({ title: 'Success', description: 'Kids Tube video added.' });
         kidsTubeVideoForm.reset();
     } catch (error) {
@@ -551,6 +555,7 @@ function AdminDashboard() {
         toast({ variant: 'destructive', title: 'Error', description: 'Could not add video.' });
     }
   };
+
 
   const deleteKidsTubeVideo = async (id: string) => {
       if (window.confirm("Are you sure you want to delete this video?")) {
@@ -608,10 +613,11 @@ function AdminDashboard() {
     }
   }
   
-  const isValidUrl = (url: string) => {
+  const isValidUrl = (url: string | undefined | null): boolean => {
+    if (!url) return false;
     try {
         new URL(url);
-        return true;
+        return url.startsWith('data:image/');
     } catch (e) {
         return false;
     }
@@ -643,7 +649,7 @@ function AdminDashboard() {
                     ))}
                     {enrollmentsCollection?.docs.map((doc) => {
                       const enrollment = doc.data();
-                      const hasValidScreenshot = enrollment.screenshotDataUrl && isValidUrl(enrollment.screenshotDataUrl);
+                      const hasValidScreenshot = isValidUrl(enrollment.screenshotDataUrl);
                       return (
                         <TableRow key={doc.id}>
                           <TableCell><div className="font-medium">{enrollment.userDisplayName}</div><div className="text-sm text-muted-foreground">{enrollment.userEmail}</div></TableCell>
@@ -1142,4 +1148,5 @@ function AdminDashboard() {
     
 
     
+
 
