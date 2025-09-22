@@ -1,6 +1,6 @@
 
 "use client"
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Book,
   Home,
@@ -15,6 +15,10 @@ import {
   Video,
   Award,
   Bell,
+  Search,
+  MessageSquareQuestion,
+  Sparkles,
+  HelpCircle,
 } from 'lucide-react';
 
 import { useAuth } from '@/hooks/use-auth';
@@ -38,6 +42,8 @@ import { cn } from '@/lib/utils';
 import { useLanguage } from '@/hooks/use-language';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
+import { doc, getDoc } from 'firebase/firestore';
+import { firestore } from '@/lib/firebase';
 
 const bottomNavItems = [
     { href: '/dashboard', icon: Home, label: 'Home' },
@@ -45,6 +51,14 @@ const bottomNavItems = [
     { href: '/dashboard/live-class', icon: Video, label: 'Live Class' },
     { href: '/dashboard/profile', icon: User, label: 'Profile' },
 ];
+
+const kidsBottomNavItems = [
+    { href: '/dashboard', icon: Home, label: 'Home' },
+    { href: '/dashboard/kids/search', icon: Search, label: 'Search' },
+    { href: '/dashboard/kids/doubts', icon: HelpCircle, label: 'My Doubts' },
+    { href: '/dashboard/profile', icon: User, label: 'Profile' },
+];
+
 
 const sidebarNavItems = [
     { href: '/dashboard', icon: Home, label: 'home' },
@@ -56,6 +70,12 @@ const sidebarNavItems = [
     { href: '/dashboard/ai-test', icon: ShieldQuestion, label: 'ai_tests' },
 ];
 
+const kidsSidebarNavItems = [
+    { href: '/dashboard', icon: Sparkles, label: 'Kids Tube' },
+    { href: '/dashboard/profile', icon: User, label: 'My Profile' },
+    { href: '/dashboard/kids/doubts', icon: HelpCircle, label: 'My Doubts' },
+]
+
 const SidebarMenuItemWithHandler = ({ href, icon: Icon, label, closeSidebar }: { href: string; icon: React.ElementType; label: string; closeSidebar: () => void; }) => {
     const pathname = usePathname();
     const { t } = useLanguage();
@@ -66,7 +86,7 @@ const SidebarMenuItemWithHandler = ({ href, icon: Icon, label, closeSidebar }: {
             <Link href={href}>
                 <SidebarMenuButton isActive={isActive} onClick={closeSidebar}>
                     <Icon />
-                    <span>{t(label)}</span>
+                    <span>{label}</span>
                 </SidebarMenuButton>
             </Link>
         </SidebarMenuItem>
@@ -74,7 +94,7 @@ const SidebarMenuItemWithHandler = ({ href, icon: Icon, label, closeSidebar }: {
 }
 
 
-const AppSidebar = () => {
+const AppSidebar = ({ isKidsMode }: { isKidsMode: boolean }) => {
     const { isMobile, setOpenMobile } = useSidebar();
     const { t } = useLanguage();
     const { logout } = useAuth();
@@ -96,17 +116,19 @@ const AppSidebar = () => {
         router.push(path);
     }
 
+    const navItems = isKidsMode ? kidsSidebarNavItems : sidebarNavItems;
+
     return (
         <Sidebar>
             <SidebarContent className="bg-gradient-to-b from-primary to-orange-500 text-white border-none">
                 <SidebarHeader>
                      <div className='flex items-center gap-2'>
                         <Shield className="h-7 w-7 text-white" />
-                        <span className="text-lg font-semibold font-headline">Go Swami Coaching Classes</span>
+                        <span className="text-lg font-semibold font-headline">Go Swami Coaching</span>
                     </div>
                 </SidebarHeader>
                 <SidebarMenu>
-                    {sidebarNavItems.map((item) => (
+                    {navItems.map((item) => (
                         <SidebarMenuItemWithHandler
                             key={item.label}
                             href={item.href}
@@ -115,7 +137,7 @@ const AppSidebar = () => {
                             closeSidebar={closeSidebar}
                         />
                     ))}
-                    <SidebarMenuItem>
+                     <SidebarMenuItem>
                         <Link href="/admin">
                            <SidebarMenuButton onClick={() => handleNavigation('/admin')}>
                                 <UserCog />
@@ -156,7 +178,7 @@ const AppHeader = () => {
                     <SidebarTrigger />
                 </div>
                  <div className="hidden md:flex items-center gap-2 text-lg font-semibold font-headline">
-                    Go Swami Coaching Classes
+                    Go Swami Coaching
                  </div>
             </div>
             <div className="flex items-center gap-2">
@@ -169,13 +191,14 @@ const AppHeader = () => {
   )
 }
 
-const AppBottomNav = () => {
+const AppBottomNav = ({ isKidsMode }: { isKidsMode: boolean }) => {
     const pathname = usePathname();
+    const items = isKidsMode ? kidsBottomNavItems : bottomNavItems;
 
     return (
          <footer className="sticky bottom-0 z-10 border-t border-border/50 bg-background/95 backdrop-blur-sm md:hidden shadow-[0_-2px_10px_rgba(0,0,0,0.1)]">
               <nav className="flex items-center justify-around p-2">
-                {bottomNavItems.map((item) => (
+                {items.map((item) => (
                    <Link 
                      key={item.label}
                      href={item.href}
@@ -211,20 +234,47 @@ export default function DashboardLayout({
 }) {
   const { user, loading } = useAuth();
   const router = useRouter();
+  const [isKidsMode, setIsKidsMode] = useState(false);
+  const [checkingProfile, setCheckingProfile] = useState(true);
   
-  if (loading) {
+  useEffect(() => {
+    if (loading) return;
+
+    if (!user) {
+        router.replace('/');
+        return;
+    }
+
+    const checkUserProfile = async () => {
+        const userDocRef = doc(firestore, 'users', user.uid);
+        const userDoc = await getDoc(userDocRef);
+        if (userDoc.exists()) {
+            const userData = userDoc.data();
+            if (!userData.ageGroup) {
+                router.replace('/dashboard/complete-profile');
+            } else {
+                setIsKidsMode(userData.ageGroup === '1-9');
+                setCheckingProfile(false);
+            }
+        } else {
+            // This case might happen for users who signed up before the new fields were added
+            router.replace('/dashboard/complete-profile');
+        }
+    };
+    
+    checkUserProfile();
+
+  }, [user, loading, router]);
+  
+  if (loading || checkingProfile) {
     return <LoadingScreen />;
   }
 
-  if (!user) {
-    router.replace('/');
-    return <LoadingScreen />;
-  }
 
   return (
       <SidebarProvider>
           <div className="flex h-screen w-full flex-col bg-gray-50 dark:bg-gray-950">
-             <AppSidebar />
+             <AppSidebar isKidsMode={isKidsMode} />
              <div className="flex flex-col w-full h-full overflow-hidden">
                 <AppHeader />
                  <main className="flex-1 overflow-y-auto h-full">
@@ -232,7 +282,7 @@ export default function DashboardLayout({
                         <div className="p-4 md:p-6">{children}</div>
                     </SidebarInset>
                 </main>
-                <AppBottomNav />
+                <AppBottomNav isKidsMode={isKidsMode} />
              </div>
           </div>
       </SidebarProvider>

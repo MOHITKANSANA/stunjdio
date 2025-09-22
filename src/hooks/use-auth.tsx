@@ -7,7 +7,7 @@ import { doc, setDoc, serverTimestamp, getDoc } from 'firebase/firestore';
 import { auth, firestore } from '@/lib/firebase';
 import { useRouter } from 'next/navigation';
 
-const updateUserInFirestore = async (user: User, additionalData: Record<string, any> = {}) => {
+export const updateUserInFirestore = async (user: User, additionalData: Record<string, any> = {}) => {
     const userRef = doc(firestore, 'users', user.uid);
     const docSnap = await getDoc(userRef);
 
@@ -19,14 +19,17 @@ const updateUserInFirestore = async (user: User, additionalData: Record<string, 
         lastLogin: serverTimestamp(),
         ...additionalData
     };
+    
+    const dataToWrite = Object.fromEntries(Object.entries(userData).filter(([_, v]) => v !== undefined));
+
 
     if (!docSnap.exists()) {
         await setDoc(userRef, {
-            ...userData,
+            ...dataToWrite,
             createdAt: serverTimestamp(),
         });
     } else {
-        await setDoc(userRef, userData, { merge: true });
+        await setDoc(userRef, dataToWrite, { merge: true });
     }
 };
 
@@ -54,7 +57,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
       if (currentUser) {
-        await updateUserInFirestore(currentUser);
+        // We will update the user doc on login/signup instead of every auth change
       }
       setLoading(false);
     });
@@ -77,7 +80,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const signupWithDetails = async (email: string, password: string, name: string, photoURL: string | null, details: Record<string, any>) => {
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-    await updateProfile(userCredential.user, { displayName: name, photoURL: photoURL });
+    await updateProfile(userCredential.user, { displayName: name, photoURL: photoURL || undefined });
     return handleAuthSuccess(userCredential, { ...details, displayName: name, photoURL: photoURL });
   };
 
