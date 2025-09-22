@@ -98,15 +98,10 @@ const KidsTubeDashboard = () => {
     const [videos, loading, error] = useCollection(
         query(collection(firestore, 'kidsTubeVideos'), orderBy('createdAt', 'desc'))
     );
-    const router = useRouter();
     
     if (loading) return <div><Skeleton className="w-full aspect-video rounded-lg mb-4" /><Skeleton className="h-8 w-3/4 mb-4" /><Skeleton className="h-40 w-full" /></div>
     if (error) return <p className="text-destructive">Error loading videos.</p>
     if (!videos || videos.empty) return <p>No videos available right now. Check back soon!</p>
-
-    const handleVideoClick = (videoId: string) => {
-        router.push(`/dashboard/kids/video/${videoId}`);
-    };
 
     return (
         <div className="flex flex-col h-full space-y-4">
@@ -115,15 +110,15 @@ const KidsTubeDashboard = () => {
                 {videos.docs.map(doc => {
                     const video = doc.data();
                     return (
-                        <div key={doc.id} className="flex flex-col gap-2 cursor-pointer" onClick={() => handleVideoClick(doc.id)}>
+                        <Link href={`/dashboard/kids/video/${doc.id}`} key={doc.id} className="flex flex-col gap-2 cursor-pointer group">
                            <div className="relative w-full aspect-video rounded-lg overflow-hidden shrink-0 bg-muted">
                                <Image src={video.thumbnailUrl || `https://picsum.photos/seed/${doc.id}/300/180`} alt={video.title} fill style={{objectFit: "cover"}} />
                            </div>
                            <div>
-                               <h3 className="font-semibold line-clamp-2">{video.title}</h3>
+                               <h3 className="font-semibold line-clamp-2 group-hover:text-primary">{video.title}</h3>
                                <p className="text-sm text-muted-foreground line-clamp-1">{video.description || "Fun learning video"}</p>
                            </div>
-                        </div>
+                        </Link>
                     )
                 })}
             </div>
