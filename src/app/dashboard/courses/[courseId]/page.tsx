@@ -1,6 +1,7 @@
 
 'use client';
 
+import { useState } from 'react';
 import { doc } from 'firebase/firestore';
 import { useDocument, useCollection } from 'react-firebase-hooks/firestore';
 import { firestore } from '@/lib/firebase';
@@ -13,6 +14,8 @@ import { IndianRupee, BookOpen, Clock, Users, Lock, Video, PlayCircle, FileText,
 import Link from 'next/link';
 import { useAuth } from '@/hooks/use-auth';
 import { collection, query, where, orderBy } from 'firebase/firestore';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+
 
 const ContentIcon = ({ type }: { type: string }) => {
     switch (type) {
@@ -23,10 +26,69 @@ const ContentIcon = ({ type }: { type: string }) => {
     }
 }
 
+const getYoutubeVideoId = (url: string): string | null => {
+    if (!url) return null;
+    let videoId: string | null = null;
+    try {
+        const patterns = [
+            /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/|v\/|live\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/,
+            /youtube\.com\/shorts\/([a-zA-Z0-9_-]{11})/,
+        ];
+
+        for (const pattern of patterns) {
+            const match = url.match(pattern);
+            if (match && match[1]) {
+                videoId = match[1];
+                break;
+            }
+        }
+    } catch (e) {
+        console.error("Error parsing YouTube URL", e);
+        return null;
+    }
+    return videoId;
+}
+
+
+const VideoPlayer = ({ videoUrl, title, onOpenChange }: { videoUrl: string, title: string, onOpenChange: (open: boolean) => void }) => {
+    const youtubeVideoId = getYoutubeVideoId(videoUrl);
+
+    return (
+        <Dialog open={true} onOpenChange={onOpenChange}>
+            <DialogContent className="max-w-3xl p-4">
+                <DialogHeader>
+                    <DialogTitle>{title}</DialogTitle>
+                </DialogHeader>
+                <div className="aspect-video">
+                    {youtubeVideoId ? (
+                        <iframe
+                            width="100%"
+                            height="100%"
+                            src={`https://www.youtube.com/embed/${youtubeVideoId}?autoplay=1`}
+                            title={title}
+                            frameBorder="0"
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                            allowFullScreen
+                            className="rounded-lg"
+                        ></iframe>
+                    ) : (
+                        <video controls autoPlay src={videoUrl} className="w-full h-full rounded-lg bg-black">
+                            Your browser does not support the video tag.
+                        </video>
+                    )}
+                </div>
+            </DialogContent>
+        </Dialog>
+    );
+};
+
+
 export default function CourseDetailPage() {
   const { user, loading: authLoading } = useAuth();
   const params = useParams();
   const courseId = params.courseId as string;
+
+  const [selectedVideo, setSelectedVideo] = useState<{ url: string, title: string } | null>(null);
   
   const [courseDoc, courseLoading, courseError] = useDocument(doc(firestore, 'courses', courseId));
   const [courseContentCollection, courseContentLoading, courseContentError] = useCollection(
@@ -45,6 +107,15 @@ export default function CourseDetailPage() {
   const [enrollmentDocs, enrollmentLoading, enrollmentError] = useCollection(enrollmentsQuery);
 
   const isEnrolled = !!enrollmentDocs && !enrollmentDocs.empty;
+
+  const handleContentClick = (content: { type: string, url: string, title: string }) => {
+    if (content.type === 'video') {
+        setSelectedVideo({ url: content.url, title: content.title });
+    } else {
+        window.open(content.url, '_blank', 'noopener,noreferrer');
+    }
+  };
+
 
   if (courseLoading || authLoading || enrollmentLoading || courseContentLoading) {
     return (
@@ -73,6 +144,13 @@ export default function CourseDetailPage() {
 
   return (
     <div className="max-w-5xl mx-auto p-4 md:p-8">
+       {selectedVideo && (
+            <VideoPlayer 
+                videoUrl={selectedVideo.url}
+                title={selectedVideo.title}
+                onOpenChange={(isOpen) => !isOpen && setSelectedVideo(null)}
+            />
+        )}
       <div className="grid md:grid-cols-5 gap-8">
         <div className="md:col-span-3 space-y-6">
           <div>
@@ -97,10 +175,8 @@ export default function CourseDetailPage() {
                                <ContentIcon type={content.type} />
                                <p className="font-semibold">{content.title}</p>
                             </div>
-                            <Button variant="ghost" size="icon" asChild>
-                                <a href={content.url} target="_blank" rel="noopener noreferrer">
-                                    <PlayCircle className="h-6 w-6" />
-                                </a>
+                            <Button variant="ghost" size="icon" onClick={() => handleContentClick(content)}>
+                                <PlayCircle className="h-6 w-6" />
                             </Button>
                           </div>
                         )
