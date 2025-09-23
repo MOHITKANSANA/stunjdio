@@ -5,7 +5,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/hooks/use-auth';
 import { firestore } from '@/lib/firebase';
-import { doc, collection, query, orderBy, onSnapshot, where, limit, getDoc } from 'firebase/firestore';
+import { doc, collection, query, orderBy, onSnapshot, where, getDoc, limit } from 'firebase/firestore';
 import { useDocument } from 'react-firebase-hooks/firestore';
 import { notFound, useParams } from 'next/navigation';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -24,7 +24,7 @@ const YouTubePlayer = ({ videoId }: { videoId: string }) => {
             <iframe
                 width="100%"
                 height="100%"
-                src={`https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0&controls=0&showinfo=0&modestbranding=1`}
+                src={`https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0&controls=1&showinfo=0&modestbranding=1`}
                 title="YouTube video player"
                 frameBorder="0"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
@@ -75,14 +75,14 @@ const ChatSection = ({ classId }: { classId: string }) => {
                         </Avatar>
                         <div>
                             <p className="font-semibold text-sm">{msg.userName}</p>
-                            <p className="text-sm">{msg.text}</p>
+                            <p className="text-sm break-words">{msg.text}</p>
                         </div>
                     </div>
                 ))}
                 <div ref={chatEndRef} />
             </div>
             {user && (
-                <form onSubmit={handleSendMessage} className="p-4 border-t flex items-center gap-2">
+                <form onSubmit={handleSendMessage} className="p-2 border-t flex items-center gap-2 bg-background">
                     <Input 
                         value={newMessage} 
                         onChange={(e) => setNewMessage(e.target.value)}
@@ -173,7 +173,7 @@ export default function LiveClassPlayerPage() {
     }
     
     if (loading) {
-        return <div className="p-4"><Skeleton className="w-full aspect-video" /></div>
+        return <div className="p-0"><Skeleton className="w-full aspect-video" /></div>
     }
     if (error || !classDoc?.exists()) {
         notFound();
@@ -183,7 +183,7 @@ export default function LiveClassPlayerPage() {
     const videoId = getYoutubeVideoId(liveClass.youtubeUrl);
 
     return (
-        <div className="flex flex-col h-[calc(100vh-4rem)] md:h-[calc(100vh-4rem)]">
+        <div className="flex flex-col h-[calc(100vh-4rem)] md:h-[calc(100vh-4rem)] bg-background">
             <div className="w-full">
                 {videoId ? <YouTubePlayer videoId={videoId} /> : <div className="aspect-video bg-black text-white flex items-center justify-center"><p>Invalid or unsupported YouTube video URL.</p></div>}
             </div>

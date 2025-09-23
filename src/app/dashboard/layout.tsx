@@ -66,6 +66,7 @@ const kidsBottomNavItems = [
 
 const sidebarNavItems = [
     { href: '/dashboard', icon: Home, label: 'home' },
+    { href: '/dashboard/library', icon: Library, label: 'My Library' },
     { href: '/dashboard/profile', icon: User, label: 'profile' },
     { href: '/dashboard/courses', icon: Book, label: 'courses' },
     { href: '/dashboard/scholarship', icon: Award, label: 'scholarship' },

@@ -1,4 +1,5 @@
 
+
 "use client";
 import React, { useEffect, useState } from 'react';
 import {
@@ -16,26 +17,17 @@ import Link from 'next/link';
 import { Card, CardContent } from '@/components/ui/card';
 import { useAuth } from '@/hooks/use-auth';
 import { useLanguage } from '@/hooks/use-language';
-import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel"
 import Image from 'next/image';
-import { useCollection } from 'react-firebase-hooks/firestore';
-import { collection, query, orderBy, doc, getDoc, where } from 'firebase/firestore';
+import { doc, getDoc } from 'firebase/firestore';
 import { firestore } from '@/lib/firebase';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ThumbsUp, MessageCircleQuestion, Send } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { useRouter } from 'next/navigation';
+
 
 // Main App Dashboard Component
 const MainDashboard = () => {
     const { user } = useAuth();
     const { t } = useLanguage();
-    
-    const [carouselItems, loading] = useCollection(
-        query(collection(firestore, 'homepageCarousel'), orderBy('createdAt', 'asc'))
-    );
-    
+        
     const quickAccessItems = [
       { label: "Paid Courses", icon: Wallet, href: "/dashboard/courses"},
       { label: "Free Courses", icon: BookOpen, href: "/dashboard/courses/free"},
@@ -54,23 +46,6 @@ const MainDashboard = () => {
                 <h2 className="text-2xl font-bold text-foreground">Hello, {user?.displayName || 'Student'}!</h2>
                 <p className="text-muted-foreground">{t('motivational_line')}</p>
             </div>
-
-            <Carousel className="w-full" opts={{ loop: true }}>
-                <CarouselContent>
-                {loading && <CarouselItem><Skeleton className="w-full h-48 rounded-lg" /></CarouselItem>}
-                {carouselItems?.docs.map((item) => (
-                    <CarouselItem key={item.id}>
-                        <Link href={item.data().linkUrl || "#"}>
-                            <div className="relative h-48 w-full rounded-lg overflow-hidden">
-                                <Image src={item.data().imageUrl} alt={item.data().title || "Carousel Image"} fill style={{objectFit: "cover"}} data-ai-hint="advertisement" />
-                            </div>
-                        </Link>
-                    </CarouselItem>
-                ))}
-                </CarouselContent>
-                <CarouselPrevious className="left-2" />
-                <CarouselNext className="right-2" />
-            </Carousel>
 
             <div>
                 <h2 className="text-lg font-bold mb-3">Quick Access</h2>
