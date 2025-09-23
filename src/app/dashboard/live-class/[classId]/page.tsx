@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
@@ -43,11 +42,11 @@ const ChatSection = ({ classId }: { classId: string }) => {
     useEffect(() => {
         const q = query(
             collection(firestore, 'liveClassChats'),
-            where('classId', '==', classId)
+            where('classId', '==', classId),
+            orderBy('createdAt', 'asc')
         );
         const unsubscribe = onSnapshot(q, (querySnapshot) => {
             const msgs = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            msgs.sort((a, b) => a.createdAt?.toMillis() - b.createdAt?.toMillis());
             setMessages(msgs);
         });
         return () => unsubscribe();
@@ -65,7 +64,7 @@ const ChatSection = ({ classId }: { classId: string }) => {
     };
 
     return (
-        <div className="flex flex-col h-full">
+        <div className="flex flex-col h-full bg-background">
             <div className="flex-grow overflow-y-auto p-4 space-y-4">
                 {messages.map(msg => (
                     <div key={msg.id} className="flex items-start gap-3">
@@ -82,7 +81,7 @@ const ChatSection = ({ classId }: { classId: string }) => {
                 <div ref={chatEndRef} />
             </div>
             {user && (
-                <form onSubmit={handleSendMessage} className="p-2 border-t flex items-center gap-2 bg-background">
+                <form onSubmit={handleSendMessage} className="p-2 border-t flex items-center gap-2 bg-background shrink-0">
                     <Input 
                         value={newMessage} 
                         onChange={(e) => setNewMessage(e.target.value)}
@@ -103,7 +102,6 @@ const NotesSection = ({ classId }: { classId: string }) => {
     const { toast } = useToast();
     const [notes, setNotes] = useState('');
     const [isSaving, setIsSaving] = useState(false);
-    const [docId, setDocId] = useState<string | null>(null);
 
     useEffect(() => {
         if (user) {
@@ -117,10 +115,8 @@ const NotesSection = ({ classId }: { classId: string }) => {
                 if (!querySnapshot.empty) {
                     const doc = querySnapshot.docs[0];
                     setNotes(doc.data().content);
-                    setDocId(doc.id);
                 } else {
                     setNotes('');
-                    setDocId(null);
                 }
             });
             return () => unsubscribe();
@@ -183,8 +179,8 @@ export default function LiveClassPlayerPage() {
     const videoId = getYoutubeVideoId(liveClass.youtubeUrl);
 
     return (
-        <div className="flex flex-col h-[calc(100vh-4rem)] md:h-[calc(100vh-4rem)] bg-background">
-            <div className="w-full">
+        <div className="flex flex-col h-[calc(100vh-8.5rem)] md:h-[calc(100vh-4rem)] bg-background">
+            <div className="w-full shrink-0">
                 {videoId ? <YouTubePlayer videoId={videoId} /> : <div className="aspect-video bg-black text-white flex items-center justify-center"><p>Invalid or unsupported YouTube video URL.</p></div>}
             </div>
             
