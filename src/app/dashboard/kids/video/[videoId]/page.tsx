@@ -1,18 +1,18 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/hooks/use-auth';
 import { firestore } from '@/lib/firebase';
-import { doc, collection, query, orderBy, where, getDoc, limit, onSnapshot } from 'firebase/firestore';
+import { doc, collection, query, orderBy, where, getDoc, limit, onSnapshot, DocumentData } from 'firebase/firestore';
 import { useDocument, useCollection } from 'react-firebase-hooks/firestore';
-import { notFound, useParams } from 'next/navigation';
+import { notFound, useParams, useRouter } from 'next/navigation';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { ThumbsUp, ThumbsDown, MessageSquare, Send } from 'lucide-react';
-import { handleLikeDislikeAction, addDoubtAction, addReplyAction, handleFollowAction } from '@/app/actions/kids-tube';
+import { ThumbsUp, MessageSquare, Send, ThumbsDown } from 'lucide-react';
+import { handleLikeToggleAction, addDoubtAction, addReplyAction, handleFollowAction, addVideoWatchPointAction } from '@/app/actions/kids-tube';
 import { useToast } from '@/hooks/use-toast';
 import { Separator } from '@/components/ui/separator';
 import { Input } from '@/components/ui/input';
@@ -20,8 +20,7 @@ import { cn } from '@/lib/utils';
 import Image from 'next/image';
 import Link from 'next/link';
 
-const VideoPlayer = ({ videoUrl }: { videoUrl: string }) => {
-    // A simple heuristic to check if it's a YouTube URL
+const VideoPlayer = ({ videoUrl, onEnded }: { videoUrl: string; onEnded: () => void; }) => {
     const isYoutubeUrl = videoUrl.includes('youtube.com') || videoUrl.includes('youtu.be');
     let embedUrl = videoUrl;
 
@@ -32,24 +31,41 @@ const VideoPlayer = ({ videoUrl }: { videoUrl: string }) => {
             if (url.hostname === 'youtu.be') {
                 videoId = url.pathname.slice(1);
             }
-            embedUrl = `https://www.youtube.com/embed/${videoId}`;
+            embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0`;
         } catch (e) {
             console.error("Invalid YouTube URL", e);
-            // Fallback to direct URL if parsing fails
             embedUrl = videoUrl;
         }
     }
 
+    // A simple way to handle video end for non-YouTube videos.
+    // YouTube API would be needed for more robust event handling.
+    const handleVideoEnd = () => {
+        onEnded();
+    };
+
     return (
-        <div className="relative w-full aspect-video rounded-lg overflow-hidden bg-black">
-            <iframe
-                src={embedUrl}
-                title="Video player"
-                frameBorder="0"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-                className="w-full h-full"
-            ></iframe>
+        <div className="relative w-full aspect-video rounded-lg overflow-hidden bg-black sticky top-0 z-10">
+            {isYoutubeUrl ? (
+                 <iframe
+                    src={embedUrl}
+                    title="Video player"
+                    frameBorder="0"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                    className="w-full h-full"
+                ></iframe>
+            ) : (
+                <video
+                    src={embedUrl}
+                    controls
+                    autoPlay
+                    onEnded={handleVideoEnd}
+                    className="w-full h-full"
+                >
+                    Your browser does not support the video tag.
+                </video>
+            )}
         </div>
     );
 };
@@ -113,6 +129,7 @@ const DoubtItem = ({ doubt, doubtId }: { doubt: any, doubtId: string }) => {
 
 export default function VideoPage() {
     const params = useParams();
+    const router = useRouter();
     const videoId = params.videoId as string;
     const { user } = useAuth();
     const { toast } = useToast();
@@ -120,43 +137,52 @@ export default function VideoPage() {
     const [showDescription, setShowDescription] = useState(false);
     const [hasFollowed, setHasFollowed] = useState(false);
     const [followers, setFollowers] = useState(0);
+    const [isLiked, setIsLiked] = useState(false);
+    const hasEndedRef = useRef(false);
 
     const [videoDoc, loading, error] = useDocument(doc(firestore, 'kidsTubeVideos', videoId));
     const [doubts, doubtsLoading] = useCollection(query(collection(firestore, 'kidsTubeDoubts'), where('videoId', '==', videoId), orderBy('createdAt', 'desc')));
     
-    // For "Up Next" videos
     const [relatedVideos, relatedVideosLoading] = useCollection(
         query(collection(firestore, 'kidsTubeVideos'), where('__name__', '!=', videoId), limit(5))
     );
 
     useEffect(() => {
         if (user) {
-            // Check if user has followed
             const userDocRef = doc(firestore, 'users', user.uid);
-            getDoc(userDocRef).then(doc => {
+            const unsubUser = onSnapshot(userDocRef, (doc) => {
                 if (doc.exists() && doc.data().hasFollowed) {
                     setHasFollowed(true);
                 }
             });
-        }
 
-        // Get follower count
+            const userInteractionRef = doc(firestore, 'userVideoInteractions', `${user.uid}_${videoId}`);
+            const unsubInteraction = onSnapshot(userInteractionRef, (doc) => {
+                setIsLiked(doc.exists() && doc.data().action === 'like');
+            });
+            
+            return () => {
+                unsubUser();
+                unsubInteraction();
+            };
+        }
+    }, [user, videoId]);
+
+    useEffect(() => {
         const channelDocRef = doc(firestore, 'channels', 'gsc');
         const unsubscribe = onSnapshot(channelDocRef, (doc) => {
              if (doc.exists()) {
                 setFollowers(doc.data().followers || 0);
             }
         });
-        
         return () => unsubscribe();
+    }, []);
 
-    }, [user]);
-
-    const handleLikeDislike = async (action: 'like' | 'dislike') => {
+    const handleLikeToggle = async () => {
         if (!user) return toast({ variant: 'destructive', description: "You must be logged in." });
-        const result = await handleLikeDislikeAction(videoId, user.uid, action);
+        const result = await handleLikeToggleAction(videoId, user.uid);
         if (result.success && result.points) {
-            toast({ description: `+${result.points} points for your feedback!` });
+            toast({ description: `${result.points > 0 ? '+' : ''}${result.points} points!` });
         } else if (result.error) {
             toast({ variant: 'destructive', description: result.error });
         }
@@ -180,6 +206,20 @@ export default function VideoPage() {
         await addDoubtAction(videoId, user.uid, user.displayName || "Anonymous", user.photoURL, doubtText);
         setDoubtText('');
     };
+
+    const handleVideoEnd = async () => {
+        if (!user || hasEndedRef.current) return;
+        hasEndedRef.current = true;
+        
+        await addVideoWatchPointAction(user.uid);
+        toast({ description: "+5 points for watching the video!" });
+        
+        // Go to next video
+        if (relatedVideos && !relatedVideos.empty) {
+            const nextVideoId = relatedVideos.docs[0].id;
+            router.push(`/dashboard/kids/video/${nextVideoId}`);
+        }
+    };
     
     if (loading) {
         return <div className="p-4"><Skeleton className="w-full aspect-video" /></div>
@@ -192,8 +232,8 @@ export default function VideoPage() {
 
     return (
         <div className="flex flex-col md:flex-row max-w-7xl mx-auto p-4 gap-6">
-            <div className="flex-grow">
-                <VideoPlayer videoUrl={video.videoUrl} />
+            <div className="flex-grow md:w-[65%]">
+                <VideoPlayer videoUrl={video.videoUrl} onEnded={handleVideoEnd} />
                 <div className="py-4">
                     <h1 className="text-xl font-bold">{video.title}</h1>
                     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mt-2 gap-4">
@@ -211,10 +251,10 @@ export default function VideoPage() {
                             </Button>
                          </div>
                         <div className="flex items-center gap-2">
-                            <Button variant="outline" onClick={() => handleLikeDislike('like')}>
+                            <Button variant={isLiked ? 'default' : 'outline'} onClick={handleLikeToggle}>
                                 <ThumbsUp className="mr-2" /> {video.likes || 0}
                             </Button>
-                            <Button variant="outline" onClick={() => handleLikeDislike('dislike')}>
+                            <Button variant="outline">
                                 <ThumbsDown className="mr-2" /> {video.dislikes || 0}
                             </Button>
                         </div>
@@ -256,7 +296,7 @@ export default function VideoPage() {
                     </div>
                 </div>
             </div>
-             <div className="w-full md:w-80 lg:w-96 shrink-0">
+             <div className="w-full md:w-[35%] shrink-0">
                 <h3 className="text-lg font-bold mb-4">Up Next</h3>
                  <div className="space-y-3">
                      {relatedVideosLoading && [...Array(5)].map((_, i) => (

@@ -9,12 +9,8 @@ import {
   updateDoc,
   increment,
   arrayUnion,
-  arrayRemove,
   addDoc,
   serverTimestamp,
-  getDocs,
-  query,
-  where,
   runTransaction
 } from 'firebase/firestore';
 
@@ -22,7 +18,9 @@ import {
 const POINTS = {
   WATCH: 5,
   LIKE: 5,
-  DISLIKE: 5,
+  UNLIKE: -5,
+  DISLIKE: 5, // Kept for potential future use
+  UNDISLIKE: -5,
   FOLLOW: 10,
 };
 
@@ -43,7 +41,6 @@ export async function handleFollowAction(userId: string) {
       await updateDoc(userRef, { hasFollowed: true });
       await updateUserPoints(userId, POINTS.FOLLOW);
       
-      // Also increment the global channel follower count
       const channelRef = doc(firestore, 'channels', 'gsc');
       await updateDoc(channelRef, { followers: increment(1) });
 
@@ -55,45 +52,44 @@ export async function handleFollowAction(userId: string) {
   }
 }
 
-export async function handleLikeDislikeAction(
+export async function handleLikeToggleAction(
   videoId: string,
-  userId: string,
-  action: 'like' | 'dislike'
+  userId: string
 ) {
-    try {
-        const videoRef = doc(firestore, 'kidsTubeVideos', videoId);
-        const userInteractionRef = doc(firestore, 'userVideoInteractions', `${userId}_${videoId}`);
+    const videoRef = doc(firestore, 'kidsTubeVideos', videoId);
+    const userInteractionRef = doc(firestore, 'userVideoInteractions', `${userId}_${videoId}`);
 
+    try {
         return await runTransaction(firestore, async (transaction) => {
             const interactionDoc = await transaction.get(userInteractionRef);
-
-            if (interactionDoc.exists()) {
-                // User has already interacted (liked/disliked)
-                return { success: false, error: "You have already liked or disliked this video." };
-            }
-
-            // First time interaction for this user and video
-            if (action === 'like') {
-                transaction.update(videoRef, { likes: increment(1) });
-                await updateUserPoints(userId, POINTS.LIKE);
-            } else {
-                transaction.update(videoRef, { dislikes: increment(1) });
-                await updateUserPoints(userId, POINTS.DISLIKE);
-            }
-
-            // Record the interaction to prevent future points
-            transaction.set(userInteractionRef, {
-                userId,
-                videoId,
-                action,
-                interactedAt: serverTimestamp()
-            });
             
-            return { success: true, points: action === 'like' ? POINTS.LIKE : POINTS.DISLIKE };
+            if (interactionDoc.exists()) {
+                // User has already interacted, so we toggle the like state
+                const currentAction = interactionDoc.data().action;
+                if (currentAction === 'like') {
+                    // It was liked, now it's unliked
+                    transaction.update(videoRef, { likes: increment(-1) });
+                    transaction.delete(userInteractionRef);
+                    await updateUserPoints(userId, POINTS.UNLIKE);
+                    return { success: true, points: POINTS.UNLIKE, newState: 'none' };
+                } else {
+                    // This case handles if we re-introduce dislikes. For now, it's just 'like' or nothing.
+                    // To be safe, let's treat any other existing state as a new 'like'.
+                    transaction.update(videoRef, { likes: increment(1) });
+                    transaction.set(userInteractionRef, { userId, videoId, action: 'like', interactedAt: serverTimestamp() }, { merge: true });
+                    await updateUserPoints(userId, POINTS.LIKE);
+                    return { success: true, points: POINTS.LIKE, newState: 'liked' };
+                }
+            } else {
+                // First time liking this video
+                transaction.update(videoRef, { likes: increment(1) });
+                transaction.set(userInteractionRef, { userId, videoId, action: 'like', interactedAt: serverTimestamp() });
+                await updateUserPoints(userId, POINTS.LIKE);
+                return { success: true, points: POINTS.LIKE, newState: 'liked' };
+            }
         });
-
     } catch (error: any) {
-        console.error('Error in handleLikeDislikeAction:', error);
+        console.error('Error in handleLikeToggleAction:', error);
         return { success: false, error: error.message };
     }
 }

@@ -21,6 +21,7 @@ import {
   HelpCircle,
   Library,
   Trophy,
+  Clock,
 } from 'lucide-react';
 
 import { useAuth } from '@/hooks/use-auth';
@@ -44,7 +45,7 @@ import { cn } from '@/lib/utils';
 import { useLanguage } from '@/hooks/use-language';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, onSnapshot } from 'firebase/firestore';
 import { firestore } from '@/lib/firebase';
 
 const bottomNavItems = [
@@ -229,6 +230,13 @@ const LoadingScreen = () => (
     </div>
 );
 
+const ScreenTimeLock = () => (
+    <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/90 text-white p-8 text-center">
+        <Clock className="h-24 w-24 text-primary mb-8" />
+        <h1 className="text-4xl font-bold mb-4">Time for a break!</h1>
+        <p className="text-lg text-muted-foreground">Your screen time for today is over. See you tomorrow!</p>
+    </div>
+)
 
 export default function DashboardLayout({
   children,
@@ -240,6 +248,39 @@ export default function DashboardLayout({
   const pathname = usePathname();
   const [isKidsMode, setIsKidsMode] = useState(false);
   const [checkingProfile, setCheckingProfile] = useState(true);
+  const [isScreenLocked, setIsScreenLocked] = useState(false);
+  const [timeUsed, setTimeUsed] = useState(0); // in seconds
+
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (user) {
+        const userDocRef = doc(firestore, 'users', user.uid);
+        const unsubscribe = onSnapshot(userDocRef, (docSnap) => {
+            if (docSnap.exists()) {
+                const userData = docSnap.data();
+                const screenTimeLimit = userData.screenTimeLimit; // in minutes
+                if (isKidsMode && screenTimeLimit > 0) {
+                    if (timer) clearInterval(timer);
+                    timer = setInterval(() => {
+                        setTimeUsed(prev => {
+                            const newTime = prev + 1;
+                            if ((newTime / 60) >= screenTimeLimit) {
+                                setIsScreenLocked(true);
+                                clearInterval(timer);
+                            }
+                            return newTime;
+                        });
+                    }, 1000);
+                }
+            }
+        });
+        return () => {
+            unsubscribe();
+            if (timer) clearInterval(timer);
+        };
+    }
+  }, [user, isKidsMode]);
+
   
   useEffect(() => {
     if (loading) {
@@ -251,9 +292,7 @@ export default function DashboardLayout({
         return;
     }
 
-    // Only run profile check if user is logged in
     const checkUserProfile = async () => {
-        // If the user is already on the complete-profile page, do nothing.
         if (pathname === '/dashboard/complete-profile') {
             setCheckingProfile(false);
             return;
@@ -265,26 +304,21 @@ export default function DashboardLayout({
 
             if (userDoc.exists()) {
                 const userData = userDoc.data();
-                // Check for a specific field that is only set after profile completion
                 if (userData.ageGroup) {
                     setIsKidsMode(userData.ageGroup === '1-9');
                     setCheckingProfile(false);
                 } else {
-                    // Profile exists but is incomplete
                     router.replace('/dashboard/complete-profile');
                 }
             } else {
-                // This case handles brand new users whose doc might not be created yet.
-                // We redirect them to complete their profile.
                 router.replace('/dashboard/complete-profile');
             }
         } catch (error) {
             console.error("Error checking user profile:", error);
-            // Fallback to complete profile on error, but don't get stuck in a loop
              if (pathname !== '/dashboard/complete-profile') {
                 router.replace('/dashboard/complete-profile');
             } else {
-                setCheckingProfile(false); // Already on the page, stop checking
+                setCheckingProfile(false); 
             }
         }
     };
@@ -301,6 +335,7 @@ export default function DashboardLayout({
   return (
       <SidebarProvider>
           <div className="flex h-screen w-full flex-col bg-gray-50 dark:bg-gray-950">
+             {isScreenLocked && <ScreenTimeLock />}
              <AppSidebar isKidsMode={isKidsMode} />
              <div className="flex flex-col w-full h-full overflow-hidden">
                 <AppHeader />
