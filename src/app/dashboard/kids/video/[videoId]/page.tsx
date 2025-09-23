@@ -4,7 +4,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/hooks/use-auth';
 import { firestore } from '@/lib/firebase';
-import { doc, collection, query, orderBy, where, getDoc, limit, onSnapshot, DocumentData, updateDoc, increment, runTransaction, serverTimestamp, arrayUnion, addDoc } from 'firebase/firestore';
+import { doc, collection, query, orderBy, where, onSnapshot, limit } from 'firebase/firestore';
 import { useDocument, useCollection } from 'react-firebase-hooks/firestore';
 import { notFound, useParams, useRouter } from 'next/navigation';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -31,6 +31,7 @@ const VideoPlayer = ({ videoUrl, onEnded }: { videoUrl: string; onEnded: () => v
             if (url.hostname === 'youtu.be') {
                 videoId = url.pathname.slice(1);
             }
+            // Add rel=0 to prevent showing related videos from other channels
             embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0`;
         } catch (e) {
             console.error("Invalid YouTube URL", e);
@@ -211,10 +212,11 @@ export default function VideoPage() {
         if (!user || hasEndedRef.current) return;
         hasEndedRef.current = true;
         
-        await addVideoWatchPointAction(user.uid);
-        toast({ description: "+5 points for watching the video!" });
+        const result = await addVideoWatchPointAction(user.uid);
+        if(result.success) {
+          toast({ description: `+${result.points} points for watching the video!` });
+        }
         
-        // Go to next video
         if (relatedVideos && !relatedVideos.empty) {
             const nextVideoId = relatedVideos.docs[0].id;
             router.push(`/dashboard/kids/video/${nextVideoId}`);
