@@ -41,6 +41,7 @@ const liveClassFormSchema = z.object({
     title: z.string().min(1, 'Title is required'),
     youtubeUrl: z.string().url('Must be a valid YouTube URL'),
     startTime: z.string().refine((val) => !isNaN(Date.parse(val)), { message: 'Invalid date format' }),
+    thumbnailFile: z.instanceof(File).optional(),
 });
 type LiveClassFormValues = z.infer<typeof liveClassFormSchema>;
 
@@ -378,7 +379,17 @@ function AdminDashboard() {
 
   const onLiveClassSubmit = async (data: LiveClassFormValues) => {
     try {
-        await addDoc(collection(firestore, 'live_classes'), { ...data, startTime: new Date(data.startTime), createdAt: serverTimestamp() });
+        let thumbnailUrl = `https://picsum.photos/seed/live-${new Date().getTime()}/600/400`;
+        if (data.thumbnailFile) {
+            thumbnailUrl = await fileToDataUrl(data.thumbnailFile);
+        }
+
+        await addDoc(collection(firestore, 'live_classes'), { 
+            ...data,
+            thumbnailUrl,
+            startTime: new Date(data.startTime), 
+            createdAt: serverTimestamp() 
+        });
         toast({ title: 'Success', description: 'Live class added.' });
         liveClassForm.reset();
     } catch (error) {
@@ -798,6 +809,7 @@ function AdminDashboard() {
                       <FormField control={liveClassForm.control} name="title" render={({ field }) => (<FormItem><FormLabel>Class Title</FormLabel><FormControl><Input placeholder="e.g. Maths Special Session" {...field} /></FormControl><FormMessage /></FormItem>)}/>
                       <FormField control={liveClassForm.control} name="youtubeUrl" render={({ field }) => (<FormItem><FormLabel>YouTube URL</FormLabel><FormControl><Input placeholder="https://www.youtube.com/watch?v=..." {...field} /></FormControl><FormMessage /></FormItem>)}/>
                       <FormField control={liveClassForm.control} name="startTime" render={({ field }) => (<FormItem><FormLabel>Start Time</FormLabel><FormControl><Input type="datetime-local" {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                      <FormField control={liveClassForm.control} name="thumbnailFile" render={({ field: { onChange, value, ...rest } }) => (<FormItem><FormLabel>Thumbnail Image</FormLabel><FormControl><Input type="file" accept="image/*" onChange={(e) => onChange(e.target.files?.[0])} {...rest} /></FormControl><FormMessage /></FormItem>)} />
                       <Button type="submit" disabled={liveClassForm.formState.isSubmitting}>{liveClassForm.formState.isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin"/>Adding...</> : "Add Live Class"}</Button>
                   </form></Form>
                   <h4 className="font-semibold mb-2">Scheduled Classes</h4>

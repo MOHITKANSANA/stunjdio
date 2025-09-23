@@ -68,7 +68,7 @@ const sidebarNavItems = [
     { href: '/dashboard/profile', icon: User, label: 'profile' },
     { href: '/dashboard/courses', icon: Book, label: 'courses' },
     { href: '/dashboard/scholarship', icon: Award, label: 'scholarship' },
-    { href: '/dashboard/live-class', icon: Video, label: 'live_classes' },
+    { href: '/dashboard/live-class', icon: Video, label: 'Free Live Classes' },
     { href: '/dashboard/tutor', icon: GraduationCap, label: 'ai_tutor' },
     { href: '/dashboard/ai-test', icon: ShieldQuestion, label: 'ai_tests' },
 ];
