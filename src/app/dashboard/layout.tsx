@@ -1,4 +1,5 @@
 
+
 "use client"
 import React, { useEffect, useState } from 'react';
 import {
@@ -341,7 +342,9 @@ export default function DashboardLayout({
                 <AppHeader />
                  <main className="flex-1 overflow-y-auto h-full">
                     <SidebarInset>
-                        <div className="p-4 md:p-6">{children}</div>
+                        <div className={cn(!pathname.includes('/live-class/') && 'p-4 md:p-6')}>
+                            {children}
+                        </div>
                     </SidebarInset>
                 </main>
                 <AppBottomNav isKidsMode={isKidsMode} />

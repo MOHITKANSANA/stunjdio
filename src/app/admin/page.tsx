@@ -393,16 +393,20 @@ function AdminDashboard() {
             thumbnailUrl = await fileToDataUrl(data.thumbnailFile);
         }
 
-        await addDoc(collection(firestore, 'live_classes'), { 
-            ...data,
+        const liveClassData = {
+            title: data.title,
+            youtubeUrl: data.youtubeUrl,
+            startTime: new Date(data.startTime),
             thumbnailUrl,
-            startTime: new Date(data.startTime), 
             createdAt: serverTimestamp() 
-        });
+        };
+
+        await addDoc(collection(firestore, 'live_classes'), liveClassData);
         toast({ title: 'Success', description: 'Live class added.' });
         liveClassForm.reset();
-    } catch (error) {
-        toast({ variant: 'destructive', title: 'Error', description: 'Could not add live class.' });
+    } catch (error: any) {
+        console.error("Error adding live class:", error);
+        toast({ variant: 'destructive', title: 'Error', description: error.message || 'Could not add live class.' });
     }
   };
 
@@ -861,7 +865,7 @@ function AdminDashboard() {
                       <FormField control={liveClassForm.control} name="title" render={({ field }) => (<FormItem><FormLabel>Class Title</FormLabel><FormControl><Input placeholder="e.g. Maths Special Session" {...field} /></FormControl><FormMessage /></FormItem>)}/>
                       <FormField control={liveClassForm.control} name="youtubeUrl" render={({ field }) => (<FormItem><FormLabel>YouTube URL</FormLabel><FormControl><Input placeholder="https://www.youtube.com/watch?v=..." {...field} /></FormControl><FormMessage /></FormItem>)}/>
                       <FormField control={liveClassForm.control} name="startTime" render={({ field }) => (<FormItem><FormLabel>Start Time</FormLabel><FormControl><Input type="datetime-local" {...field} /></FormControl><FormMessage /></FormItem>)}/>
-                      <FormField control={liveClassForm.control} name="thumbnailFile" render={({ field: { onChange, value, ...rest } }) => (<FormItem><FormLabel>Thumbnail Image</FormLabel><FormControl><Input type="file" accept="image/*" onChange={(e) => onChange(e.target.files?.[0])} {...rest} /></FormControl><FormMessage /></FormItem>)} />
+                      <FormField control={liveClassForm.control} name="thumbnailFile" render={({ field: { onChange, value, ...rest } }) => (<FormItem><FormLabel>Thumbnail Image (Optional)</FormLabel><FormControl><Input type="file" accept="image/*" onChange={(e) => onChange(e.target.files?.[0])} {...rest} /></FormControl><FormMessage /></FormItem>)} />
                       <Button type="submit" disabled={liveClassForm.formState.isSubmitting}>{liveClassForm.formState.isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin"/>Adding...</> : "Add Live Class"}</Button>
                   </form></Form>
                   <h4 className="font-semibold mb-2">Scheduled Classes</h4>

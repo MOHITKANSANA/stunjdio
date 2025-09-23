@@ -2,10 +2,10 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/hooks/use-auth';
 import { firestore } from '@/lib/firebase';
-import { doc, collection, query, orderBy, onSnapshot, where, limit } from 'firebase/firestore';
+import { doc, collection, query, orderBy, onSnapshot, where, limit, getDoc } from 'firebase/firestore';
 import { useDocument } from 'react-firebase-hooks/firestore';
 import { notFound, useParams } from 'next/navigation';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -20,16 +20,15 @@ import { Input } from '@/components/ui/input';
 
 const YouTubePlayer = ({ videoId }: { videoId: string }) => {
     return (
-        <div className="aspect-video">
+        <div className="w-full aspect-video">
             <iframe
                 width="100%"
                 height="100%"
-                src={`https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0`}
+                src={`https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0&controls=0&showinfo=0&modestbranding=1`}
                 title="YouTube video player"
                 frameBorder="0"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                 allowFullScreen
-                className="rounded-lg"
             ></iframe>
         </div>
     );
@@ -39,6 +38,7 @@ const ChatSection = ({ classId }: { classId: string }) => {
     const { user } = useAuth();
     const [messages, setMessages] = useState<any[]>([]);
     const [newMessage, setNewMessage] = useState('');
+    const chatEndRef = useRef<HTMLDivElement | null>(null);
 
     useEffect(() => {
         const q = query(
@@ -47,12 +47,15 @@ const ChatSection = ({ classId }: { classId: string }) => {
         );
         const unsubscribe = onSnapshot(q, (querySnapshot) => {
             const msgs = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            // Sort client-side
             msgs.sort((a, b) => a.createdAt?.toMillis() - b.createdAt?.toMillis());
             setMessages(msgs);
         });
         return () => unsubscribe();
     }, [classId]);
+
+    useEffect(() => {
+        chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }, [messages]);
 
     const handleSendMessage = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -76,6 +79,7 @@ const ChatSection = ({ classId }: { classId: string }) => {
                         </div>
                     </div>
                 ))}
+                <div ref={chatEndRef} />
             </div>
             {user && (
                 <form onSubmit={handleSendMessage} className="p-4 border-t flex items-center gap-2">
@@ -99,6 +103,7 @@ const NotesSection = ({ classId }: { classId: string }) => {
     const { toast } = useToast();
     const [notes, setNotes] = useState('');
     const [isSaving, setIsSaving] = useState(false);
+    const [docId, setDocId] = useState<string | null>(null);
 
     useEffect(() => {
         if (user) {
@@ -110,7 +115,12 @@ const NotesSection = ({ classId }: { classId: string }) => {
             );
             const unsubscribe = onSnapshot(q, (querySnapshot) => {
                 if (!querySnapshot.empty) {
-                    setNotes(querySnapshot.docs[0].data().content);
+                    const doc = querySnapshot.docs[0];
+                    setNotes(doc.data().content);
+                    setDocId(doc.id);
+                } else {
+                    setNotes('');
+                    setDocId(null);
                 }
             });
             return () => unsubscribe();
@@ -152,24 +162,14 @@ export default function LiveClassPlayerPage() {
 
     const getYoutubeVideoId = (url: string): string | null => {
         if (!url) return null;
-        let videoId: string | null = null;
         try {
-             // This regex covers:
-             // - youtube.com/watch?v=...
-             // - youtu.be/...
-             // - youtube.com/embed/...
-             // - youtube.com/live/...
-             // - youtube.com/shorts/...
             const regex = /(?:youtube\.com\/(?:watch\?v=|embed\/|live\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
             const match = url.match(regex);
-            if (match && match[1]) {
-                videoId = match[1];
-            }
+            return match ? match[1] : null;
         } catch (e) {
             console.error("Error parsing YouTube URL", e);
             return null;
         }
-        return videoId;
     }
     
     if (loading) {
@@ -183,21 +183,21 @@ export default function LiveClassPlayerPage() {
     const videoId = getYoutubeVideoId(liveClass.youtubeUrl);
 
     return (
-        <div className="max-w-4xl mx-auto p-4 md:p-8">
-            <h1 className="text-2xl font-bold mb-4">{liveClass.title}</h1>
+        <div className="flex flex-col h-[calc(100vh-4rem)] md:h-[calc(100vh-4rem)]">
+            <div className="w-full">
+                {videoId ? <YouTubePlayer videoId={videoId} /> : <div className="aspect-video bg-black text-white flex items-center justify-center"><p>Invalid or unsupported YouTube video URL.</p></div>}
+            </div>
             
-            {videoId ? <YouTubePlayer videoId={videoId} /> : <div className="aspect-video bg-black text-white flex items-center justify-center rounded-lg"><p>Invalid or unsupported YouTube video URL.</p></div>}
-
-            <div className="mt-4">
-                <Tabs defaultValue="chat" className="w-full">
-                    <TabsList className="grid w-full grid-cols-2">
+            <div className="flex-grow min-h-0">
+                <Tabs defaultValue="chat" className="w-full h-full flex flex-col">
+                    <TabsList className="grid w-full grid-cols-2 shrink-0">
                         <TabsTrigger value="chat"><MessageSquare className="mr-2"/>Chat</TabsTrigger>
                         <TabsTrigger value="notes"><BookText className="mr-2"/>Add Notes</TabsTrigger>
                     </TabsList>
-                    <TabsContent value="chat" className="border rounded-b-lg h-[400px]">
+                    <TabsContent value="chat" className="flex-grow min-h-0">
                         <ChatSection classId={classId} />
                     </TabsContent>
-                    <TabsContent value="notes" className="border rounded-b-lg h-[400px]">
+                    <TabsContent value="notes" className="flex-grow min-h-0">
                         <NotesSection classId={classId} />
                     </TabsContent>
                 </Tabs>
