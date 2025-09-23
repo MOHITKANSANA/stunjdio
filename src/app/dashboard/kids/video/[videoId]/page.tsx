@@ -233,7 +233,7 @@ export default function VideoPage() {
     return (
         <div className="flex flex-col md:flex-row max-w-full mx-auto p-4 gap-6">
             <div className="flex-grow md:w-[65%] lg:w-[70%]">
-                 <div className="sticky top-0 z-10">
+                 <div className="sticky top-4 z-10">
                     <VideoPlayer videoUrl={video.videoUrl} onEnded={handleVideoEnd} />
                 </div>
                 <div className="py-4">

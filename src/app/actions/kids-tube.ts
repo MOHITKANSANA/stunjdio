@@ -155,6 +155,7 @@ export async function redeemRewardsAction(userId: string, userName: string, user
             paytmNumber,
             points: 1000,
             amount: 10,
+            status: 'pending',
             redeemedAt: serverTimestamp()
         });
 
@@ -170,6 +171,40 @@ export async function addVideoWatchPointAction(userId: string) {
         await updateUserPoints(userId, POINTS.WATCH);
         return { success: true, points: POINTS.WATCH };
     } catch(error: any) {
+        return { success: false, error: error.message };
+    }
+}
+
+export async function requestExtraPointsAction(userId: string, userName: string, userEmail: string) {
+    try {
+        await addDoc(collection(firestore, 'pointRequests'), {
+            userId,
+            userName,
+            userEmail,
+            status: 'pending',
+            requestedAt: serverTimestamp()
+        });
+        return { success: true, message: "Your request for extra points has been sent to the admin." };
+    } catch (error: any) {
+        return { success: false, error: error.message };
+    }
+}
+
+export async function awardExtraPointsAction(requestId: string, userId: string, points: number) {
+    if (points <= 0) {
+        return { success: false, error: "Points must be a positive number." };
+    }
+    try {
+        await updateUserPoints(userId, points);
+        
+        const requestRef = doc(firestore, 'pointRequests', requestId);
+        await updateDoc(requestRef, {
+            status: 'awarded',
+            pointsAwarded: points,
+            awardedAt: serverTimestamp()
+        });
+        return { success: true, message: `${points} points awarded successfully.` };
+    } catch (error: any) {
         return { success: false, error: error.message };
     }
 }

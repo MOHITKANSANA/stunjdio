@@ -17,7 +17,7 @@ import { collection, query, orderBy, doc, updateDoc, addDoc, deleteDoc, serverTi
 import { firestore } from '@/lib/firebase';
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Trash2, Check, X, Upload, Video, FileText, StickyNote, PlusCircle, Save, Download, ThumbsUp, ThumbsDown, Clock, CircleAlert, CheckCircle2, XCircle, KeyRound, Newspaper, Image as ImageIcon, MinusCircle, BookMarked, Award } from 'lucide-react';
+import { Loader2, Trash2, Check, X, Upload, Video, FileText, StickyNote, PlusCircle, Save, Download, ThumbsUp, ThumbsDown, Clock, CircleAlert, CheckCircle2, XCircle, KeyRound, Newspaper, Image as ImageIcon, MinusCircle, BookMarked, Award, Gift } from 'lucide-react';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -25,6 +25,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { awardExtraPointsAction } from '@/app/actions/kids-tube';
 
 const courseFormSchema = z.object({
   title: z.string().min(3, 'Title must be at least 3 characters'),
@@ -264,12 +265,15 @@ function AdminDashboard() {
   const [kidsVideosCollection, kidsVideosLoading] = useCollection(query(collection(firestore, 'kidsTubeVideos'), orderBy('createdAt', 'desc')));
   const [ebooksCollection, ebooksLoading] = useCollection(query(collection(firestore, 'ebooks'), orderBy('createdAt', 'desc')));
   const [rewardRedemptions, rewardRedemptionsLoading] = useCollection(query(collection(firestore, 'rewardRedemptions'), orderBy('redeemedAt', 'desc')));
+  const [pointRequests, pointRequestsLoading] = useCollection(query(collection(firestore, 'pointRequests'), orderBy('requestedAt', 'desc')));
 
 
   const qrCodeUrl = qrCodeDoc?.docs.find(d => d.id === 'paymentQrCode')?.data().url;
   const scholarshipSettings = scholarshipSettingsDoc?.docs.find(d => d.id === 'scholarship')?.data();
   
   const [applicantTestScores, setApplicantTestScores] = useState<Record<string, string>>({});
+  const [pointsToAward, setPointsToAward] = useState<Record<string, number>>({});
+
 
   useEffect(() => {
     const fetchScores = async () => {
@@ -589,6 +593,21 @@ function AdminDashboard() {
           await deleteDoc(doc(firestore, 'ebooks', id));
           toast({ description: 'E-book deleted.' });
       }
+  };
+
+  const handleAwardPoints = async (requestId: string, userId: string) => {
+    const points = pointsToAward[requestId];
+    if (!points || points <= 0) {
+        toast({ variant: 'destructive', description: "Please enter a valid number of points." });
+        return;
+    }
+    const result = await awardExtraPointsAction(requestId, userId, points);
+    if (result.success) {
+        toast({ title: 'Success!', description: result.message });
+        setPointsToAward(prev => ({ ...prev, [requestId]: 0 }));
+    } else {
+        toast({ variant: 'destructive', title: 'Error', description: result.error });
+    }
   };
 
 
@@ -1024,38 +1043,97 @@ function AdminDashboard() {
         </TabsContent>
          <TabsContent value="rewards">
            <Card>
-            <CardHeader><CardTitle>Reward Redemptions</CardTitle><CardDescription>Review and process student reward redemption requests.</CardDescription></CardHeader>
+            <CardHeader><CardTitle>Reward Management</CardTitle><CardDescription>Review redemptions and award points.</CardDescription></CardHeader>
             <CardContent>
-              <div className="max-h-[800px] overflow-y-auto">
-                <Table>
-                  <TableHeader><TableRow><TableHead>Student</TableHead><TableHead>Paytm Number</TableHead><TableHead>Points Redeemed</TableHead><TableHead>Amount</TableHead><TableHead>Date</TableHead></TableRow></TableHeader>
-                  <TableBody>
-                    {rewardRedemptionsLoading && Array.from({ length: 3 }).map((_, i) => (
-                      <TableRow key={i}><TableCell colSpan={5}><Skeleton className="h-12 w-full" /></TableCell></TableRow>
-                    ))}
-                    {rewardRedemptions?.docs.map((doc) => {
-                      const redemption = doc.data();
-                      return (
-                        <TableRow key={doc.id}>
-                          <TableCell>
-                            <div className="font-medium">{redemption.userName}</div>
-                            <div className="text-sm text-muted-foreground">{redemption.userEmail}</div>
-                          </TableCell>
-                          <TableCell>{redemption.paytmNumber}</TableCell>
-                           <TableCell><Badge variant="secondary">{redemption.points} pts</Badge></TableCell>
-                           <TableCell>₹{redemption.amount}</TableCell>
-                           <TableCell>{redemption.redeemedAt?.toDate()?.toLocaleDateString()}</TableCell>
-                        </TableRow>
-                      )
-                    })}
-                    {!rewardRedemptionsLoading && rewardRedemptions?.empty && (
-                        <TableRow>
-                            <TableCell colSpan={5} className="text-center text-muted-foreground">No redemption requests yet.</TableCell>
-                        </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
+               <Tabs defaultValue="redemptions">
+                <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="redemptions">Redemption Requests</TabsTrigger>
+                    <TabsTrigger value="points">Point Requests</TabsTrigger>
+                </TabsList>
+                <TabsContent value="redemptions" className="mt-4">
+                     <div className="max-h-[600px] overflow-y-auto">
+                        <Table>
+                        <TableHeader><TableRow><TableHead>Student</TableHead><TableHead>Paytm Number</TableHead><TableHead>Points</TableHead><TableHead>Amount</TableHead><TableHead>Date</TableHead><TableHead>Status</TableHead></TableRow></TableHeader>
+                        <TableBody>
+                            {rewardRedemptionsLoading && Array.from({ length: 3 }).map((_, i) => (
+                            <TableRow key={i}><TableCell colSpan={6}><Skeleton className="h-12 w-full" /></TableCell></TableRow>
+                            ))}
+                            {rewardRedemptions?.docs.map((doc) => {
+                            const redemption = doc.data();
+                            return (
+                                <TableRow key={doc.id}>
+                                <TableCell>
+                                    <div className="font-medium">{redemption.userName}</div>
+                                    <div className="text-sm text-muted-foreground">{redemption.userEmail}</div>
+                                </TableCell>
+                                <TableCell>{redemption.paytmNumber}</TableCell>
+                                <TableCell><Badge variant="secondary">{redemption.points} pts</Badge></TableCell>
+                                <TableCell>₹{redemption.amount}</TableCell>
+                                <TableCell>{redemption.redeemedAt?.toDate()?.toLocaleDateString()}</TableCell>
+                                <TableCell><Badge variant={redemption.status === 'pending' ? 'secondary' : 'default'}>{redemption.status}</Badge></TableCell>
+                                </TableRow>
+                            )
+                            })}
+                            {!rewardRedemptionsLoading && rewardRedemptions?.empty && (
+                                <TableRow>
+                                    <TableCell colSpan={6} className="text-center text-muted-foreground">No redemption requests yet.</TableCell>
+                                </TableRow>
+                            )}
+                        </TableBody>
+                        </Table>
+                    </div>
+                </TabsContent>
+                 <TabsContent value="points" className="mt-4">
+                    <div className="max-h-[600px] overflow-y-auto">
+                        <Table>
+                        <TableHeader><TableRow><TableHead>Student</TableHead><TableHead>Date</TableHead><TableHead>Status</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
+                        <TableBody>
+                            {pointRequestsLoading && Array.from({ length: 3 }).map((_, i) => (
+                            <TableRow key={i}><TableCell colSpan={4}><Skeleton className="h-12 w-full" /></TableCell></TableRow>
+                            ))}
+                            {pointRequests?.docs.map((doc) => {
+                            const request = doc.data();
+                            return (
+                                <TableRow key={doc.id}>
+                                <TableCell>
+                                    <div className="font-medium">{request.userName}</div>
+                                    <div className="text-sm text-muted-foreground">{request.userEmail}</div>
+                                </TableCell>
+                                <TableCell>{request.requestedAt?.toDate()?.toLocaleDateString()}</TableCell>
+                                <TableCell>
+                                    <Badge variant={request.status === 'pending' ? 'secondary' : 'default'}>
+                                        {request.status === 'awarded' ? `Awarded ${request.pointsAwarded} pts` : request.status}
+                                    </Badge>
+                                </TableCell>
+                                <TableCell className="text-right">
+                                    {request.status === 'pending' && (
+                                        <div className="flex items-center justify-end gap-2">
+                                            <Input 
+                                                type="number" 
+                                                className="w-24 h-9" 
+                                                placeholder="Points" 
+                                                value={pointsToAward[doc.id] || ''}
+                                                onChange={(e) => setPointsToAward(prev => ({...prev, [doc.id]: parseInt(e.target.value, 10)}))}
+                                            />
+                                            <Button size="sm" onClick={() => handleAwardPoints(doc.id, request.userId)}>
+                                                <Gift className="mr-2 h-4 w-4"/> Award
+                                            </Button>
+                                        </div>
+                                    )}
+                                </TableCell>
+                                </TableRow>
+                            )
+                            })}
+                            {!pointRequestsLoading && pointRequests?.empty && (
+                                <TableRow>
+                                    <TableCell colSpan={4} className="text-center text-muted-foreground">No point requests yet.</TableCell>
+                                </TableRow>
+                            )}
+                        </TableBody>
+                        </Table>
+                    </div>
+                 </TabsContent>
+               </Tabs>
             </CardContent>
           </Card>
         </TabsContent>
@@ -1144,9 +1222,3 @@ function AdminDashboard() {
     </div>
   );
 }
-
-    
-
-    
-
-

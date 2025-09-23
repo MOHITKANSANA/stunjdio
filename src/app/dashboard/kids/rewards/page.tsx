@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useAuth } from '@/hooks/use-auth';
@@ -9,7 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
-import { redeemRewardsAction } from '@/app/actions/kids-tube';
+import { redeemRewardsAction, requestExtraPointsAction } from '@/app/actions/kids-tube';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -30,6 +31,7 @@ export default function MyRewardsPage() {
     const [points, setPoints] = useState(0);
     const [paytmNumber, setPaytmNumber] = useState('');
     const [isRedeeming, setIsRedeeming] = useState(false);
+    const [isRequesting, setIsRequesting] = useState(false);
 
     useEffect(() => {
         if (user) {
@@ -58,6 +60,18 @@ export default function MyRewardsPage() {
         }
         setIsRedeeming(false);
     };
+    
+    const handleRequestPoints = async () => {
+        if (!user) return;
+        setIsRequesting(true);
+        const result = await requestExtraPointsAction(user.uid, user.displayName || 'N/A', user.email || 'N/A');
+        if (result.success) {
+            toast({ title: 'Request Sent!', description: result.message });
+        } else {
+            toast({ variant: 'destructive', title: 'Request Failed', description: result.error });
+        }
+        setIsRequesting(false);
+    };
 
     const progress = Math.min((points / 1000) * 100, 100);
 
@@ -81,6 +95,11 @@ export default function MyRewardsPage() {
                     <p className="text-6xl font-bold text-primary">{points}</p>
                     <p className="text-muted-foreground">points</p>
                 </CardContent>
+                <CardFooter className="flex-col gap-2">
+                     <Button variant="outline" onClick={handleRequestPoints} disabled={isRequesting}>
+                        {isRequesting ? 'Requesting...' : 'Request Extra Points'}
+                    </Button>
+                </CardFooter>
             </Card>
 
             <Card>
