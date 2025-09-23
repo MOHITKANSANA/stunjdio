@@ -26,6 +26,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { awardExtraPointsAction } from '@/app/actions/kids-tube';
+import ReactCrop, { type Crop } from 'react-image-crop';
+import 'react-image-crop/dist/ReactCrop.css';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 
 const courseFormSchema = z.object({
   title: z.string().min(3, 'Title must be at least 3 characters'),
@@ -144,7 +147,7 @@ const kidsTubeVideoSchema = z.object({
     title: z.string().min(3, "Title is required."),
     description: z.string().optional(),
     videoUrl: z.string().url("Must be a valid video URL."),
-    thumbnailFile: z.instanceof(File).optional(),
+    thumbnailUrl: z.string().optional(), // Now optional
 });
 type KidsTubeVideoValues = z.infer<typeof kidsTubeVideoSchema>;
 
@@ -274,6 +277,14 @@ function AdminDashboard() {
   
   const [applicantTestScores, setApplicantTestScores] = useState<Record<string, string>>({});
   const [pointsToAward, setPointsToAward] = useState<Record<string, number>>({});
+  
+  // State for image cropper
+  const [imgSrc, setImgSrc] = useState('');
+  const [crop, setCrop] = useState<Crop>();
+  const [completedCrop, setCompletedCrop] = useState<Crop>();
+  const [isCropperOpen, setIsCropperOpen] = useState(false);
+  const imgRef = useRef<HTMLImageElement | null>(null);
+  const { toast } = useToast();
 
 
   useEffect(() => {
@@ -302,8 +313,6 @@ function AdminDashboard() {
     fetchScores();
   }, [scholarshipApplicants]);
 
-
-  const { toast } = useToast();
   
   const courseForm = useForm<CourseFormValues>({ resolver: zodResolver(courseFormSchema), defaultValues: { title: '', category: '', description: '', price: 0, isFree: false, imageFile: undefined } });
   const liveClassForm = useForm<LiveClassFormValues>({ resolver: zodResolver(liveClassFormSchema), defaultValues: { title: '', youtubeUrl: '', startTime: '' } });
@@ -331,7 +340,7 @@ function AdminDashboard() {
 
   const jsonTestSeriesForm = useForm<JsonTestSeriesValues>({ resolver: zodResolver(jsonTestSeriesSchema), defaultValues: { jsonInput: '' } });
   const carouselItemForm = useForm<CarouselItemValues>({ resolver: zodResolver(carouselItemSchema), defaultValues: { internalLink: '', externalLink: '', imageFile: undefined } });
-  const kidsTubeVideoForm = useForm<KidsTubeVideoValues>({ resolver: zodResolver(kidsTubeVideoSchema), defaultValues: { title: '', description: '', videoUrl: '' } });
+  const kidsTubeVideoForm = useForm<KidsTubeVideoValues>({ resolver: zodResolver(kidsTubeVideoSchema), defaultValues: { title: '', description: '', videoUrl: '', thumbnailUrl: '' } });
   const eBookForm = useForm<EBookValues>({ resolver: zodResolver(eBookSchema) });
 
   const handleEnrollmentAction = async (id: string, newStatus: 'approved' | 'rejected') => {
@@ -547,16 +556,11 @@ function AdminDashboard() {
   
   const onKidsTubeVideoSubmit = async (data: KidsTubeVideoValues) => {
     try {
-        let thumbnailUrl = `https://picsum.photos/seed/${new Date().getTime()}/200/120`;
-        if (data.thumbnailFile) {
-            thumbnailUrl = await fileToDataUrl(data.thumbnailFile);
-        }
-
         const videoData = {
             title: data.title,
             description: data.description || '',
             videoUrl: data.videoUrl,
-            thumbnailUrl,
+            thumbnailUrl: data.thumbnailUrl || `https://picsum.photos/seed/${new Date().getTime()}/200/120`,
             likes: 0,
             dislikes: 0,
             createdAt: serverTimestamp(),
@@ -652,6 +656,54 @@ function AdminDashboard() {
         return false;
     }
   };
+  
+    const onThumbnailFileChange = (e: ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files.length > 0) {
+            setCrop(undefined); // Reset crop state
+            const reader = new FileReader();
+            reader.addEventListener('load', () => setImgSrc(reader.result?.toString() || ''));
+            reader.readAsDataURL(e.target.files[0]);
+            setIsCropperOpen(true);
+        }
+    };
+
+    const getCroppedImgDataUrl = (): Promise<string> => {
+        return new Promise((resolve) => {
+            const image = imgRef.current;
+            if (!image || !completedCrop) {
+                return;
+            }
+
+            const canvas = document.createElement('canvas');
+            const scaleX = image.naturalWidth / image.width;
+            const scaleY = image.naturalHeight / image.height;
+            
+            canvas.width = completedCrop.width * scaleX;
+            canvas.height = completedCrop.height * scaleY;
+            
+            const ctx = canvas.getContext('2d');
+            if (!ctx) return;
+
+            ctx.drawImage(
+                image,
+                completedCrop.x * scaleX,
+                completedCrop.y * scaleY,
+                completedCrop.width * scaleX,
+                completedCrop.height * scaleY,
+                0, 0,
+                canvas.width,
+                canvas.height
+            );
+
+            resolve(canvas.toDataURL('image/jpeg'));
+        });
+    };
+
+    const handleCrop = async () => {
+        const dataUrl = await getCroppedImgDataUrl();
+        kidsTubeVideoForm.setValue('thumbnailUrl', dataUrl);
+        setIsCropperOpen(false);
+    };
 
 
   return (
@@ -910,7 +962,20 @@ function AdminDashboard() {
                               <FormField control={kidsTubeVideoForm.control} name="title" render={({ field }) => (<FormItem><FormLabel>Video Title</FormLabel><FormControl><Input {...field} placeholder="e.g. Learning Alphabets" /></FormControl><FormMessage /></FormItem>)} />
                               <FormField control={kidsTubeVideoForm.control} name="description" render={({ field }) => (<FormItem><FormLabel>Description (Optional)</FormLabel><FormControl><Textarea {...field} placeholder="A short description about the video." /></FormControl><FormMessage /></FormItem>)} />
                               <FormField control={kidsTubeVideoForm.control} name="videoUrl" render={({ field }) => (<FormItem><FormLabel>Video URL</FormLabel><FormControl><Input {...field} placeholder="https://www.youtube.com/watch?v=... or https://example.com/video.mp4" /></FormControl><FormMessage /></FormItem>)} />
-                              <FormField control={kidsTubeVideoForm.control} name="thumbnailFile" render={({ field: { onChange, value, ...rest } }) => (<FormItem><FormLabel>Thumbnail Image (Optional)</FormLabel><FormControl><Input type="file" accept="image/*" onChange={(e) => onChange(e.target.files?.[0])} {...rest} /></FormControl><FormMessage /></FormItem>)} />
+                              
+                               <FormItem>
+                                    <FormLabel>Thumbnail Image (Optional)</FormLabel>
+                                    <FormControl>
+                                        <Input type="file" accept="image/*" onChange={onThumbnailFileChange} />
+                                    </FormControl>
+                                    {kidsTubeVideoForm.watch('thumbnailUrl') && (
+                                        <div className="mt-2">
+                                            <Image src={kidsTubeVideoForm.watch('thumbnailUrl')!} alt="Thumbnail preview" width={160} height={90} className="rounded-md" />
+                                        </div>
+                                    )}
+                                    <FormMessage />
+                                </FormItem>
+
                               <Button type="submit" disabled={kidsTubeVideoForm.formState.isSubmitting}>
                                   {kidsTubeVideoForm.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                   Add Video
@@ -1231,6 +1296,20 @@ function AdminDashboard() {
           </div>
         </TabsContent>
       </Tabs>
+      
+      <Dialog open={isCropperOpen} onOpenChange={setIsCropperOpen}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Crop Thumbnail</DialogTitle></DialogHeader>
+            {imgSrc && (
+                <ReactCrop crop={crop} onChange={c => setCrop(c)} onComplete={c => setCompletedCrop(c)}>
+                   <img ref={imgRef} src={imgSrc} alt="Crop preview" />
+                </ReactCrop>
+            )}
+           <DialogFooter>
+             <Button onClick={handleCrop}>Crop and Save</Button>
+           </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

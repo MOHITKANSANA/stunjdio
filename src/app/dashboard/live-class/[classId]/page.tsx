@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -23,7 +24,7 @@ const YouTubePlayer = ({ videoId }: { videoId: string }) => {
             <iframe
                 width="100%"
                 height="100%"
-                src={`https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0&controls=0&showinfo=0`}
+                src={`https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0`}
                 title="YouTube video player"
                 frameBorder="0"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
@@ -153,18 +154,19 @@ export default function LiveClassPlayerPage() {
         if (!url) return null;
         let videoId: string | null = null;
         try {
-            const patterns = [
-                /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/|v\/|live\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/,
-                /youtube\.com\/shorts\/([a-zA-Z0-9_-]{11})/,
-            ];
-            for (const pattern of patterns) {
-                const match = url.match(pattern);
-                if (match && match[1]) {
-                    videoId = match[1];
-                    break;
-                }
+             // This regex covers:
+             // - youtube.com/watch?v=...
+             // - youtu.be/...
+             // - youtube.com/embed/...
+             // - youtube.com/live/...
+             // - youtube.com/shorts/...
+            const regex = /(?:youtube\.com\/(?:watch\?v=|embed\/|live\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
+            const match = url.match(regex);
+            if (match && match[1]) {
+                videoId = match[1];
             }
         } catch (e) {
+            console.error("Error parsing YouTube URL", e);
             return null;
         }
         return videoId;
@@ -184,7 +186,7 @@ export default function LiveClassPlayerPage() {
         <div className="max-w-4xl mx-auto p-4 md:p-8">
             <h1 className="text-2xl font-bold mb-4">{liveClass.title}</h1>
             
-            {videoId ? <YouTubePlayer videoId={videoId} /> : <p>Invalid video URL.</p>}
+            {videoId ? <YouTubePlayer videoId={videoId} /> : <div className="aspect-video bg-black text-white flex items-center justify-center rounded-lg"><p>Invalid or unsupported YouTube video URL.</p></div>}
 
             <div className="mt-4">
                 <Tabs defaultValue="chat" className="w-full">
