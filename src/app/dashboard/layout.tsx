@@ -21,6 +21,7 @@ import {
   Trophy,
   Clock,
   Download,
+  Sparkles,
 } from 'lucide-react';
 
 import { useAuth } from '@/hooks/use-auth';
