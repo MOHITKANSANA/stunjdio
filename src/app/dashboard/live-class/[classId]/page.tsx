@@ -4,7 +4,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/use-auth';
 import { firestore } from '@/lib/firebase';
-import { doc, collection, query, orderBy, onSnapshot, where } from 'firebase/firestore';
+import { doc, collection, query, orderBy, onSnapshot, where, limit } from 'firebase/firestore';
 import { useDocument } from 'react-firebase-hooks/firestore';
 import { notFound, useParams } from 'next/navigation';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -42,11 +42,12 @@ const ChatSection = ({ classId }: { classId: string }) => {
     useEffect(() => {
         const q = query(
             collection(firestore, 'liveClassChats'),
-            where('classId', '==', classId),
-            orderBy('createdAt', 'asc')
+            where('classId', '==', classId)
         );
         const unsubscribe = onSnapshot(q, (querySnapshot) => {
             const msgs = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            // Sort client-side
+            msgs.sort((a, b) => a.createdAt?.toMillis() - b.createdAt?.toMillis());
             setMessages(msgs);
         });
         return () => unsubscribe();
