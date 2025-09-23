@@ -4,7 +4,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/hooks/use-auth';
 import { firestore } from '@/lib/firebase';
-import { doc, collection, query, orderBy, onSnapshot, where, getDoc, limit } from 'firebase/firestore';
+import { doc, collection, query, orderBy, onSnapshot, where, getDoc, limit, addDoc, serverTimestamp } from 'firebase/firestore';
 import { useDocument } from 'react-firebase-hooks/firestore';
 import { notFound, useParams } from 'next/navigation';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -23,7 +23,7 @@ const YouTubePlayer = ({ videoId }: { videoId: string }) => {
             <iframe
                 width="100%"
                 height="100%"
-                src={`https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0&controls=1&showinfo=0&modestbranding=1`}
+                src={`https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0&controls=0&showinfo=0&modestbranding=1&iv_load_policy=3`}
                 title="YouTube video player"
                 frameBorder="0"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
@@ -86,10 +86,10 @@ const ChatSection = ({ classId }: { classId: string }) => {
                         value={newMessage} 
                         onChange={(e) => setNewMessage(e.target.value)}
                         placeholder="Type your message..."
-                        className="flex-1"
+                        className="flex-1 h-9"
                     />
-                    <Button type="submit" size="icon">
-                        <Send />
+                    <Button type="submit" size="icon" className="h-9 w-9">
+                        <Send size={18}/>
                     </Button>
                 </form>
             )}
@@ -153,6 +153,8 @@ const NotesSection = ({ classId }: { classId: string }) => {
 export default function LiveClassPlayerPage() {
     const params = useParams();
     const classId = params.classId as string;
+    const pageRef = useRef<HTMLDivElement>(null);
+
 
     const [classDoc, loading, error] = useDocument(doc(firestore, 'live_classes', classId));
 
@@ -168,6 +170,13 @@ export default function LiveClassPlayerPage() {
         }
     }
     
+    useEffect(() => {
+        // Prevent auto-scrolling on load
+        if (pageRef.current) {
+            pageRef.current.scrollTo(0, 0);
+        }
+    }, []);
+
     if (loading) {
         return <div className="p-0"><Skeleton className="w-full aspect-video" /></div>
     }
@@ -179,13 +188,44 @@ export default function LiveClassPlayerPage() {
     const videoId = getYoutubeVideoId(liveClass.youtubeUrl);
 
     return (
-        <div className="flex flex-col h-[calc(100vh-8.5rem)] md:h-[calc(100vh-4rem)] bg-background">
-            <div className="w-full shrink-0">
-                {videoId ? <YouTubePlayer videoId={videoId} /> : <div className="aspect-video bg-black text-white flex items-center justify-center"><p>Invalid or unsupported YouTube video URL.</p></div>}
+        <div ref={pageRef} className="flex flex-col md:flex-row h-[calc(100vh-8rem)] md:h-[calc(100vh-4rem)] bg-background overflow-hidden">
+            <div className="md:w-[65%] md:h-full flex flex-col">
+                <div className="w-full shrink-0">
+                    {videoId ? <YouTubePlayer videoId={videoId} /> : <div className="aspect-video bg-black text-white flex items-center justify-center"><p>Invalid or unsupported YouTube video URL.</p></div>}
+                </div>
+                 <div className="flex-grow min-h-0 hidden md:block">
+                    <Tabs defaultValue="chat" className="w-full h-full flex flex-col">
+                        <TabsList className="grid w-full grid-cols-2 shrink-0">
+                            <TabsTrigger value="chat"><MessageSquare className="mr-2"/>Chat</TabsTrigger>
+                            <TabsTrigger value="notes"><BookText className="mr-2"/>Add Notes</TabsTrigger>
+                        </TabsList>
+                        <TabsContent value="chat" className="flex-grow min-h-0">
+                            <ChatSection classId={classId} />
+                        </TabsContent>
+                        <TabsContent value="notes" className="flex-grow min-h-0">
+                            <NotesSection classId={classId} />
+                        </TabsContent>
+                    </Tabs>
+                </div>
             </div>
             
-            <div className="flex-grow min-h-0">
+            <div className="flex-grow min-h-0 md:hidden">
                 <Tabs defaultValue="chat" className="w-full h-full flex flex-col">
+                    <TabsList className="grid w-full grid-cols-2 shrink-0">
+                        <TabsTrigger value="chat"><MessageSquare className="mr-2"/>Chat</TabsTrigger>
+                        <TabsTrigger value="notes"><BookText className="mr-2"/>Add Notes</TabsTrigger>
+                    </TabsList>
+                    <TabsContent value="chat" className="flex-grow min-h-0">
+                        <ChatSection classId={classId} />
+                    </TabsContent>
+                    <TabsContent value="notes" className="flex-grow min-h-0">
+                        <NotesSection classId={classId} />
+                    </TabsContent>
+                </Tabs>
+            </div>
+
+            <div className="hidden md:block md:w-[35%] md:h-full border-l">
+                 <Tabs defaultValue="chat" className="w-full h-full flex flex-col">
                     <TabsList className="grid w-full grid-cols-2 shrink-0">
                         <TabsTrigger value="chat"><MessageSquare className="mr-2"/>Chat</TabsTrigger>
                         <TabsTrigger value="notes"><BookText className="mr-2"/>Add Notes</TabsTrigger>

@@ -1,21 +1,24 @@
 
 'use client';
 
-import { useState } from 'react';
-import { doc } from 'firebase/firestore';
+import { useState, Suspense } from 'react';
+import { doc, DocumentData } from 'firebase/firestore';
 import { useDocument, useCollection } from 'react-firebase-hooks/firestore';
 import { firestore } from '@/lib/firebase';
-import { notFound, useParams } from 'next/navigation';
+import { notFound, useParams, useRouter, useSearchParams } from 'next/navigation';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
-import { IndianRupee, BookOpen, Clock, Users, Lock, Video, PlayCircle, FileText, StickyNote } from 'lucide-react';
+import { IndianRupee, BookOpen, Clock, Users, Lock, Video, PlayCircle, FileText, StickyNote, Send, HelpCircle, GraduationCap } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/use-auth';
-import { collection, query, where, orderBy } from 'firebase/firestore';
+import { collection, query, where, orderBy, addDoc, serverTimestamp } from 'firebase/firestore';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Textarea } from '@/components/ui/textarea';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { useToast } from '@/hooks/use-toast';
 
 const ContentIcon = ({ type }: { type: string }) => {
     switch (type) {
@@ -82,19 +85,158 @@ const VideoPlayer = ({ videoUrl, title, onOpenChange }: { videoUrl: string, titl
     );
 };
 
+const CourseContentTab = ({ courseId, onContentClick }: { courseId: string, onContentClick: (content: any) => void }) => {
+    const [courseContentCollection, courseContentLoading, courseContentError] = useCollection(
+        query(collection(firestore, 'courses', courseId, 'content'), orderBy('createdAt', 'asc'))
+    );
+    return (
+        <CardContent>
+          {courseContentError && <p className="text-destructive">Could not load course content.</p>}
+          {courseContentLoading && <Skeleton className="w-full h-24" />}
+          {courseContentCollection && courseContentCollection.docs.length > 0 ? (
+            <div className="space-y-4">
+              {courseContentCollection.docs.map(doc => {
+                const content = doc.data();
+                return (
+                  <div key={doc.id} className="flex items-center justify-between p-3 rounded-lg border bg-muted/50">
+                    <div className="flex items-center gap-3">
+                       <ContentIcon type={content.type} />
+                       <p className="font-semibold">{content.title}</p>
+                    </div>
+                    <Button variant="ghost" size="icon" onClick={() => onContentClick(content)}>
+                        <PlayCircle className="h-6 w-6" />
+                    </Button>
+                  </div>
+                )
+              })}
+            </div>
+          ) : (
+            <p className="text-muted-foreground text-center py-8">No content has been added to this course yet.</p>
+          )}
+        </CardContent>
+    )
+}
 
-export default function CourseDetailPage() {
+const DoubtsTab = ({ courseId }: { courseId: string }) => {
+    const { user } = useAuth();
+    const { toast } = useToast();
+    const [doubtText, setDoubtText] = useState('');
+
+    const [doubtsCollection, doubtsLoading, doubtsError] = useCollection(
+        query(collection(firestore, 'courses', courseId, 'doubts'), orderBy('createdAt', 'desc'))
+    );
+    
+    const handleDoubtSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!user || !doubtText.trim()) return;
+        try {
+            await addDoc(collection(firestore, 'courses', courseId, 'doubts'), {
+                text: doubtText,
+                userId: user.uid,
+                userName: user.displayName,
+                userPhoto: user.photoURL,
+                createdAt: serverTimestamp(),
+                answer: null,
+            });
+            setDoubtText('');
+            toast({ description: "Your doubt has been submitted." });
+        } catch (error) {
+            toast({ variant: 'destructive', description: "Could not submit your doubt." });
+        }
+    };
+
+    return (
+        <CardContent className="space-y-6">
+            <form onSubmit={handleDoubtSubmit} className="flex items-start gap-3">
+                <Avatar className="h-9 w-9">
+                    <AvatarImage src={user?.photoURL || undefined} />
+                    <AvatarFallback>{user?.displayName?.charAt(0) || 'A'}</AvatarFallback>
+                </Avatar>
+                <Textarea 
+                    value={doubtText} 
+                    onChange={(e) => setDoubtText(e.target.value)} 
+                    placeholder="Ask your doubt here..." 
+                />
+                <Button type="submit"><Send /></Button>
+            </form>
+
+            <div className="space-y-4">
+                {doubtsLoading && <Skeleton className="h-20 w-full" />}
+                {doubtsError && <p className="text-destructive">Could not load doubts.</p>}
+                {doubtsCollection?.docs.map(doc => {
+                    const doubt = doc.data();
+                    return (
+                        <div key={doc.id} className="p-4 border rounded-lg">
+                            <div className="flex items-start gap-3">
+                                <Avatar className="h-8 w-8">
+                                    <AvatarImage src={doubt.userPhoto || undefined} />
+                                    <AvatarFallback>{doubt.userName?.charAt(0) || 'A'}</AvatarFallback>
+                                </Avatar>
+                                <div>
+                                    <p className="font-semibold text-sm">{doubt.userName}</p>
+                                    <p>{doubt.text}</p>
+                                </div>
+                            </div>
+                            {doubt.answer && (
+                                <div className="mt-3 ml-11 pl-4 border-l">
+                                    <div className="flex items-start gap-3">
+                                        <Avatar className="h-8 w-8 bg-primary text-primary-foreground">
+                                           <AvatarFallback><GraduationCap size={18}/></AvatarFallback>
+                                        </Avatar>
+                                        <div>
+                                            <p className="font-semibold text-sm">Instructor</p>
+                                            <p className="text-muted-foreground">{doubt.answer}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )
+                })}
+                 {!doubtsLoading && doubtsCollection?.empty && (
+                    <p className="text-muted-foreground text-center py-8">No doubts have been asked yet.</p>
+                )}
+            </div>
+        </CardContent>
+    );
+};
+
+const CourseTabs = ({ courseId, course, onContentClick }: { courseId: string; course: DocumentData, onContentClick: (content: any) => void }) => {
+    return (
+        <div className="col-span-1 md:col-span-5">
+            <Tabs defaultValue="content">
+                <TabsList className="grid w-full grid-cols-3">
+                    <TabsTrigger value="classes">Live Classes</TabsTrigger>
+                    <TabsTrigger value="content">Course Content</TabsTrigger>
+                    <TabsTrigger value="doubts">Your Doubts</TabsTrigger>
+                </TabsList>
+                <TabsContent value="classes">
+                     <CardContent>
+                        <p className="text-muted-foreground text-center py-8">No live classes scheduled for this course yet.</p>
+                     </CardContent>
+                </TabsContent>
+                <TabsContent value="content">
+                    <CourseContentTab courseId={courseId} onContentClick={onContentClick}/>
+                </TabsContent>
+                <TabsContent value="doubts">
+                    <DoubtsTab courseId={courseId} />
+                </TabsContent>
+            </Tabs>
+        </div>
+    )
+}
+
+function CourseDetailPageContent() {
   const { user, loading: authLoading } = useAuth();
   const params = useParams();
   const courseId = params.courseId as string;
+  const searchParams = useSearchParams();
+  const router = useRouter();
 
   const [selectedVideo, setSelectedVideo] = useState<{ url: string, title: string } | null>(null);
   
   const [courseDoc, courseLoading, courseError] = useDocument(doc(firestore, 'courses', courseId));
-  const [courseContentCollection, courseContentLoading, courseContentError] = useCollection(
-    query(collection(firestore, 'courses', courseId, 'content'), orderBy('createdAt', 'asc'))
-  );
-  
+
   const enrollmentsQuery = user 
     ? query(
         collection(firestore, 'enrollments'), 
@@ -117,7 +259,7 @@ export default function CourseDetailPage() {
   };
 
 
-  if (courseLoading || authLoading || enrollmentLoading || courseContentLoading) {
+  if (courseLoading || authLoading || enrollmentLoading) {
     return (
       <div className="max-w-4xl mx-auto p-4 md:p-8 space-y-6">
         <Skeleton className="h-12 w-3/4" />
@@ -158,51 +300,21 @@ export default function CourseDetailPage() {
             <h1 className="text-4xl font-bold font-headline">{course.title}</h1>
           </div>
           
-          {isEnrolled ? (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Course Content</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {courseContentError && <p className="text-destructive">Could not load course content.</p>}
-                  {courseContentCollection && courseContentCollection.docs.length > 0 ? (
-                    <div className="space-y-4">
-                      {courseContentCollection.docs.map(doc => {
-                        const content = doc.data();
-                        return (
-                          <div key={doc.id} className="flex items-center justify-between p-3 rounded-lg border bg-muted/50">
-                            <div className="flex items-center gap-3">
-                               <ContentIcon type={content.type} />
-                               <p className="font-semibold">{content.title}</p>
-                            </div>
-                            <Button variant="ghost" size="icon" onClick={() => handleContentClick(content)}>
-                                <PlayCircle className="h-6 w-6" />
-                            </Button>
-                          </div>
-                        )
-                      })}
-                    </div>
-                  ) : (
-                    <p className="text-muted-foreground">No content has been added to this course yet.</p>
-                  )}
-                </CardContent>
-              </Card>
-          ) : (
+            {!isEnrolled && (
             <>
-              <div className="relative h-80 w-full rounded-lg overflow-hidden shadow-lg">
-                <Image src={course.imageUrl || `https://picsum.photos/seed/${courseId}/800/600`} alt={course.title} fill style={{objectFit:"cover"}} data-ai-hint="online learning" />
-              </div>
-              <Card>
-                <CardHeader>
-                  <CardTitle>About this course</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-muted-foreground whitespace-pre-wrap">{course.description}</p>
-                </CardContent>
-              </Card>
+                <div className="relative h-80 w-full rounded-lg overflow-hidden shadow-lg">
+                    <Image src={course.imageUrl || `https://picsum.photos/seed/${courseId}/800/600`} alt={course.title} fill style={{objectFit:"cover"}} data-ai-hint="online learning" />
+                </div>
+                <Card>
+                    <CardHeader>
+                    <CardTitle>About this course</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                    <p className="text-muted-foreground whitespace-pre-wrap">{course.description}</p>
+                    </CardContent>
+                </Card>
             </>
-          )}
-
+            )}
         </div>
 
         <div className="md:col-span-2">
@@ -245,7 +357,17 @@ export default function CourseDetailPage() {
             </CardContent>
           </Card>
         </div>
+
+        {isEnrolled && <CourseTabs courseId={courseId} course={course} onContentClick={handleContentClick} />}
       </div>
     </div>
   );
+}
+
+export default function CourseDetailPage() {
+    return (
+        <Suspense fallback={<div>Loading...</div>}>
+            <CourseDetailPageContent />
+        </Suspense>
+    )
 }

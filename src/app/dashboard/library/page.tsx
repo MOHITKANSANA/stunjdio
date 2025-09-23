@@ -1,7 +1,7 @@
 
 'use client';
 
-import { BookOpenCheck, Trophy, Library, BookMarked } from "lucide-react";
+import { BookOpenCheck, Trophy, Library, BookMarked, Download } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from '@/hooks/use-auth';
@@ -109,7 +109,7 @@ export default function LibraryPage() {
             <div>
                 <h1 className="text-3xl md:text-4xl font-bold font-headline flex items-center gap-3">
                     <Library className="h-10 w-10 text-primary" />
-                    My Library
+                    My Courses
                 </h1>
                 <p className="text-muted-foreground mt-2">All your learning materials in one place.</p>
             </div>

@@ -1,5 +1,4 @@
 
-
 "use client"
 import React, { useEffect, useState } from 'react';
 import {
@@ -17,12 +16,11 @@ import {
   Award,
   Bell,
   Search,
-  MessageSquareQuestion,
-  Sparkles,
   HelpCircle,
   Library,
   Trophy,
   Clock,
+  Download,
 } from 'lucide-react';
 
 import { useAuth } from '@/hooks/use-auth';
@@ -51,8 +49,9 @@ import { firestore } from '@/lib/firebase';
 
 const bottomNavItems = [
     { href: '/dashboard', icon: Home, label: 'Home' },
-    { href: '/dashboard/library', icon: Library, label: 'My Library' },
+    { href: '/dashboard/library', icon: Library, label: 'My Courses' },
     { href: '/dashboard/live-class', icon: Video, label: 'Live Class' },
+    { href: '/dashboard/downloads', icon: Download, label: 'Downloads' },
     { href: '/dashboard/profile', icon: User, label: 'Profile' },
 ];
 
@@ -66,7 +65,7 @@ const kidsBottomNavItems = [
 
 const sidebarNavItems = [
     { href: '/dashboard', icon: Home, label: 'home' },
-    { href: '/dashboard/library', icon: Library, label: 'My Library' },
+    { href: '/dashboard/library', icon: Library, label: 'My Courses' },
     { href: '/dashboard/profile', icon: User, label: 'profile' },
     { href: '/dashboard/courses', icon: Book, label: 'courses' },
     { href: '/dashboard/scholarship', icon: Award, label: 'scholarship' },
@@ -203,7 +202,7 @@ const AppBottomNav = ({ isKidsMode }: { isKidsMode: boolean }) => {
 
     return (
          <footer className="sticky bottom-0 z-10 border-t border-border/50 bg-background/95 backdrop-blur-sm md:hidden shadow-[0_-2px_10px_rgba(0,0,0,0.1)]">
-              <nav className="flex items-center justify-around p-2">
+              <nav className="flex items-center justify-around p-1">
                 {items.map((item) => (
                    <Link 
                      key={item.label}
