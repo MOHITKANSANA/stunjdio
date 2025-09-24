@@ -1,4 +1,5 @@
 
+
 "use client";
 import React, { useEffect, useState } from 'react';
 import {
@@ -15,11 +16,12 @@ import {
   Book,
   Calendar,
   Users,
+  Send,
 } from 'lucide-react';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/hooks/use-auth';
-import { doc, getDoc, collection, query, orderBy, limit, getDocs, onSnapshot } from 'firebase/firestore';
+import { doc, getDoc, collection, query, orderBy, limit, getDocs, onSnapshot, addDoc, serverTimestamp } from 'firebase/firestore';
 import { firestore } from '@/lib/firebase';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -33,6 +35,9 @@ import {
   CarouselNext,
   CarouselPrevious,
 } from "@/components/ui/carousel"
+import { Textarea } from '@/components/ui/textarea';
+import { Button } from '@/components/ui/button';
+import { useToast } from '@/hooks/use-toast';
 
 
 const CountdownTimer = ({ targetDate }: { targetDate: Date }) => {
@@ -77,6 +82,10 @@ const MainDashboard = () => {
     const [topStudents, setTopStudents] = useState<any[]>([]);
     const [loadingStudents, setLoadingStudents] = useState(true);
     const [nextLiveClass, setNextLiveClass] = useState<any>(null);
+    const [reviews, setReviews] = useState<any[]>([]);
+    const [loadingReviews, setLoadingReviews] = useState(true);
+    const [newReview, setNewReview] = useState("");
+    const { toast } = useToast();
 
      useEffect(() => {
         const q = query(
@@ -95,10 +104,13 @@ const MainDashboard = () => {
     useEffect(() => {
         const fetchTopStudents = async () => {
             try {
+                // Simplified: Fetching first 10 registered users.
+                // A real implementation would need complex logic to track activity.
                 const usersQuery = query(collection(firestore, 'users'), limit(10));
                 const usersSnapshot = await getDocs(usersQuery);
-                const students = usersSnapshot.docs.map(doc => ({
+                const students = usersSnapshot.docs.map((doc, index) => ({
                     id: doc.id,
+                    rank: index + 1,
                     ...doc.data()
                 }));
                 setTopStudents(students);
@@ -109,33 +121,55 @@ const MainDashboard = () => {
             }
         }
         fetchTopStudents();
+
+        const reviewsQuery = query(collection(firestore, 'reviews'), orderBy('createdAt', 'desc'), limit(10));
+        const unsubscribeReviews = onSnapshot(reviewsQuery, (snapshot) => {
+            const fetchedReviews = snapshot.docs.map(doc => doc.data());
+            setReviews(fetchedReviews);
+            setLoadingReviews(false);
+        });
+
+        return () => unsubscribeReviews();
     }, []);
+    
+    const handleReviewSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!user || !newReview.trim()) return;
+        try {
+            await addDoc(collection(firestore, 'reviews'), {
+                text: newReview,
+                userName: user.displayName,
+                userPhoto: user.photoURL,
+                createdAt: serverTimestamp(),
+            });
+            setNewReview("");
+            toast({ description: "Your review has been submitted. Thank you!" });
+        } catch (error) {
+            toast({ variant: 'destructive', description: "Could not submit your review." });
+        }
+    };
         
     const topGridItems = [
-      { label: "Today's Course", icon: Book, href: "/dashboard/courses", color: "bg-pink-500"},
-      { label: "Upcoming Live Class", icon: Calendar, href: "/dashboard/live-class", color: "bg-sky-500"},
-      { label: "New Test Series", icon: FileText, href: "/dashboard/ai-test?tab=series", color: "bg-green-500" },
-      { label: "Top Scorer of the Week", icon: Trophy, href: "#", color: "bg-orange-400" },
+      { label: "Paid Courses", icon: BookCopy, href: "/dashboard/courses", color: "bg-blue-500" },
+      { label: "Test Series", icon: FileText, href: "/dashboard/ai-test?tab=series", color: "bg-orange-500" },
+      { label: "Free Classes", icon: Video, href: "/dashboard/live-class", color: "bg-green-500" },
+      { label: "Previous Papers", icon: Newspaper, href: "/dashboard/papers", color: "bg-purple-500" },
     ];
 
     const quickAccessItems = [
-        { label: "Paid Courses", icon: BookCopy, href: "/dashboard/courses", color: "bg-indigo-500" },
-        { label: "Test Series", icon: FileText, href: "/dashboard/ai-test?tab=series", color: "bg-red-500" },
-        { label: "Free Classes", icon: Video, href: "/dashboard/live-class", color: "bg-orange-500" },
-        { label: "Previous Year Papers", icon: Newspaper, href: "/dashboard/papers", color: "bg-sky-500" },
         { label: "Current Affairs", icon: Globe, href: "#", color: "bg-cyan-500" },
         { label: "Quiz & Games", icon: Trophy, href: "#", color: "bg-yellow-400" },
-        { label: "Our Books Notes PDF", icon: BookOpen, href: "#", color: "bg-green-500" },
-        { label: "Job Alerts", icon: Briefcase, href: "#", color: "bg-amber-500" },
+        { label: "Our Books Notes PDF", icon: BookOpen, href: "#", color: "bg-pink-500" },
+        { label: "Job Alerts", icon: Briefcase, href: "#", color: "bg-indigo-500" },
     ];
     
     return (
         <div className="flex flex-col h-full bg-background space-y-6">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                  {topGridItems.map((item) => (
                     <Link href={item.href} key={item.label}>
                         <Card className={cn("transform-gpu text-white transition-transform duration-200 ease-in-out hover:-translate-y-1 hover:shadow-xl rounded-xl", item.color)}>
-                            <CardContent className="flex flex-col items-center justify-center gap-2 p-4 h-full">
+                            <CardContent className="flex flex-col items-center justify-center gap-2 p-4 h-full aspect-square">
                                 <item.icon className="h-8 w-8" />
                                 <span className="text-sm font-semibold text-center">{item.label}</span>
                             </CardContent>
@@ -144,42 +178,40 @@ const MainDashboard = () => {
                 ))}
             </div>
 
-            <div>
-                <h2 className="text-xl font-bold mb-3">Quick Access</h2>
-                <div className="grid grid-cols-4 gap-3">
-                {quickAccessItems.map((item) => (
-                    <Link href={item.href} key={item.label} className="text-center">
-                    <Card className={cn("transform-gpu text-white transition-transform duration-200 ease-in-out hover:-translate-y-1 hover:shadow-xl rounded-xl", item.color)}>
-                        <CardContent className="flex flex-col items-center justify-center gap-1 p-2 aspect-square">
-                            <item.icon className="h-6 w-6" />
-                            <span className="text-xs font-medium text-center">{item.label}</span>
-                        </CardContent>
-                    </Card>
-                    </Link>
-                ))}
-                </div>
+            <div className="grid grid-cols-4 gap-3">
+            {quickAccessItems.map((item) => (
+                <Link href={item.href} key={item.label} className="text-center">
+                <Card className={cn("transform-gpu text-white transition-transform duration-200 ease-in-out hover:-translate-y-1 hover:shadow-xl rounded-xl", item.color)}>
+                    <CardContent className="flex flex-col items-center justify-center gap-1 p-2 aspect-square">
+                        <item.icon className="h-6 w-6" />
+                        <span className="text-xs font-medium text-center">{item.label}</span>
+                    </CardContent>
+                </Card>
+                </Link>
+            ))}
             </div>
             
             <div>
                 <h2 className="text-xl font-bold mb-3">Top 10 Students of the Week</h2>
-                 <Carousel opts={{ align: "start", loop: true }} className="w-full">
-                    <CarouselContent className="-ml-2">
+                 <Carousel opts={{ align: "start", loop: false }} className="w-full">
+                    <CarouselContent className="-ml-4">
                         {loadingStudents ? (
                             [...Array(3)].map((_, i) => (
-                                <CarouselItem key={i} className="pl-2 basis-1/3">
-                                    <Skeleton className="h-28 w-full rounded-lg" />
+                                <CarouselItem key={i} className="pl-4 basis-1/2 md:basis-1/3 lg:basis-1/4">
+                                    <Skeleton className="h-32 w-full rounded-lg" />
                                 </CarouselItem>
                             ))
                         ) : (
-                             topStudents.map((student, index) => (
-                                <CarouselItem key={student.id} className="pl-2 basis-1/3">
+                             topStudents.map((student) => (
+                                <CarouselItem key={student.id} className="pl-4 basis-1/2 md:basis-1/3 lg:basis-1/4">
                                     <Card className="bg-card border-border/60">
-                                        <CardContent className="p-2 flex flex-col items-center justify-center gap-1 aspect-square">
-                                            <Avatar className="h-10 w-10">
+                                        <CardContent className="p-3 flex flex-col items-center justify-center gap-2">
+                                            <Avatar className="h-12 w-12">
                                                 <AvatarImage src={student.photoURL} />
                                                 <AvatarFallback>{student.displayName?.charAt(0) || 'S'}</AvatarFallback>
                                             </Avatar>
-                                            <Badge variant="secondary" className="bg-yellow-400 text-black">#{index + 1}</Badge>
+                                            <p className="font-semibold truncate w-full text-center">{student.displayName}</p>
+                                            <Badge variant="secondary" className="bg-yellow-400 text-black">Rank #{student.rank}</Badge>
                                         </CardContent>
                                     </Card>
                                 </CarouselItem>
@@ -195,6 +227,44 @@ const MainDashboard = () => {
                     <CountdownTimer targetDate={nextLiveClass.startTime.toDate()} />
                 </div>
             )}
+            
+            <div>
+                 <h2 className="text-xl font-bold mb-3">What Our Students Say</h2>
+                 <div className="space-y-4">
+                    {loadingReviews ? <Skeleton className="h-24 w-full" /> : reviews.map((review, index) => (
+                        <Card key={index} className="bg-muted/50">
+                            <CardContent className="p-4">
+                                <div className="flex items-start gap-3">
+                                    <Avatar className="h-8 w-8">
+                                        <AvatarImage src={review.userPhoto} />
+                                        <AvatarFallback>{review.userName?.charAt(0)}</AvatarFallback>
+                                    </Avatar>
+                                    <div>
+                                        <p className="font-semibold text-sm">{review.userName}</p>
+                                        <p className="text-sm">{review.text}</p>
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    ))}
+                    <Card>
+                        <CardContent className="p-4">
+                             <form onSubmit={handleReviewSubmit} className="flex items-start gap-3">
+                                <Avatar className="h-9 w-9">
+                                    <AvatarImage src={user?.photoURL || undefined} />
+                                    <AvatarFallback>{user?.displayName?.charAt(0) || 'A'}</AvatarFallback>
+                                </Avatar>
+                                <Textarea 
+                                    value={newReview} 
+                                    onChange={(e) => setNewReview(e.target.value)} 
+                                    placeholder="Write your review here..." 
+                                />
+                                <Button type="submit"><Send /></Button>
+                            </form>
+                        </CardContent>
+                    </Card>
+                 </div>
+            </div>
         </div>
     );
 };

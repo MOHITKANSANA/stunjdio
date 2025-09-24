@@ -17,7 +17,7 @@ import { collection, query, orderBy, doc, updateDoc, addDoc, deleteDoc, serverTi
 import { firestore } from '@/lib/firebase';
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Trash2, Check, X, Upload, Video, FileText, StickyNote, PlusCircle, Save, Download, ThumbsUp, ThumbsDown, Clock, CircleAlert, CheckCircle2, XCircle, KeyRound, Newspaper, Image as ImageIcon, MinusCircle, BookMarked, Award, Gift } from 'lucide-react';
+import { Loader2, Trash2, Check, X, Upload, Video, FileText, StickyNote, PlusCircle, Save, Download, ThumbsUp, ThumbsDown, Clock, CircleAlert, CheckCircle2, XCircle, KeyRound, Newspaper, Image as ImageIcon, MinusCircle, BookMarked, Award, Gift, ShieldQuestion } from 'lucide-react';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -45,8 +45,10 @@ const liveClassFormSchema = z.object({
     youtubeUrl: z.string().url('Must be a valid YouTube URL'),
     startTime: z.string().refine((val) => !isNaN(Date.parse(val)), { message: 'Invalid date format' }),
     thumbnailFile: z.instanceof(File).optional(),
+    thumbnailUrl: z.string().url().optional(),
 });
 type LiveClassFormValues = z.infer<typeof liveClassFormSchema>;
+
 
 const qrCodeFormSchema = z.object({
     imageFile: z.instanceof(File, { message: 'Please upload an image file.' }).refine(file => file.size < 2 * 1024 * 1024, 'Image must be less than 2MB.'),
@@ -55,9 +57,21 @@ type QrCodeFormValues = z.infer<typeof qrCodeFormSchema>;
 
 const courseContentSchema = z.object({
     courseId: z.string().min(1, "Please select a course."),
-    contentType: z.enum(['video', 'pdf', 'note']),
+    contentType: z.enum(['video', 'pdf', 'note', 'test_series', 'ai_test']),
     title: z.string().min(3, 'Content title is required.'),
-    url: z.string().url('A valid URL is required.'),
+    url: z.string().url().optional(), // Optional for tests
+    testSeriesId: z.string().optional(), // For linking existing test series
+}).refine(data => {
+    if (data.contentType === 'test_series' && !data.testSeriesId) {
+        return false;
+    }
+    if (['video', 'pdf', 'note'].includes(data.contentType) && !data.url) {
+        return false;
+    }
+    return true;
+}, {
+    message: 'Required field for this content type is missing.',
+    path: ['url'], // Path to show error on
 });
 type CourseContentValues = z.infer<typeof courseContentSchema>;
 
@@ -270,6 +284,7 @@ function AdminDashboard() {
   const [ebooksCollection, ebooksLoading] = useCollection(query(collection(firestore, 'ebooks'), orderBy('createdAt', 'desc')));
   const [rewardRedemptions, rewardRedemptionsLoading] = useCollection(query(collection(firestore, 'rewardRedemptions'), orderBy('redeemedAt', 'desc')));
   const [pointRequests, pointRequestsLoading] = useCollection(query(collection(firestore, 'pointRequests'), orderBy('requestedAt', 'desc')));
+  const [testSeriesCollection, testSeriesLoading] = useCollection(query(collection(firestore, 'testSeries'), orderBy('createdAt', 'desc')));
 
 
   const qrCodeUrl = qrCodeDoc?.docs.find(d => d.id === 'paymentQrCode')?.data().url;
@@ -315,9 +330,9 @@ function AdminDashboard() {
 
   
   const courseForm = useForm<CourseFormValues>({ resolver: zodResolver(courseFormSchema), defaultValues: { title: '', category: '', description: '', price: 0, isFree: false, imageFile: undefined } });
-  const liveClassForm = useForm<LiveClassFormValues>({ resolver: zodResolver(liveClassFormSchema), defaultValues: { title: '', youtubeUrl: '', startTime: '' } });
+  const liveClassForm = useForm<LiveClassFormValues>({ resolver: zodResolver(liveClassFormSchema), defaultValues: { title: '', youtubeUrl: '', startTime: '', thumbnailUrl: '' } });
   const qrCodeForm = useForm<QrCodeFormValues>({ resolver: zodResolver(qrCodeFormSchema), defaultValues: { imageFile: undefined } });
-  const courseContentForm = useForm<CourseContentValues>({ resolver: zodResolver(courseContentSchema), defaultValues: { courseId: '', contentType: 'video', title: '', url: '' } });
+  const courseContentForm = useForm<CourseContentValues>({ resolver: zodResolver(courseContentSchema), defaultValues: { courseId: '', contentType: 'video', title: '', url: '', testSeriesId: '' } });
   const scholarshipSettingsForm = useForm<ScholarshipSettingsValues>({
     resolver: zodResolver(scholarshipSettingsSchema),
     values: {
@@ -386,39 +401,59 @@ function AdminDashboard() {
     }
   };
 
-  const onLiveClassSubmit = async (data: LiveClassFormValues) => {
-    try {
-        let thumbnailUrl = `https://picsum.photos/seed/live-${new Date().getTime()}/600/400`;
-        if (data.thumbnailFile) {
-            thumbnailUrl = await fileToDataUrl(data.thumbnailFile);
+    const onLiveClassSubmit = async (data: LiveClassFormValues) => {
+        try {
+            let finalThumbnailUrl = data.thumbnailUrl;
+            if (data.thumbnailFile) {
+                finalThumbnailUrl = await fileToDataUrl(data.thumbnailFile);
+            }
+
+            if (!finalThumbnailUrl) {
+                finalThumbnailUrl = `https://picsum.photos/seed/live-${new Date().getTime()}/600/400`;
+            }
+
+            const liveClassData = {
+                title: data.title,
+                youtubeUrl: data.youtubeUrl,
+                startTime: new Date(data.startTime),
+                thumbnailUrl: finalThumbnailUrl,
+                createdAt: serverTimestamp()
+            };
+
+            await addDoc(collection(firestore, 'live_classes'), liveClassData);
+            toast({ title: 'Success', description: 'Live class added.' });
+            liveClassForm.reset();
+        } catch (error: any) {
+            console.error("Error adding live class:", error);
+            toast({ variant: 'destructive', title: 'Error', description: error.message || 'Could not add live class.' });
         }
+    };
 
-        const liveClassData = {
-            title: data.title,
-            youtubeUrl: data.youtubeUrl,
-            startTime: new Date(data.startTime),
-            thumbnailUrl,
-            createdAt: serverTimestamp() 
-        };
 
-        await addDoc(collection(firestore, 'live_classes'), liveClassData);
-        toast({ title: 'Success', description: 'Live class added.' });
-        liveClassForm.reset();
-    } catch (error: any) {
-        console.error("Error adding live class:", error);
-        toast({ variant: 'destructive', title: 'Error', description: error.message || 'Could not add live class.' });
-    }
-  };
+    const onCourseContentSubmit = async (data: CourseContentValues) => {
+        try {
+            const contentData: any = {
+                type: data.contentType,
+                title: data.title,
+                createdAt: serverTimestamp()
+            };
 
-  const onCourseContentSubmit = async (data: CourseContentValues) => {
-    try {
-        await addDoc(collection(firestore, 'courses', data.courseId, 'content'), { type: data.contentType, title: data.title, url: data.url, createdAt: serverTimestamp() });
-        toast({ title: 'Success', description: 'Content added to course.' });
-        courseContentForm.reset();
-    } catch (error) {
-        toast({ variant: 'destructive', title: 'Error', description: 'Could not add content.' });
-    }
-  };
+            if (data.contentType === 'test_series') {
+                contentData.testSeriesId = data.testSeriesId;
+            } else if (data.contentType === 'ai_test') {
+                // For AI test, no extra data is needed initially besides title.
+                // The test is configured on the fly by the user.
+            } else {
+                contentData.url = data.url;
+            }
+
+            await addDoc(collection(firestore, 'courses', data.courseId, 'content'), contentData);
+            toast({ title: 'Success', description: 'Content added to course.' });
+            courseContentForm.reset();
+        } catch (error) {
+            toast({ variant: 'destructive', title: 'Error', description: 'Could not add content.' });
+        }
+    };
   
   const onPreviousPaperSubmit = async (data: PreviousPaperValues) => {
     try {
@@ -810,7 +845,7 @@ function AdminDashboard() {
 
             <div className="space-y-6">
                 <Card>
-                    <CardHeader><CardTitle>Manage Course Content</CardTitle><CardDescription>Add videos, PDFs, and notes to your courses.</CardDescription></CardHeader>
+                    <CardHeader><CardTitle>Manage Course Content</CardTitle><CardDescription>Add videos, PDFs, and tests to your courses.</CardDescription></CardHeader>
                     <CardContent>
                         <Form {...courseContentForm}><form onSubmit={courseContentForm.handleSubmit(onCourseContentSubmit)} className="grid gap-4">
                             <FormField control={courseContentForm.control} name="courseId" render={({ field }) => (<FormItem><FormLabel>Select Course</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}>
@@ -820,13 +855,25 @@ function AdminDashboard() {
                              <FormField control={courseContentForm.control} name="contentType" render={({ field }) => (<FormItem><FormLabel>Content Type</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}>
                                 <FormControl><SelectTrigger><SelectValue placeholder="Choose a content type" /></SelectTrigger></FormControl>
                                 <SelectContent>
-                                    <SelectItem value="video"><div className="flex items-center"><Video className="mr-2 h-4 w-4" />Video (YouTube)</div></SelectItem>
-                                    <SelectItem value="pdf"><div className="flex items-center"><FileText className="mr-2 h-4 w-4" />PDF Document</div></SelectItem>
-                                    <SelectItem value="note"><div className="flex items-center"><StickyNote className="mr-2 h-4 w-4" />Note</div></SelectItem>
+                                    <SelectItem value="video"><div className="flex items-center"><Video className="mr-2 h-4 w-4" />Video Lecture</div></SelectItem>
+                                    <SelectItem value="pdf"><div className="flex items-center"><FileText className="mr-2 h-4 w-4" />PDF/Note</div></SelectItem>
+                                    <SelectItem value="test_series"><div className="flex items-center"><FileText className="mr-2 h-4 w-4" />Test Series</div></SelectItem>
+                                    <SelectItem value="ai_test"><div className="flex items-center"><ShieldQuestion className="mr-2 h-4 w-4" />AI Test Series</div></SelectItem>
                                 </SelectContent>
                             </Select><FormMessage /></FormItem>)}/>
                             <FormField control={courseContentForm.control} name="title" render={({ field }) => (<FormItem><FormLabel>Content Title</FormLabel><FormControl><Input placeholder="e.g. Chapter 1: Introduction" {...field} /></FormControl><FormMessage /></FormItem>)}/>
-                            <FormField control={courseContentForm.control} name="url" render={({ field }) => (<FormItem><FormLabel>URL</FormLabel><FormControl><Input placeholder="https://youtube.com/watch?v=... or https://..." {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                            
+                            {courseContentForm.watch('contentType') === 'test_series' && (
+                                <FormField control={courseContentForm.control} name="testSeriesId" render={({ field }) => (<FormItem><FormLabel>Select Test Series</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}>
+                                    <FormControl><SelectTrigger><SelectValue placeholder="Choose a test series" /></SelectTrigger></FormControl>
+                                    <SelectContent>{testSeriesCollection?.docs.map(doc => (<SelectItem key={doc.id} value={doc.id}>{doc.data().title}</SelectItem>))}</SelectContent>
+                                </Select><FormMessage /></FormItem>)}/>
+                            )}
+                            
+                            {(courseContentForm.watch('contentType') === 'video' || courseContentForm.watch('contentType') === 'pdf' || courseContentForm.watch('contentType') === 'note') && (
+                                <FormField control={courseContentForm.control} name="url" render={({ field }) => (<FormItem><FormLabel>URL</FormLabel><FormControl><Input placeholder="https://youtube.com/watch?v=... or https://..." {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                            )}
+                            
                              <Button type="submit" disabled={courseContentForm.formState.isSubmitting}>{courseContentForm.formState.isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin"/>Adding...</> : "Add Content"}</Button>
                         </form></Form>
                     </CardContent>
@@ -859,29 +906,31 @@ function AdminDashboard() {
                   </CardContent>
                  </Card>
 
-                 <Card>
-                  <CardHeader><CardTitle>Live Class Management</CardTitle><CardDescription>Add, view, and manage live classes.</CardDescription></CardHeader>
-                  <CardContent><Form {...liveClassForm}><form onSubmit={liveClassForm.handleSubmit(onLiveClassSubmit)} className="grid gap-4 mb-6">
-                      <FormField control={liveClassForm.control} name="title" render={({ field }) => (<FormItem><FormLabel>Class Title</FormLabel><FormControl><Input placeholder="e.g. Maths Special Session" {...field} /></FormControl><FormMessage /></FormItem>)}/>
-                      <FormField control={liveClassForm.control} name="youtubeUrl" render={({ field }) => (<FormItem><FormLabel>YouTube URL</FormLabel><FormControl><Input placeholder="https://www.youtube.com/watch?v=..." {...field} /></FormControl><FormMessage /></FormItem>)}/>
-                      <FormField control={liveClassForm.control} name="startTime" render={({ field }) => (<FormItem><FormLabel>Start Time</FormLabel><FormControl><Input type="datetime-local" {...field} /></FormControl><FormMessage /></FormItem>)}/>
-                      <FormField control={liveClassForm.control} name="thumbnailFile" render={({ field: { onChange, value, ...rest } }) => (<FormItem><FormLabel>Thumbnail Image (Optional)</FormLabel><FormControl><Input type="file" accept="image/*" onChange={(e) => onChange(e.target.files?.[0])} {...rest} /></FormControl><FormMessage /></FormItem>)} />
-                      <Button type="submit" disabled={liveClassForm.formState.isSubmitting}>{liveClassForm.formState.isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin"/>Adding...</> : "Add Live Class"}</Button>
-                  </form></Form>
-                  <h4 className="font-semibold mb-2">Scheduled Classes</h4>
-                  <div className="max-h-60 overflow-y-auto pr-2"><Table><TableBody>
-                      {liveClassesLoading && <TableRow><TableCell><Skeleton className="h-9 w-full" /></TableCell></TableRow>}
-                      {liveClassesCollection?.docs.map(doc => {
-                          const liveClass = doc.data();
-                          const startTime = liveClass.startTime?.toDate();
-                          return (<TableRow key={doc.id}><TableCell>
-                              <p className="font-medium">{liveClass.title}</p>
-                              <p className="text-sm text-muted-foreground">{startTime ? startTime.toLocaleString() : 'Invalid Date'}</p>
-                          </TableCell><TableCell className="text-right">
-                              <Button variant="ghost" size="icon" onClick={() => deleteLiveClass(doc.id)}><Trash2 className="h-4 w-4 text-destructive"/></Button>
-                          </TableCell></TableRow>)
-                      })}
-                  </TableBody></Table></div></CardContent>
+                <Card>
+                    <CardHeader><CardTitle>Live Class Management</CardTitle><CardDescription>Add, view, and manage live classes.</CardDescription></CardHeader>
+                    <CardContent><Form {...liveClassForm}><form onSubmit={liveClassForm.handleSubmit(onLiveClassSubmit)} className="grid gap-4 mb-6">
+                        <FormField control={liveClassForm.control} name="title" render={({ field }) => (<FormItem><FormLabel>Class Title</FormLabel><FormControl><Input placeholder="e.g. Maths Special Session" {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                        <FormField control={liveClassForm.control} name="youtubeUrl" render={({ field }) => (<FormItem><FormLabel>YouTube URL</FormLabel><FormControl><Input placeholder="https://www.youtube.com/watch?v=..." {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                        <FormField control={liveClassForm.control} name="startTime" render={({ field }) => (<FormItem><FormLabel>Start Time</FormLabel><FormControl><Input type="datetime-local" {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                        <FormField control={liveClassForm.control} name="thumbnailFile" render={({ field: { onChange, value, ...rest } }) => (<FormItem><FormLabel>Upload Thumbnail</FormLabel><FormControl><Input type="file" accept="image/*" onChange={(e) => onChange(e.target.files?.[0])} {...rest} /></FormControl><FormMessage /></FormItem>)} />
+                        <div className="text-center text-xs text-muted-foreground">OR</div>
+                        <FormField control={liveClassForm.control} name="thumbnailUrl" render={({ field }) => (<FormItem><FormLabel>Thumbnail URL</FormLabel><FormControl><Input placeholder="https://example.com/image.png" {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                        <Button type="submit" disabled={liveClassForm.formState.isSubmitting}>{liveClassForm.formState.isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin"/>Adding...</> : "Add Live Class"}</Button>
+                    </form></Form>
+                    <h4 className="font-semibold mb-2">Scheduled Classes</h4>
+                    <div className="max-h-60 overflow-y-auto pr-2"><Table><TableBody>
+                        {liveClassesLoading && <TableRow><TableCell><Skeleton className="h-9 w-full" /></TableCell></TableRow>}
+                        {liveClassesCollection?.docs.map(doc => {
+                            const liveClass = doc.data();
+                            const startTime = liveClass.startTime?.toDate();
+                            return (<TableRow key={doc.id}><TableCell>
+                                <p className="font-medium">{liveClass.title}</p>
+                                <p className="text-sm text-muted-foreground">{startTime ? startTime.toLocaleString() : 'Invalid Date'}</p>
+                            </TableCell><TableCell className="text-right">
+                                <Button variant="ghost" size="icon" onClick={() => deleteLiveClass(doc.id)}><Trash2 className="h-4 w-4 text-destructive"/></Button>
+                            </TableCell></TableRow>)
+                        })}
+                    </TableBody></Table></div></CardContent>
                 </Card>
 
                  <Card>

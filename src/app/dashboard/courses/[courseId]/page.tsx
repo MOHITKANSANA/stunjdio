@@ -10,7 +10,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
-import { IndianRupee, BookOpen, Clock, Users, Lock, Video, PlayCircle, FileText, StickyNote, Send, HelpCircle, GraduationCap } from 'lucide-react';
+import { IndianRupee, BookOpen, Clock, Users, Lock, Video, PlayCircle, FileText, StickyNote, Send, HelpCircle, GraduationCap, ShieldQuestion } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/use-auth';
 import { collection, query, where, orderBy, addDoc, serverTimestamp } from 'firebase/firestore';
@@ -25,6 +25,8 @@ const ContentIcon = ({ type }: { type: string }) => {
         case 'video': return <Video className="h-5 w-5 text-primary"/>;
         case 'pdf': return <FileText className="h-5 w-5 text-primary"/>;
         case 'note': return <StickyNote className="h-5 w-5 text-primary"/>;
+        case 'test_series': return <FileText className="h-5 w-5 text-primary" />;
+        case 'ai_test': return <ShieldQuestion className="h-5 w-5 text-primary" />;
         default: return <BookOpen className="h-5 w-5 text-primary"/>;
     }
 }
@@ -87,7 +89,7 @@ const VideoPlayer = ({ videoUrl, title, onOpenChange }: { videoUrl: string, titl
 
 const CourseContentTab = ({ courseId, onContentClick }: { courseId: string, onContentClick: (content: any) => void }) => {
     const [courseContentCollection, courseContentLoading, courseContentError] = useCollection(
-        query(collection(firestore, 'courses', courseId, 'content'), orderBy('createdAt', 'asc'))
+        query(collection(firestore, 'courses', courseId, 'content'), where('type', 'in', ['pdf', 'note']), orderBy('createdAt', 'asc'))
     );
     return (
         <CardContent>
@@ -201,22 +203,100 @@ const DoubtsTab = ({ courseId }: { courseId: string }) => {
     );
 };
 
+const VideoLecturesTab = ({ courseId, onContentClick }: { courseId: string; onContentClick: (content: any) => void }) => {
+    const [videos, loading, error] = useCollection(
+        query(collection(firestore, 'courses', courseId, 'content'), where('type', '==', 'video'), orderBy('createdAt', 'asc'))
+    );
+
+    return (
+        <CardContent>
+            {error && <p className="text-destructive">Could not load videos.</p>}
+            {loading && <Skeleton className="w-full h-24" />}
+            {videos && videos.docs.length > 0 ? (
+                <div className="space-y-4">
+                    {videos.docs.map(doc => {
+                        const content = doc.data();
+                        return (
+                            <div key={doc.id} className="flex items-center justify-between p-3 rounded-lg border bg-muted/50">
+                                <div className="flex items-center gap-3">
+                                    <ContentIcon type={content.type} />
+                                    <p className="font-semibold">{content.title}</p>
+                                </div>
+                                <Button variant="ghost" size="icon" onClick={() => onContentClick(content)}>
+                                    <PlayCircle className="h-6 w-6" />
+                                </Button>
+                            </div>
+                        )
+                    })}
+                </div>
+            ) : (
+                <p className="text-muted-foreground text-center py-8">No video lectures have been added yet.</p>
+            )}
+        </CardContent>
+    );
+};
+
+const TestsTab = ({ courseId }: { courseId: string }) => {
+    const [tests, loading, error] = useCollection(
+        query(collection(firestore, 'courses', courseId, 'content'), where('type', 'in', ['test_series', 'ai_test']), orderBy('createdAt', 'asc'))
+    );
+    const router = useRouter();
+
+    const handleTestClick = (content: DocumentData) => {
+        if (content.type === 'test_series') {
+            router.push(`/dashboard/ai-test?tab=series&testId=${content.testSeriesId}`);
+        } else {
+            router.push('/dashboard/ai-test?tab=ai');
+        }
+    };
+
+    return (
+        <CardContent>
+            {error && <p className="text-destructive">Could not load tests.</p>}
+            {loading && <Skeleton className="w-full h-24" />}
+            {tests && tests.docs.length > 0 ? (
+                <div className="space-y-4">
+                    {tests.docs.map(doc => {
+                        const content = doc.data();
+                        return (
+                            <div key={doc.id} className="flex items-center justify-between p-3 rounded-lg border bg-muted/50">
+                                <div className="flex items-center gap-3">
+                                    <ContentIcon type={content.type} />
+                                    <p className="font-semibold">{content.title}</p>
+                                </div>
+                                <Button onClick={() => handleTestClick(content)}>
+                                    Start Test
+                                </Button>
+                            </div>
+                        )
+                    })}
+                </div>
+            ) : (
+                <p className="text-muted-foreground text-center py-8">No tests have been added to this course yet.</p>
+            )}
+        </CardContent>
+    );
+};
+
+
 const CourseTabs = ({ courseId, course, onContentClick }: { courseId: string; course: DocumentData, onContentClick: (content: any) => void }) => {
     return (
         <div className="col-span-1 md:col-span-5">
-            <Tabs defaultValue="content">
-                <TabsList className="grid w-full grid-cols-3">
-                    <TabsTrigger value="classes">Live Classes</TabsTrigger>
-                    <TabsTrigger value="content">Course Content</TabsTrigger>
+            <Tabs defaultValue="videos">
+                <TabsList className="grid w-full grid-cols-4">
+                    <TabsTrigger value="videos">Video Lectures</TabsTrigger>
+                    <TabsTrigger value="content">Content</TabsTrigger>
+                    <TabsTrigger value="tests">Tests</TabsTrigger>
                     <TabsTrigger value="doubts">Your Doubts</TabsTrigger>
                 </TabsList>
-                <TabsContent value="classes">
-                     <CardContent>
-                        <p className="text-muted-foreground text-center py-8">No live classes scheduled for this course yet.</p>
-                     </CardContent>
+                <TabsContent value="videos">
+                     <VideoLecturesTab courseId={courseId} onContentClick={onContentClick} />
                 </TabsContent>
                 <TabsContent value="content">
                     <CourseContentTab courseId={courseId} onContentClick={onContentClick}/>
+                </TabsContent>
+                <TabsContent value="tests">
+                    <TestsTab courseId={courseId} />
                 </TabsContent>
                 <TabsContent value="doubts">
                     <DoubtsTab courseId={courseId} />

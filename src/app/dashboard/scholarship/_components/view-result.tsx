@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -10,7 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Download, AlertTriangle } from 'lucide-react';
-import { collection, query, where, getDocs, orderBy, limit, doc, getDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, orderBy, limit, doc, getDoc, setDoc } from 'firebase/firestore';
 import { firestore } from '@/lib/firebase';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import Certificate from '@/components/certificate';
@@ -48,6 +49,27 @@ export function ViewResult() {
                 setIsResultAvailable(true); // Default to available on error
             }
         };
+        
+        // DUMMY DATA SETUP - for testing purposes
+        const setupDummyData = async () => {
+            const appRef = doc(firestore, 'scholarshipApplications', 'dummy-applicant');
+            const resultRef = doc(firestore, 'scholarshipTestResults', 'dummy-result');
+            
+            await setDoc(appRef, {
+                applicationNumber: "12345",
+                name: "Demo Student",
+                resultStatus: "pass"
+            }, { merge: true });
+
+            await setDoc(resultRef, {
+                applicationNumber: "12345",
+                applicantName: "Demo Student",
+                score: 8,
+                totalQuestions: 10,
+                submittedAt: new Date()
+            }, { merge: true });
+        };
+        // setupDummyData();
         checkResultDate();
     }, []);
 
