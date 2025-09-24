@@ -8,6 +8,10 @@ import { z } from 'zod';
 import { generateAiTestAction } from '@/app/actions/ai-test';
 import type { GenerateAiTestOutput } from '@/ai/flows/generate-ai-test';
 import { useSearchParams, useRouter } from 'next/navigation';
+import { useCollection } from 'react-firebase-hooks/firestore';
+import { collection, query, orderBy } from 'firebase/firestore';
+import { firestore } from '@/lib/firebase';
+import Link from 'next/link';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -75,6 +79,10 @@ function AiTestPageContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const initialTab = searchParams.get('tab') || 'ai';
+  
+  const [testSeriesCollection, testSeriesLoading] = useCollection(
+      query(collection(firestore, 'testSeries'), orderBy('createdAt', 'desc'))
+  );
 
   const generationForm = useForm<TestGenerationValues>({
     resolver: zodResolver(testGenerationSchema),
@@ -437,11 +445,25 @@ function AiTestPageContent() {
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
-                    {/* Placeholder for Test Series List */}
-                    <div className="text-center p-8 text-muted-foreground">
-                        <FileText className="mx-auto h-12 w-12" />
-                        <p className="mt-4">Practice test series will be available here soon.</p>
-                    </div>
+                   {testSeriesLoading ? (
+                       <p>Loading test series...</p>
+                   ) : testSeriesCollection && !testSeriesCollection.empty ? (
+                        <div className="space-y-4">
+                            {testSeriesCollection.docs.map(doc => (
+                                <Link key={doc.id} href={`/dashboard/test-series/${doc.id}`}>
+                                    <div className="p-4 border rounded-lg hover:bg-muted transition-colors">
+                                        <h3 className="font-semibold">{doc.data().title}</h3>
+                                        <p className="text-sm text-muted-foreground">{doc.data().subject}</p>
+                                    </div>
+                                </Link>
+                            ))}
+                        </div>
+                   ) : (
+                        <div className="text-center p-8 text-muted-foreground">
+                            <FileText className="mx-auto h-12 w-12" />
+                            <p className="mt-4">No practice test series available yet.</p>
+                        </div>
+                   )}
                 </CardContent>
             </Card>
         </TabsContent>
@@ -465,3 +487,5 @@ export default function AiTestPage() {
         </Suspense>
     )
 }
+
+    

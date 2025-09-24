@@ -22,6 +22,7 @@ import {
   Clock,
   Download,
   Sparkles,
+  Youtube,
 } from 'lucide-react';
 
 import { useAuth } from '@/hooks/use-auth';
@@ -50,8 +51,8 @@ import { firestore } from '@/lib/firebase';
 
 const bottomNavItems = [
     { href: '/dashboard', icon: Home, label: 'Home' },
-    { href: '/dashboard/library', icon: Library, label: 'My Courses' },
-    { href: '/dashboard/live-class', icon: Video, label: 'Live Class' },
+    { href: '/dashboard/library', icon: Library, label: 'My Library' },
+    { href: '/dashboard/live-class', icon: Video, label: 'Live' },
     { href: '/dashboard/downloads', icon: Download, label: 'Downloads' },
     { href: '/dashboard/profile', icon: User, label: 'Profile' },
 ];
@@ -66,11 +67,13 @@ const kidsBottomNavItems = [
 
 const sidebarNavItems = [
     { href: '/dashboard', icon: Home, label: 'home' },
-    { href: '/dashboard/library', icon: Library, label: 'My Courses' },
+    { href: '/dashboard/library', icon: Library, label: 'My Library' },
     { href: '/dashboard/profile', icon: User, label: 'profile' },
     { href: '/dashboard/courses', icon: Book, label: 'courses' },
+    { href: '/dashboard/courses/free', icon: BookCopy, label: 'Free Courses' },
     { href: '/dashboard/scholarship', icon: Award, label: 'scholarship' },
     { href: '/dashboard/live-class', icon: Video, label: 'Free Live Classes' },
+    { href: '/dashboard/video-lectures', icon: Youtube, label: 'Video Lectures' },
     { href: '/dashboard/tutor', icon: GraduationCap, label: 'ai_tutor' },
     { href: '/dashboard/ai-test', icon: ShieldQuestion, label: 'ai_tests' },
 ];
@@ -354,3 +357,5 @@ export default function DashboardLayout({
       </SidebarProvider>
   );
 }
+
+    

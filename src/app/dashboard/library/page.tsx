@@ -109,7 +109,7 @@ export default function LibraryPage() {
             <div>
                 <h1 className="text-3xl md:text-4xl font-bold font-headline flex items-center gap-3">
                     <Library className="h-10 w-10 text-primary" />
-                    My Courses
+                    My Library
                 </h1>
                 <p className="text-muted-foreground mt-2">All your learning materials in one place.</p>
             </div>
@@ -171,3 +171,5 @@ export default function LibraryPage() {
         </div>
     );
 }
+
+    

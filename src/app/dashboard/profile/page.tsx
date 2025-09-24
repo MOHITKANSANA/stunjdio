@@ -12,12 +12,12 @@ import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/hooks/use-auth";
 import { useLanguage } from "@/hooks/use-language";
-import { userCourses, testHistory, certificates } from "@/lib/data";
 import { Award, Pencil, Timer } from "lucide-react";
 import Link from "next/link";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
+import Certificate from "@/components/certificate";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -107,17 +107,50 @@ const KidsProfileExtras = () => {
     )
 }
 
+// Dummy data, replace with Firestore data
+const userCourses = [
+  { name: "Algebra Fundamentals", progress: 75 },
+  { name: "World History", progress: 40 },
+  { name: "English Grammar", progress: 95 },
+];
+
+const testHistory = [
+  { name: "Maths Practice Test 1", score: "88%", date: "2023-10-15" },
+  { name: "General Knowledge Quiz", score: "72%", date: "2023-10-12" },
+];
+
+const certificates = [
+  {
+    studentName: "Student Name",
+    courseName: "Algebra Fundamentals - Final Test",
+    score: 88,
+    date: new Date().toLocaleDateString(),
+    status: 'pass'
+  },
+   {
+    studentName: "Student Name",
+    courseName: "World History",
+    score: 100,
+    date: new Date().toLocaleDateString(),
+    status: 'pass'
+  }
+];
+
+
 export default function ProfilePage() {
   const { user } = useAuth();
   const { t } = useLanguage();
   const [isKidsMode, setIsKidsMode] = useState(false);
+  const [userData, setUserData] = useState<any>(null);
 
   useEffect(() => {
     if (user) {
       const userDocRef = doc(firestore, 'users', user.uid);
       getDoc(userDocRef).then(docSnap => {
-        if (docSnap.exists() && docSnap.data().ageGroup === '1-9') {
-          setIsKidsMode(true);
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          setUserData(data);
+          setIsKidsMode(data.ageGroup === '1-9');
         }
       });
     }
@@ -204,19 +237,18 @@ export default function ProfilePage() {
                 <CardTitle>{t('my_certificates')}</CardTitle>
                 <CardDescription>{t('your_earned_certificates')}</CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                {certificates.map((cert) => (
-                    <div key={cert.name} className="flex items-center justify-between p-4 border rounded-lg">
-                    <div className="flex items-center gap-4">
-                        <Award className="h-8 w-8 text-primary" />
-                        <div>
-                        <h3 className="font-semibold">{t('certificate_of_completion')}: {t(cert.course.toLowerCase().replace(/ /g, '_'))}</h3>
-                        <p className="text-sm text-muted-foreground">{t('issued_on')} {cert.date}</p>
+                <CardContent className="grid gap-6 md:grid-cols-1">
+                    {certificates.map((cert, index) => (
+                        <div key={index} className="p-4 border rounded-lg bg-muted/30">
+                            <Certificate
+                                studentName={user?.displayName || 'Student'}
+                                courseName={cert.courseName}
+                                score={cert.score}
+                                date={cert.date}
+                                status={cert.status}
+                            />
                         </div>
-                    </div>
-                    <Button variant="outline">{t('download')}</Button>
-                    </div>
-                ))}
+                    ))}
                 </CardContent>
             </Card>
             </TabsContent>
@@ -226,3 +258,5 @@ export default function ProfilePage() {
     </div>
   );
 }
+
+    
