@@ -23,7 +23,7 @@ const YouTubePlayer = ({ videoId }: { videoId: string }) => {
             <iframe
                 width="100%"
                 height="100%"
-                src={`https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0&controls=0&showinfo=0&modestbranding=1&iv_load_policy=3`}
+                src={`https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0&controls=1&showinfo=0&modestbranding=1&iv_load_policy=3`}
                 title="YouTube video player"
                 frameBorder="0"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
@@ -171,7 +171,6 @@ export default function LiveClassPlayerPage() {
     }
     
     useEffect(() => {
-        // Prevent auto-scrolling on load
         if (pageRef.current) {
             pageRef.current.scrollTo(0, 0);
         }
@@ -189,23 +188,12 @@ export default function LiveClassPlayerPage() {
 
     return (
         <div ref={pageRef} className="flex flex-col md:flex-row h-[calc(100vh-8rem)] md:h-[calc(100vh-4rem)] bg-background overflow-hidden">
-            <div className="md:w-[65%] md:h-full flex flex-col">
+            <div className="md:w-[calc(100%-350px)] md:h-full flex flex-col">
                 <div className="w-full shrink-0">
                     {videoId ? <YouTubePlayer videoId={videoId} /> : <div className="aspect-video bg-black text-white flex items-center justify-center"><p>Invalid or unsupported YouTube video URL.</p></div>}
                 </div>
                  <div className="flex-grow min-h-0 hidden md:block">
-                    <Tabs defaultValue="chat" className="w-full h-full flex flex-col">
-                        <TabsList className="grid w-full grid-cols-2 shrink-0">
-                            <TabsTrigger value="chat"><MessageSquare className="mr-2"/>Chat</TabsTrigger>
-                            <TabsTrigger value="notes"><BookText className="mr-2"/>Add Notes</TabsTrigger>
-                        </TabsList>
-                        <TabsContent value="chat" className="flex-grow min-h-0">
-                            <ChatSection classId={classId} />
-                        </TabsContent>
-                        <TabsContent value="notes" className="flex-grow min-h-0">
-                            <NotesSection classId={classId} />
-                        </TabsContent>
-                    </Tabs>
+                     {/* This space is intentionally left for potential future use or can be removed */}
                 </div>
             </div>
             
@@ -224,7 +212,7 @@ export default function LiveClassPlayerPage() {
                 </Tabs>
             </div>
 
-            <div className="hidden md:block md:w-[35%] md:h-full border-l">
+            <div className="hidden md:block md:w-[350px] md:h-full border-l">
                  <Tabs defaultValue="chat" className="w-full h-full flex flex-col">
                     <TabsList className="grid w-full grid-cols-2 shrink-0">
                         <TabsTrigger value="chat"><MessageSquare className="mr-2"/>Chat</TabsTrigger>
