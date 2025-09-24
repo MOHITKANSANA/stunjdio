@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -64,6 +63,25 @@ export function ViewResult() {
         setIsLoading(true);
         setResult(null);
         setApplicant(null);
+
+        // Dummy data for application number '12345'
+        if (data.applicationNumber === '12345') {
+            setApplicant({
+                name: 'Test Student',
+                applicationNumber: '12345',
+                resultStatus: 'pass'
+            });
+            setResult({
+                applicationNumber: '12345',
+                applicantName: 'Test Student',
+                score: 8,
+                totalQuestions: 10,
+                submittedAt: { toDate: () => new Date() }
+            });
+            setIsLoading(false);
+            return;
+        }
+
         try {
             const applicantQuery = query(
                 collection(firestore, 'scholarshipApplications'), 
@@ -84,7 +102,6 @@ export function ViewResult() {
                 const resultQuery = query(
                     collection(firestore, 'scholarshipTestResults'), 
                     where('applicationNumber', '==', data.applicationNumber),
-                    // orderBy('submittedAt', 'desc'), // This causes an index error
                     limit(1)
                 );
                 const resultSnapshot = await getDocs(resultQuery);
@@ -187,5 +204,3 @@ export function ViewResult() {
         </Card>
     )
 }
-
-    

@@ -1,8 +1,8 @@
 
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
-import { useForm, useFieldArray } from 'react-hook-form';
+import { useState, Suspense } from 'react';
+import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { generateAiTestAction } from '@/app/actions/ai-test';
@@ -25,7 +25,6 @@ import {
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -41,12 +40,11 @@ import {
 } from '@/components/ui/select';
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Loader2, Sparkles, FileText, AlertTriangle, Award, Download, ArrowLeft, ArrowRight } from 'lucide-react';
+import { Loader2, Sparkles, FileText, AlertTriangle, Award, Download, ArrowLeft, ArrowRight, Bot, User, Languages, HelpCircle, Sigma, BrainCircuit, Mic } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import Certificate from '@/components/certificate';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-
 
 const testGenerationSchema = z.object({
   subject: z.string().min(1, 'Subject is required.'),
@@ -54,24 +52,106 @@ const testGenerationSchema = z.object({
   language: z.string().min(1, 'Language is required.'),
   testType: z.literal('Multiple Choice'),
   questionCount: z.coerce.number().min(3, 'Minimum 3 questions').max(50, 'Maximum 50 questions'),
+  difficulty: z.enum(['Easy', 'Medium', 'Hard']),
 });
 
 type TestGenerationValues = z.infer<typeof testGenerationSchema>;
 
-const testAnsweringSchema = z.object({
-    answers: z.array(z.object({
-        question: z.string(),
-        selectedIndex: z.string().optional(),
-    }))
-});
+const LANGUAGES = ["English", "Hindi", "Kannada", "Tamil", "Telugu", "Bengali", "Marathi", "Gujarati", "Malayalam", "Punjabi", "Odia", "Assamese", "Urdu", "Sanskrit", "Nepali", "Sindhi", "Konkani", "Manipuri", "Bodo", "Dogri", "Maithili", "Santhali", "Kashmiri"];
+const DIFFICULTIES = ['Easy', 'Medium', 'Hard'] as const;
 
-type TestAnsweringValues = z.infer<typeof testAnsweringSchema>;
+function AiTestGenerator({ onTestGenerated, subject, examType }: { onTestGenerated: (data: GenerateAiTestOutput, formData: TestGenerationValues) => void, subject?: string, examType?: string }) {
+    const [step, setStep] = useState(0);
+    const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const form = useForm<TestGenerationValues>({
+        resolver: zodResolver(testGenerationSchema),
+        defaultValues: {
+            subject: subject || '',
+            examType: examType || '',
+            language: 'English',
+            testType: 'Multiple Choice',
+            questionCount: 5,
+            difficulty: 'Medium',
+        },
+    });
 
+    const steps = [
+        { id: 'language', title: 'किस भाषा में टेस्ट बनाना है?', icon: Languages, options: LANGUAGES },
+        { id: 'questionCount', title: 'कितने सवाल चाहिए?', icon: HelpCircle, options: [5, 10, 15, 20, 25] },
+        { id: 'difficulty', title: 'टेस्ट कितना कठिन होना चाहिए?', icon: Sigma, options: DIFFICULTIES },
+    ];
+
+    const currentStep = steps[step];
+
+    const handleSelect = async (value: string | number) => {
+        // @ts-ignore
+        form.setValue(currentStep.id, value, { shouldValidate: true });
+
+        if (step < steps.length - 1) {
+            setStep(s => s + 1);
+        } else {
+            await form.handleSubmit(onGenerateSubmit)();
+        }
+    };
+    
+    async function onGenerateSubmit(data: TestGenerationValues) {
+        setIsLoading(true);
+        setError(null);
+        try {
+            const result = await generateAiTestAction(data);
+            onTestGenerated(result, data);
+        } catch (e: any) {
+            setError(e.message);
+        } finally {
+            setIsLoading(false);
+        }
+    }
+    
+    return (
+        <Card className="shadow-lg border-border/60 bg-gradient-to-br from-purple-400/10 via-blue-400/10 to-teal-400/10">
+            <CardHeader className="text-center">
+                <Bot className="h-12 w-12 mx-auto text-primary animate-bounce" />
+                <CardTitle>AI Test Generator</CardTitle>
+                <CardDescription>Let's create your personalized test!</CardDescription>
+            </CardHeader>
+            <CardContent className="min-h-[250px] flex flex-col justify-center items-center">
+                {isLoading ? (
+                    <div className="text-center space-y-3">
+                        <Loader2 className="h-10 w-10 animate-spin text-primary mx-auto" />
+                        <p className="font-semibold">Generating your test...</p>
+                        <p className="text-sm text-muted-foreground">This may take a moment.</p>
+                    </div>
+                ) : (
+                    <div className="w-full text-center space-y-4">
+                        <div className="flex items-center justify-center gap-2 font-semibold text-lg">
+                           <currentStep.icon className="h-6 w-6 text-primary" />
+                           <h3>{currentStep.title}</h3>
+                        </div>
+                        <div className="flex flex-wrap justify-center gap-3 pt-4">
+                            {currentStep.options.map(option => (
+                                <Button key={option} variant="outline" size="lg" onClick={() => handleSelect(option)}>
+                                    {option} {currentStep.id === 'questionCount' && 'Questions'}
+                                </Button>
+                            ))}
+                        </div>
+                    </div>
+                )}
+                 {error && (
+                    <Alert variant="destructive" className="mt-4">
+                        <AlertTriangle className="h-4 w-4" />
+                        <AlertTitle>Error Generating Test</AlertTitle>
+                        <AlertDescription>{error}</AlertDescription>
+                    </Alert>
+                )}
+            </CardContent>
+        </Card>
+    )
+}
 
 function AiTestPageContent() {
-  const [isLoading, setIsLoading] = useState(false);
   const [testData, setTestData] = useState<GenerateAiTestOutput | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [generationData, setGenerationData] = useState<TestGenerationValues | null>(null);
   const [score, setScore] = useState<number | null>(null);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
 
@@ -84,22 +164,8 @@ function AiTestPageContent() {
       query(collection(firestore, 'testSeries'), orderBy('createdAt', 'desc'))
   );
 
-  const generationForm = useForm<TestGenerationValues>({
-    resolver: zodResolver(testGenerationSchema),
-    defaultValues: {
-      subject: '',
-      examType: '',
-      language: 'English',
-      testType: 'Multiple Choice',
-      questionCount: 5,
-    },
-  });
-
-  const answeringForm = useForm<TestAnsweringValues>({
-     resolver: zodResolver(testAnsweringSchema),
-     defaultValues: {
-        answers: []
-     }
+  const answeringForm = useForm<{ answers: { question: string; selectedIndex?: string }[] }>({
+     defaultValues: { answers: [] }
   });
 
   const { fields } = useFieldArray({
@@ -107,26 +173,15 @@ function AiTestPageContent() {
     name: "answers",
   });
 
-  async function onGenerateSubmit(data: TestGenerationValues) {
-    setIsLoading(true);
-    setTestData(null);
-    setError(null);
-    setScore(null);
-    setCurrentQuestionIndex(0);
-    try {
-      const result = await generateAiTestAction(data);
-      setTestData(result);
-      answeringForm.reset({
-        answers: result.questions.map(q => ({ question: q.question, selectedIndex: undefined }))
-      });
-    } catch (e: any) {
-      setError(e.message);
-    } finally {
-      setIsLoading(false);
-    }
+  const onTestGenerated = (generatedTestData: GenerateAiTestOutput, formData: TestGenerationValues) => {
+    setTestData(generatedTestData);
+    setGenerationData(formData);
+    answeringForm.reset({
+        answers: generatedTestData.questions.map(q => ({ question: q.question, selectedIndex: undefined }))
+    });
   }
 
-  function onCheckAnswers(data: TestAnsweringValues) {
+  function onCheckAnswers(data: { answers: { question: string; selectedIndex?: string }[] }) {
     if (!testData) return;
     let correctAnswers = 0;
     testData.questions.forEach((q, index) => {
@@ -162,8 +217,8 @@ function AiTestPageContent() {
   const resetTest = () => {
     setTestData(null);
     setScore(null);
-    setError(null);
-    generationForm.reset();
+    setGenerationData(null);
+    setCurrentQuestionIndex(0);
   }
   
   const goToNextQuestion = () => {
@@ -183,7 +238,7 @@ function AiTestPageContent() {
   };
 
 
-  if (score !== null && testData) {
+  if (score !== null && testData && generationData) {
      return (
         <div className="max-w-4xl mx-auto space-y-6 p-4">
              <Card className="shadow-lg border-border/60">
@@ -199,7 +254,7 @@ function AiTestPageContent() {
                      <div id="certificate-wrapper" className='bg-gray-100 dark:bg-gray-800 p-4 rounded-lg overflow-x-auto'>
                         <Certificate
                             studentName={user?.displayName || 'Student'}
-                            courseName={`${generationForm.getValues('subject')} Practice Test (${generationForm.getValues('examType')})`}
+                            courseName={`${generationData.subject} Practice Test (${generationData.examType})`}
                             score={score}
                             date={new Date().toLocaleDateString()}
                         />
@@ -229,7 +284,7 @@ function AiTestPageContent() {
      );
   }
 
-  if (testData) {
+  if (testData && generationData) {
      const currentQuestion = testData.questions[currentQuestionIndex];
      const isLastQuestion = currentQuestionIndex === testData.questions.length - 1;
      const progress = ((currentQuestionIndex + 1) / testData.questions.length) * 100;
@@ -243,7 +298,7 @@ function AiTestPageContent() {
                         <div>
                             <CardTitle>Your Custom Test</CardTitle>
                             <CardDescription>
-                                Subject: {generationForm.getValues('subject')} | Exam: {generationForm.getValues('examType')}
+                                Subject: {generationData.subject} | Exam: {generationData.examType}
                             </CardDescription>
                         </div>
                     </div>
@@ -320,121 +375,8 @@ function AiTestPageContent() {
           <TabsTrigger value="ai">AI Generated Tests</TabsTrigger>
           <TabsTrigger value="series">Practice Test Series</TabsTrigger>
         </TabsList>
-        <TabsContent value="ai">
-            <Card className="shadow-lg border-border/60 mt-4">
-                <CardHeader>
-                <CardTitle>Create Your Custom Test</CardTitle>
-                <CardDescription>
-                    Fill in the details below to generate your personalized test using AI.
-                </CardDescription>
-                </CardHeader>
-                <Form {...generationForm}>
-                <form onSubmit={generationForm.handleSubmit(onGenerateSubmit)}>
-                    <CardContent className="space-y-6">
-                    <FormField
-                        control={generationForm.control}
-                        name="subject"
-                        render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>Subject</FormLabel>
-                            <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                <FormControl>
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Select a subject" />
-                                </SelectTrigger>
-                                </FormControl>
-                                <SelectContent>
-                                <SelectItem value="Maths">Maths</SelectItem>
-                                <SelectItem value="Science">Science</SelectItem>
-                                <SelectItem value="GK">General Knowledge (GK)</SelectItem>
-                                <SelectItem value="English">English</SelectItem>
-                                <SelectItem value="Reasoning">Reasoning</SelectItem>
-                                <SelectItem value="Indian History">Indian History</SelectItem>
-                                </SelectContent>
-                            </Select>
-                            <FormMessage />
-                        </FormItem>
-                        )}
-                    />
-                    <FormField
-                        control={generationForm.control}
-                        name="examType"
-                        render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>Competitive Exam Type</FormLabel>
-                            <Select onValueChange={field.onChange} defaultValue={field.value}>
-                            <FormControl>
-                                <SelectTrigger>
-                                <SelectValue placeholder="Select an exam type" />
-                                </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                                <SelectItem value="UPSC">UPSC</SelectItem>
-                                <SelectItem value="Sainik School">Sainik School</SelectItem>
-                                <SelectItem value="Railway">Railway</SelectItem>
-                                <SelectItem value="National Military School">National Military School</SelectItem>
-                                <SelectItem value="General">General</SelectItem>
-                            </SelectContent>
-                            </Select>
-                            <FormMessage />
-                        </FormItem>
-                        )}
-                    />
-                    <FormField
-                        control={generationForm.control}
-                        name="language"
-                        render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>Language</FormLabel>
-                            <Select onValueChange={field.onChange} defaultValue={field.value}>
-                            <FormControl>
-                                <SelectTrigger>
-                                <SelectValue placeholder="Select a language" />
-                                </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                                <SelectItem value="English">English</SelectItem>
-                                <SelectItem value="Hindi">Hindi</SelectItem>
-                                <SelectItem value="Kannada">Kannada</SelectItem>
-                            </SelectContent>
-                            </Select>
-                            <FormMessage />
-                        </FormItem>
-                        )}
-                    />
-                    <FormField
-                        control={generationForm.control}
-                        name="questionCount"
-                        render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>Number of Questions</FormLabel>
-                            <FormControl>
-                            <Input type="number" min="3" max="50" {...field} />
-                            </FormControl>
-                            <FormDescription>Choose between 3 and 50 questions.</FormDescription>
-                            <FormMessage />
-                        </FormItem>
-                        )}
-                    />
-                    </CardContent>
-                    <CardFooter>
-                    <Button type="submit" className="w-full" disabled={isLoading}>
-                        {isLoading ? (
-                        <>
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            Generating Your Test...
-                        </>
-                        ) : (
-                        <>
-                            <Sparkles className="mr-2 h-4 w-4" />
-                            Generate Test
-                        </>
-                        )}
-                    </Button>
-                    </CardFooter>
-                </form>
-                </Form>
-            </Card>
+        <TabsContent value="ai" className="mt-4">
+            <AiTestGenerator onTestGenerated={onTestGenerated} subject="General" examType="General" />
         </TabsContent>
         <TabsContent value="series">
             <Card className="shadow-lg border-border/60 mt-4">
@@ -468,14 +410,6 @@ function AiTestPageContent() {
             </Card>
         </TabsContent>
       </Tabs>
-
-        {error && (
-            <Alert variant="destructive">
-            <AlertTriangle className="h-4 w-4" />
-            <AlertTitle>Error Generating Test</AlertTitle>
-            <AlertDescription>{error}</AlertDescription>
-            </Alert>
-        )}
     </div>
   );
 }
@@ -487,5 +421,3 @@ export default function AiTestPage() {
         </Suspense>
     )
 }
-
-    

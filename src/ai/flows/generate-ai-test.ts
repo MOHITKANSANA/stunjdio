@@ -17,6 +17,7 @@ const GenerateAiTestInputSchema = z.object({
   language: z.string().describe('The language for the test questions (e.g., English, Hindi).'),
   testType: z.enum(['Multiple Choice', 'Written Answer']).describe('The format of the test questions.'),
   questionCount: z.number().min(1).max(50).default(5).describe('The number of questions to generate.'),
+  difficulty: z.enum(['Easy', 'Medium', 'Hard']).optional().describe('The difficulty level of the questions.'),
 });
 export type GenerateAiTestInput = z.infer<typeof GenerateAiTestInputSchema>;
 
@@ -50,6 +51,9 @@ Exam Type: {{{examType}}}
 Language: {{{language}}}
 Question Format: {{{testType}}}
 Number of Questions: {{{questionCount}}}
+{{#if difficulty}}
+Difficulty: {{{difficulty}}}
+{{/if}}
 
 Please generate exactly {{{questionCount}}} high-quality, relevant multiple-choice questions. Each question must have exactly four options and a clearly identified correct answer index. 
 `,

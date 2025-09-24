@@ -10,7 +10,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
-import { IndianRupee, BookOpen, Clock, Users, Lock, Video, PlayCircle, FileText, StickyNote, Send, HelpCircle, GraduationCap, ShieldQuestion } from 'lucide-react';
+import { IndianRupee, BookOpen, Clock, Users, Lock, Video, PlayCircle, FileText, StickyNote, Send, HelpCircle, GraduationCap, ShieldQuestion, Bot, Languages, Sigma } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/use-auth';
 import { collection, query, where, orderBy, addDoc, serverTimestamp } from 'firebase/firestore';
@@ -19,6 +19,16 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useToast } from '@/hooks/use-toast';
+import { generateAiTestAction } from '@/app/actions/ai-test';
+import type { GenerateAiTestOutput, GenerateAiTestInput } from '@/ai/flows/generate-ai-test';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { Loader2, AlertTriangle, Award, Download, ArrowLeft, ArrowRight } from 'lucide-react';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Form, FormControl, FormField, FormItem, FormLabel } from '@/components/ui/form';
+import Certificate from '@/components/certificate';
+import { Progress } from '@/components/ui/progress';
 
 const ContentIcon = ({ type }: { type: string }) => {
     switch (type) {
@@ -236,44 +246,63 @@ const VideoLecturesTab = ({ courseId, onContentClick }: { courseId: string; onCo
     );
 };
 
-const TestsTab = ({ courseId }: { courseId: string }) => {
+const TestsTab = ({ course, courseId }: { course: DocumentData, courseId: string }) => {
     const [tests, loading, error] = useCollection(
-        query(collection(firestore, 'courses', courseId, 'content'), where('type', 'in', ['test_series', 'ai_test']), orderBy('createdAt', 'asc'))
+        query(collection(firestore, 'courses', courseId, 'content'), where('type', '==', 'test_series'), orderBy('createdAt', 'asc'))
     );
     const router = useRouter();
-
-    const handleTestClick = (content: DocumentData) => {
-        if (content.type === 'test_series') {
-            router.push(`/dashboard/ai-test?tab=series&testId=${content.testSeriesId}`);
-        } else {
-            router.push('/dashboard/ai-test?tab=ai');
-        }
-    };
+    const [isAiTestModalOpen, setIsAiTestModalOpen] = useState(false);
 
     return (
-        <CardContent>
-            {error && <p className="text-destructive">Could not load tests.</p>}
-            {loading && <Skeleton className="w-full h-24" />}
-            {tests && tests.docs.length > 0 ? (
-                <div className="space-y-4">
-                    {tests.docs.map(doc => {
-                        const content = doc.data();
-                        return (
-                            <div key={doc.id} className="flex items-center justify-between p-3 rounded-lg border bg-muted/50">
-                                <div className="flex items-center gap-3">
-                                    <ContentIcon type={content.type} />
-                                    <p className="font-semibold">{content.title}</p>
-                                </div>
-                                <Button onClick={() => handleTestClick(content)}>
-                                    Start Test
-                                </Button>
-                            </div>
-                        )
-                    })}
-                </div>
-            ) : (
-                <p className="text-muted-foreground text-center py-8">No tests have been added to this course yet.</p>
-            )}
+        <CardContent className="space-y-4">
+            <Dialog open={isAiTestModalOpen} onOpenChange={setIsAiTestModalOpen}>
+                <DialogContent className="max-w-2xl">
+                    <AiTestGenerator onTestGenerated={() => {}} subject={course.title} examType={course.category} />
+                </DialogContent>
+            </Dialog>
+
+            <Tabs defaultValue="series">
+                <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="series">Test Series</TabsTrigger>
+                    <TabsTrigger value="ai">AI Generated Test</TabsTrigger>
+                </TabsList>
+                <TabsContent value="series" className="pt-4">
+                    {error && <p className="text-destructive">Could not load test series.</p>}
+                    {loading && <Skeleton className="w-full h-24" />}
+                    {tests && tests.docs.length > 0 ? (
+                        <div className="space-y-4">
+                            {tests.docs.map(doc => {
+                                const content = doc.data();
+                                return (
+                                    <Link href={`/dashboard/test-series/${content.testSeriesId}`} key={doc.id}>
+                                        <div className="flex items-center justify-between p-3 rounded-lg border bg-muted/50 hover:bg-muted transition-colors">
+                                            <div className="flex items-center gap-3">
+                                                <ContentIcon type={content.type} />
+                                                <p className="font-semibold">{content.title}</p>
+                                            </div>
+                                            <Button>Start Test</Button>
+                                        </div>
+                                    </Link>
+                                )
+                            })}
+                        </div>
+                    ) : (
+                         <p className="text-muted-foreground text-center py-8">No official test series added to this course yet.</p>
+                    )}
+                </TabsContent>
+                <TabsContent value="ai" className="pt-4">
+                     <div 
+                        className="p-6 border-2 border-dashed rounded-lg text-center cursor-pointer hover:border-primary hover:bg-primary/5 transition-colors"
+                        onClick={() => setIsAiTestModalOpen(true)}
+                     >
+                        <div className="w-fit mx-auto p-3 rounded-full bg-gradient-to-br from-purple-500 to-blue-500 text-white mb-3">
+                            <Bot className="h-8 w-8" />
+                        </div>
+                        <h3 className="font-bold text-lg">AI Generated Test</h3>
+                        <p className="text-muted-foreground text-sm">Create a personalized test based on this course.</p>
+                     </div>
+                </TabsContent>
+            </Tabs>
         </CardContent>
     );
 };
@@ -296,7 +325,7 @@ const CourseTabs = ({ courseId, course, onContentClick }: { courseId: string; co
                     <CourseContentTab courseId={courseId} onContentClick={onContentClick}/>
                 </TabsContent>
                 <TabsContent value="tests">
-                    <TestsTab courseId={courseId} />
+                    <TestsTab course={course} courseId={courseId} />
                 </TabsContent>
                 <TabsContent value="doubts">
                     <DoubtsTab courseId={courseId} />
@@ -310,7 +339,6 @@ function CourseDetailPageContent() {
   const { user, loading: authLoading } = useAuth();
   const params = useParams();
   const courseId = params.courseId as string;
-  const searchParams = useSearchParams();
   const router = useRouter();
 
   const [selectedVideo, setSelectedVideo] = useState<{ url: string, title: string } | null>(null);
@@ -443,6 +471,112 @@ function CourseDetailPageContent() {
     </div>
   );
 }
+
+// AI Test Component inside Course Page
+const LANGUAGES = ["English", "Hindi", "Kannada", "Tamil", "Telugu", "Bengali", "Marathi", "Gujarati", "Malayalam", "Punjabi", "Odia", "Assamese", "Urdu", "Sanskrit", "Nepali", "Sindhi", "Konkani", "Manipuri", "Bodo", "Dogri", "Maithili", "Santhali", "Kashmiri"];
+const DIFFICULTIES = ['Easy', 'Medium', 'Hard'] as const;
+
+const testGenerationSchema = z.object({
+  subject: z.string().min(1, 'Subject is required.'),
+  examType: z.string().min(1, 'Exam type is required.'),
+  language: z.string().min(1, 'Language is required.'),
+  testType: z.literal('Multiple Choice'),
+  questionCount: z.coerce.number().min(3, 'Minimum 3 questions').max(50, 'Maximum 50 questions'),
+  difficulty: z.enum(['Easy', 'Medium', 'Hard']),
+});
+
+type TestGenerationValues = z.infer<typeof testGenerationSchema>;
+
+
+function AiTestGenerator({ onTestGenerated, subject, examType }: { onTestGenerated: (data: GenerateAiTestOutput, formData: TestGenerationValues) => void, subject?: string, examType?: string }) {
+    const [step, setStep] = useState(0);
+    const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const form = useForm<TestGenerationValues>({
+        resolver: zodResolver(testGenerationSchema),
+        defaultValues: {
+            subject: subject || '',
+            examType: examType || '',
+            language: 'English',
+            testType: 'Multiple Choice',
+            questionCount: 5,
+            difficulty: 'Medium',
+        },
+    });
+
+    const steps = [
+        { id: 'language', title: 'किस भाषा में टेस्ट बनाना है?', icon: Languages, options: LANGUAGES },
+        { id: 'questionCount', title: 'कितने सवाल चाहिए?', icon: HelpCircle, options: [5, 10, 15, 20, 25] },
+        { id: 'difficulty', title: 'टेस्ट कितना कठिन होना चाहिए?', icon: Sigma, options: DIFFICULTIES },
+    ];
+
+    const currentStep = steps[step];
+
+    const handleSelect = async (value: string | number) => {
+        // @ts-ignore
+        form.setValue(currentStep.id, value, { shouldValidate: true });
+
+        if (step < steps.length - 1) {
+            setStep(s => s + 1);
+        } else {
+            await form.handleSubmit(onGenerateSubmit)();
+        }
+    };
+    
+    async function onGenerateSubmit(data: TestGenerationValues) {
+        setIsLoading(true);
+        setError(null);
+        try {
+            const result = await generateAiTestAction(data);
+            onTestGenerated(result, data);
+        } catch (e: any) {
+            setError(e.message);
+        } finally {
+            setIsLoading(false);
+        }
+    }
+    
+    return (
+        <Card className="shadow-lg border-border/60 bg-gradient-to-br from-purple-400/10 via-blue-400/10 to-teal-400/10">
+            <CardHeader className="text-center">
+                <Bot className="h-12 w-12 mx-auto text-primary animate-bounce" />
+                <CardTitle>AI Test Generator</CardTitle>
+                <CardDescription>Let's create your personalized test!</CardDescription>
+            </CardHeader>
+            <CardContent className="min-h-[250px] flex flex-col justify-center items-center">
+                {isLoading ? (
+                    <div className="text-center space-y-3">
+                        <Loader2 className="h-10 w-10 animate-spin text-primary mx-auto" />
+                        <p className="font-semibold">Generating your test...</p>
+                        <p className="text-sm text-muted-foreground">This may take a moment.</p>
+                    </div>
+                ) : (
+                    <div className="w-full text-center space-y-4">
+                        <div className="flex items-center justify-center gap-2 font-semibold text-lg">
+                           <currentStep.icon className="h-6 w-6 text-primary" />
+                           <h3>{currentStep.title}</h3>
+                        </div>
+                        <div className="flex flex-wrap justify-center gap-3 pt-4">
+                            {currentStep.options.map(option => (
+                                <Button key={option} variant="outline" size="lg" onClick={() => handleSelect(option)}>
+                                    {option} {currentStep.id === 'questionCount' && 'Questions'}
+                                </Button>
+                            ))}
+                        </div>
+                    </div>
+                )}
+                 {error && (
+                    <Alert variant="destructive" className="mt-4">
+                        <AlertTriangle className="h-4 w-4" />
+                        <AlertTitle>Error Generating Test</AlertTitle>
+                        <AlertDescription>{error}</AlertDescription>
+                    </Alert>
+                )}
+            </CardContent>
+        </Card>
+    )
+}
+
 
 export default function CourseDetailPage() {
     return (

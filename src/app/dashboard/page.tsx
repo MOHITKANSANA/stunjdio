@@ -1,5 +1,4 @@
 
-
 "use client";
 import React, { useEffect, useState } from 'react';
 import {
@@ -17,6 +16,8 @@ import {
   Calendar,
   Users,
   Send,
+  Youtube,
+  GraduationCap,
 } from 'lucide-react';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -64,6 +65,10 @@ const CountdownTimer = ({ targetDate }: { targetDate: Date }) => {
         return () => clearTimeout(timer);
     });
 
+    if (+targetDate < +new Date()) {
+        return <div className="text-center text-lg font-bold">Class is Live!</div>;
+    }
+
     return (
         <div className="flex justify-center gap-2 md:gap-4 text-center">
             {Object.entries(timeLeft).map(([interval, value]) => (
@@ -96,6 +101,8 @@ const MainDashboard = () => {
         const unsubscribe = onSnapshot(q, (snapshot) => {
             if (!snapshot.empty) {
                 setNextLiveClass(snapshot.docs[0].data());
+            } else {
+                setNextLiveClass(null);
             }
         });
         return () => unsubscribe();
@@ -150,22 +157,17 @@ const MainDashboard = () => {
     };
         
     const topGridItems = [
-      { label: "Paid Courses", icon: BookCopy, href: "/dashboard/courses", color: "bg-blue-500" },
-      { label: "Test Series", icon: FileText, href: "/dashboard/ai-test?tab=series", color: "bg-orange-500" },
-      { label: "Free Classes", icon: Video, href: "/dashboard/live-class", color: "bg-green-500" },
-      { label: "Previous Papers", icon: Newspaper, href: "/dashboard/papers", color: "bg-purple-500" },
-    ];
-
-    const quickAccessItems = [
-        { label: "Current Affairs", icon: Globe, href: "#", color: "bg-cyan-500" },
-        { label: "Quiz & Games", icon: Trophy, href: "#", color: "bg-yellow-400" },
-        { label: "Our Books Notes PDF", icon: BookOpen, href: "#", color: "bg-pink-500" },
-        { label: "Job Alerts", icon: Briefcase, href: "#", color: "bg-indigo-500" },
+      { label: "Free Courses", icon: BookCopy, href: "/dashboard/courses/free", color: "bg-blue-500" },
+      { label: "Paid Courses", icon: Book, href: "/dashboard/courses", color: "bg-green-500" },
+      { label: "Live Classes", icon: Video, href: "/dashboard/live-class", color: "bg-orange-500" },
+      { label: "Video Lectures", icon: Youtube, href: "/dashboard/video-lectures", color: "bg-red-500" },
+      { label: "Test Series", icon: FileText, href: "/dashboard/ai-test?tab=series", color: "bg-purple-500" },
+      { label: "Scholarship", icon: Award, href: "/dashboard/scholarship", color: "bg-yellow-500" },
     ];
     
     return (
         <div className="flex flex-col h-full bg-background space-y-6">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-3 gap-4">
                  {topGridItems.map((item) => (
                     <Link href={item.href} key={item.label}>
                         <Card className={cn("transform-gpu text-white transition-transform duration-200 ease-in-out hover:-translate-y-1 hover:shadow-xl rounded-xl", item.color)}>
@@ -176,19 +178,6 @@ const MainDashboard = () => {
                         </Card>
                     </Link>
                 ))}
-            </div>
-
-            <div className="grid grid-cols-4 gap-3">
-            {quickAccessItems.map((item) => (
-                <Link href={item.href} key={item.label} className="text-center">
-                <Card className={cn("transform-gpu text-white transition-transform duration-200 ease-in-out hover:-translate-y-1 hover:shadow-xl rounded-xl", item.color)}>
-                    <CardContent className="flex flex-col items-center justify-center gap-1 p-2 aspect-square">
-                        <item.icon className="h-6 w-6" />
-                        <span className="text-xs font-medium text-center">{item.label}</span>
-                    </CardContent>
-                </Card>
-                </Link>
-            ))}
             </div>
             
             <div>
