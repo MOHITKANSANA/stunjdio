@@ -50,26 +50,6 @@ export function ViewResult() {
             }
         };
         
-        // DUMMY DATA SETUP - for testing purposes
-        const setupDummyData = async () => {
-            const appRef = doc(firestore, 'scholarshipApplications', 'dummy-applicant');
-            const resultRef = doc(firestore, 'scholarshipTestResults', 'dummy-result');
-            
-            await setDoc(appRef, {
-                applicationNumber: "12345",
-                name: "Demo Student",
-                resultStatus: "pass"
-            }, { merge: true });
-
-            await setDoc(resultRef, {
-                applicationNumber: "12345",
-                applicantName: "Demo Student",
-                score: 8,
-                totalQuestions: 10,
-                submittedAt: new Date()
-            }, { merge: true });
-        };
-        // setupDummyData();
         checkResultDate();
     }, []);
 
@@ -104,7 +84,7 @@ export function ViewResult() {
                 const resultQuery = query(
                     collection(firestore, 'scholarshipTestResults'), 
                     where('applicationNumber', '==', data.applicationNumber),
-                    orderBy('submittedAt', 'desc'),
+                    // orderBy('submittedAt', 'desc'), // This causes an index error
                     limit(1)
                 );
                 const resultSnapshot = await getDocs(resultQuery);
