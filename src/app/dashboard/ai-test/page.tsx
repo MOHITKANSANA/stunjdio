@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, Suspense } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { generateAiTestAction } from '@/app/actions/ai-test';
