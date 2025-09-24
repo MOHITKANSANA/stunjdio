@@ -1,8 +1,8 @@
 
 'use client';
 
-import { useState, Suspense } from 'react';
-import { useForm, useFieldArray } from 'react-hook-form';
+import { useState, Suspense, useEffect } from 'react';
+import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { generateAiTestAction } from '@/app/actions/ai-test';
@@ -28,69 +28,98 @@ import {
   FormField,
   FormItem,
   FormLabel,
-  FormMessage,
 } from '@/components/ui/form';
-import { Input } from '@/components/ui/input';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Loader2, Sparkles, FileText, AlertTriangle, Award, Download, ArrowLeft, ArrowRight, Bot, User, Languages, HelpCircle, Sigma, BrainCircuit, Mic } from 'lucide-react';
+import { Loader2, FileText, AlertTriangle, Award, Download, ArrowLeft, ArrowRight, Bot, User, Languages, HelpCircle, Sigma, BrainCircuit, Mic } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import Certificate from '@/components/certificate';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 const testGenerationSchema = z.object({
   subject: z.string().min(1, 'Subject is required.'),
   examType: z.string().min(1, 'Exam type is required.'),
   language: z.string().min(1, 'Language is required.'),
   testType: z.literal('Multiple Choice'),
-  questionCount: z.coerce.number().min(3, 'Minimum 3 questions').max(50, 'Maximum 50 questions'),
-  difficulty: z.enum(['Easy', 'Medium', 'Hard']),
+  questionCount: z.coerce.number().min(3, 'Minimum 3 questions').max(100, 'Maximum 100 questions'),
+  difficulty: z.enum(['Easy', 'Hard']),
 });
 
 type TestGenerationValues = z.infer<typeof testGenerationSchema>;
 
-const LANGUAGES = ["English", "Hindi", "Kannada", "Tamil", "Telugu", "Bengali", "Marathi", "Gujarati", "Malayalam", "Punjabi", "Odia", "Assamese", "Urdu", "Sanskrit", "Nepali", "Sindhi", "Konkani", "Manipuri", "Bodo", "Dogri", "Maithili", "Santhali", "Kashmiri"];
-const DIFFICULTIES = ['Easy', 'Medium', 'Hard'] as const;
+const LANGUAGES = ["Hindi", "English"];
+const OTHER_LANGUAGES = ["Kannada", "Tamil", "Telugu", "Bengali", "Marathi", "Gujarati", "Malayalam", "Punjabi", "Odia", "Assamese", "Urdu", "Sanskrit", "Nepali", "Sindhi", "Konkani", "Manipuri", "Bodo", "Dogri", "Maithili", "Santhali", "Kashmiri"];
+const DIFFICULTIES = ['Easy', 'Hard'] as const;
+const CLASSES = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"];
+const EXAMS = ["UPSC", "SSC CGL", "NDA", "CDS", "Army", "NTPC", "PCS"];
+const BIG_EXAMS = ["UPSC", "SSC CGL", "NDA", "CDS", "Army", "NTPC", "PCS"];
 
-function AiTestGenerator({ onTestGenerated, subject, examType }: { onTestGenerated: (data: GenerateAiTestOutput, formData: TestGenerationValues) => void, subject?: string, examType?: string }) {
+
+function AiTestGenerator({ onTestGenerated, isCourseContext = false, subject: courseSubject = 'General', examType: courseExamType = 'General' }: { onTestGenerated: (data: GenerateAiTestOutput, formData: TestGenerationValues) => void; isCourseContext?: boolean; subject?: string; examType?: string; }) {
     const [step, setStep] = useState(0);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [history, setHistory] = useState<{ type: 'user' | 'ai'; content: string; options?: string[] }[]>([]);
+    const [showOtherLanguages, setShowOtherLanguages] = useState(false);
+    const { user } = useAuth();
+    
     const form = useForm<TestGenerationValues>({
         resolver: zodResolver(testGenerationSchema),
         defaultValues: {
-            subject: subject || '',
-            examType: examType || '',
-            language: 'English',
+            subject: courseSubject,
+            examType: courseExamType,
+            language: '',
             testType: 'Multiple Choice',
-            questionCount: 5,
-            difficulty: 'Medium',
+            questionCount: 10,
+            difficulty: 'Easy',
         },
     });
 
-    const steps = [
-        { id: 'language', title: 'किस भाषा में टेस्ट बनाना है?', icon: Languages, options: LANGUAGES },
-        { id: 'questionCount', title: 'कितने सवाल चाहिए?', icon: HelpCircle, options: [5, 10, 15, 20, 25] },
-        { id: 'difficulty', title: 'टेस्ट कितना कठिन होना चाहिए?', icon: Sigma, options: DIFFICULTIES },
-    ];
+    const isBigExam = BIG_EXAMS.includes(form.watch('examType'));
 
-    const currentStep = steps[step];
+    useEffect(() => {
+        setHistory([{ type: 'ai', content: 'What is your language?', options: [...LANGUAGES, 'Other Languages'] }]);
+    }, []);
 
     const handleSelect = async (value: string | number) => {
-        // @ts-ignore
-        form.setValue(currentStep.id, value, { shouldValidate: true });
+        setHistory(prev => [...prev, { type: 'user', content: String(value) }]);
 
-        if (step < steps.length - 1) {
-            setStep(s => s + 1);
-        } else {
+        if (step === 0) { // Language Step
+            if (value === 'Other Languages') {
+                setShowOtherLanguages(true);
+                setHistory(prev => [...prev, { type: 'ai', content: 'Please select your language.', options: OTHER_LANGUAGES }]);
+                return; // Wait for user to select from the new list
+            }
+            form.setValue('language', String(value));
+            setStep(1);
+            setHistory(prev => [...prev, { type: 'ai', content: `Which exam are you preparing for, or which class are you in?`, options: [...CLASSES, ...EXAMS, 'Other Exam'] }]);
+        } else if (step === 1) { // Exam/Class Step
+             if (value === 'Other Exam') {
+                 // Handle custom exam input if needed in the future
+                 form.setValue('examType', 'General');
+             } else {
+                form.setValue('examType', String(value));
+             }
+            setStep(2);
+            setHistory(prev => [...prev, { type: 'ai', content: 'How many questions do you want?', options: ['10', '25', '50', '100'] }]);
+        } else if (step === 2) { // Question Count Step
+            form.setValue('questionCount', Number(value));
+            setStep(3);
+            if (BIG_EXAMS.includes(form.getValues('examType'))) {
+                form.setValue('difficulty', 'Hard');
+                 // Skip difficulty selection and submit
+                 await form.handleSubmit(onGenerateSubmit)();
+            } else {
+                 setHistory(prev => [...prev, { type: 'ai', content: 'How difficult should the test be?', options: ['Easy', 'Hard'] }]);
+            }
+        } else if (step === 3) { // Difficulty Step
+            // @ts-ignore
+            form.setValue('difficulty', value);
+            setStep(4);
+            // Submit the form
             await form.handleSubmit(onGenerateSubmit)();
         }
     };
@@ -98,6 +127,7 @@ function AiTestGenerator({ onTestGenerated, subject, examType }: { onTestGenerat
     async function onGenerateSubmit(data: TestGenerationValues) {
         setIsLoading(true);
         setError(null);
+        setHistory(prev => [...prev, { type: 'ai', content: 'Generating your test...' }]);
         try {
             const result = await generateAiTestAction(data);
             onTestGenerated(result, data);
@@ -109,44 +139,64 @@ function AiTestGenerator({ onTestGenerated, subject, examType }: { onTestGenerat
     }
     
     return (
-        <Card className="shadow-lg border-border/60 bg-gradient-to-br from-purple-400/10 via-blue-400/10 to-teal-400/10">
-            <CardHeader className="text-center">
-                <Bot className="h-12 w-12 mx-auto text-primary animate-bounce" />
-                <CardTitle>AI Test Generator</CardTitle>
-                <CardDescription>Let's create your personalized test!</CardDescription>
-            </CardHeader>
-            <CardContent className="min-h-[250px] flex flex-col justify-center items-center">
-                {isLoading ? (
-                    <div className="text-center space-y-3">
-                        <Loader2 className="h-10 w-10 animate-spin text-primary mx-auto" />
-                        <p className="font-semibold">Generating your test...</p>
-                        <p className="text-sm text-muted-foreground">This may take a moment.</p>
-                    </div>
-                ) : (
-                    <div className="w-full text-center space-y-4">
-                        <div className="flex items-center justify-center gap-2 font-semibold text-lg">
-                           <currentStep.icon className="h-6 w-6 text-primary" />
-                           <h3>{currentStep.title}</h3>
-                        </div>
-                        <div className="flex flex-wrap justify-center gap-3 pt-4">
-                            {currentStep.options.map(option => (
-                                <Button key={option} variant="outline" size="lg" onClick={() => handleSelect(option)}>
-                                    {option} {currentStep.id === 'questionCount' && 'Questions'}
-                                </Button>
+      <div className="bg-[#1e1e1e] text-white rounded-2xl shadow-lg w-full max-w-md mx-auto flex flex-col h-[70vh] overflow-hidden">
+        <header className="bg-blue-600 p-3 flex items-center justify-between rounded-t-2xl">
+          <h2 className="font-bold text-lg">AI Test Generator</h2>
+        </header>
+        <ScrollArea className="flex-1 p-4">
+            <div className="space-y-4">
+            {history.map((item, index) => (
+                <div key={index} className={`flex ${item.type === 'user' ? 'justify-end' : 'justify-start'}`}>
+                {item.type === 'ai' && (
+                    <Avatar className="h-8 w-8 mr-2">
+                        <AvatarImage src="https://i.postimg.cc/44J0Z5V9/ai-icon.png" />
+                        <AvatarFallback>AI</AvatarFallback>
+                    </Avatar>
+                )}
+                <div className={`rounded-xl p-3 max-w-xs ${item.type === 'user' ? 'bg-green-600' : 'bg-gray-700'}`}>
+                    <p>{item.content}</p>
+                    {item.options && (
+                        <div className="mt-3 flex flex-col gap-2">
+                            {item.options.map(opt => (
+                                <button key={opt} onClick={() => handleSelect(opt)} className="bg-gray-600 hover:bg-gray-500 text-white font-semibold py-2 px-4 rounded-lg text-left transition-colors">
+                                    {opt}
+                                </button>
                             ))}
                         </div>
-                    </div>
+                    )}
+                </div>
+                 {item.type === 'user' && (
+                    <Avatar className="h-8 w-8 ml-2">
+                        <AvatarImage src={user?.photoURL || ''} />
+                        <AvatarFallback>{user?.displayName?.charAt(0) || 'U'}</AvatarFallback>
+                    </Avatar>
                 )}
-                 {error && (
-                    <Alert variant="destructive" className="mt-4">
-                        <AlertTriangle className="h-4 w-4" />
-                        <AlertTitle>Error Generating Test</AlertTitle>
-                        <AlertDescription>{error}</AlertDescription>
-                    </Alert>
-                )}
-            </CardContent>
-        </Card>
-    )
+                </div>
+            ))}
+             {isLoading && (
+                 <div className="flex justify-start">
+                      <Avatar className="h-8 w-8 mr-2">
+                        <AvatarImage src="https://i.postimg.cc/44J0Z5V9/ai-icon.png" />
+                        <AvatarFallback>AI</AvatarFallback>
+                    </Avatar>
+                     <div className="rounded-xl p-3 max-w-xs bg-gray-700 flex items-center">
+                        <Loader2 className="h-5 w-5 animate-spin"/>
+                     </div>
+                 </div>
+             )}
+            </div>
+        </ScrollArea>
+          {error && (
+            <div className="p-4">
+                <Alert variant="destructive">
+                    <AlertTriangle className="h-4 w-4" />
+                    <AlertTitle>Error Generating Test</AlertTitle>
+                    <AlertDescription>{error}</AlertDescription>
+                </Alert>
+            </div>
+          )}
+      </div>
+    );
 }
 
 function AiTestPageContent() {
@@ -168,17 +218,17 @@ function AiTestPageContent() {
      defaultValues: { answers: [] }
   });
 
-  const { fields } = useFieldArray({
-    control: answeringForm.control,
-    name: "answers",
-  });
+  useEffect(() => {
+    if (testData) {
+      answeringForm.reset({
+          answers: testData.questions.map(q => ({ question: q.question, selectedIndex: undefined }))
+      });
+    }
+  }, [testData, answeringForm]);
 
   const onTestGenerated = (generatedTestData: GenerateAiTestOutput, formData: TestGenerationValues) => {
     setTestData(generatedTestData);
     setGenerationData(formData);
-    answeringForm.reset({
-        answers: generatedTestData.questions.map(q => ({ question: q.question, selectedIndex: undefined }))
-    });
   }
 
   function onCheckAnswers(data: { answers: { question: string; selectedIndex?: string }[] }) {
@@ -288,19 +338,23 @@ function AiTestPageContent() {
      const currentQuestion = testData.questions[currentQuestionIndex];
      const isLastQuestion = currentQuestionIndex === testData.questions.length - 1;
      const progress = ((currentQuestionIndex + 1) / testData.questions.length) * 100;
+     const timerValue = (generationData.questionCount + 20) * 60; // Example timer logic
 
      return (
         <div className="max-w-4xl mx-auto space-y-6 p-4">
             <Card className="shadow-lg border-border/60">
                 <CardHeader>
-                    <div className="flex items-center gap-3">
-                        <FileText className="h-8 w-8 text-primary" />
-                        <div>
-                            <CardTitle>Your Custom Test</CardTitle>
-                            <CardDescription>
-                                Subject: {generationData.subject} | Exam: {generationData.examType}
-                            </CardDescription>
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <FileText className="h-8 w-8 text-primary" />
+                            <div>
+                                <CardTitle>Your Custom Test</CardTitle>
+                                <CardDescription>
+                                    Subject: {generationData.subject} | Exam: {generationData.examType}
+                                </CardDescription>
+                            </div>
                         </div>
+                         <div className="font-bold text-lg">Timer: {Math.floor(timerValue / 60)}:{(timerValue % 60).toString().padStart(2, '0')}</div>
                     </div>
                     <div className="pt-4">
                         <Progress value={progress} />
@@ -311,7 +365,6 @@ function AiTestPageContent() {
                     <Form {...answeringForm}>
                         <form onSubmit={answeringForm.handleSubmit(onCheckAnswers)} className="space-y-8">
                                 <FormField
-                                  key={fields[currentQuestionIndex].id}
                                   control={answeringForm.control}
                                   name={`answers.${currentQuestionIndex}.selectedIndex`}
                                   render={({ field }) => (
@@ -333,7 +386,6 @@ function AiTestPageContent() {
                                           ))}
                                         </RadioGroup>
                                       </FormControl>
-                                      <FormMessage />
                                     </FormItem>
                                   )}
                                 />
@@ -361,22 +413,13 @@ function AiTestPageContent() {
 
   return (
     <div className="max-w-2xl mx-auto space-y-6 p-4">
-      <div className="text-center">
-        <h1 className="text-3xl md:text-4xl font-bold font-headline bg-clip-text text-transparent bg-gradient-to-r from-blue-500 to-teal-400">
-          Practice Tests
-        </h1>
-        <p className="text-muted-foreground mt-2">
-          Create a personalized practice test with AI or take a pre-made test from our series.
-        </p>
-      </div>
-
       <Tabs defaultValue={initialTab} onValueChange={onTabChange}>
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="ai">AI Generated Tests</TabsTrigger>
           <TabsTrigger value="series">Practice Test Series</TabsTrigger>
         </TabsList>
         <TabsContent value="ai" className="mt-4">
-            <AiTestGenerator onTestGenerated={onTestGenerated} subject="General" examType="General" />
+            <AiTestGenerator onTestGenerated={onTestGenerated} />
         </TabsContent>
         <TabsContent value="series">
             <Card className="shadow-lg border-border/60 mt-4">
@@ -421,3 +464,5 @@ export default function AiTestPage() {
         </Suspense>
     )
 }
+
+    

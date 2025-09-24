@@ -1,7 +1,7 @@
 
 'use client';
 
-import { BookOpenCheck, Trophy, Library, BookMarked, Download } from "lucide-react";
+import { BookOpenCheck, Trophy, Library, BookMarked, Download, BellDot } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from '@/hooks/use-auth';
@@ -13,6 +13,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
 
 const PDFViewer = ({ pdfUrl, title, onOpenChange }: { pdfUrl: string, title: string, onOpenChange: (open: boolean) => void }) => {
     return (
@@ -92,6 +93,13 @@ export default function LibraryPage() {
         query(collection(firestore, 'ebooks'), orderBy('createdAt', 'desc'))
     );
     
+    const [notifications, notificationsLoading] = useCollection(
+        user ? query(collection(firestore, 'users', user.uid, 'notifications'), where('read', '==', false)) : null
+    );
+
+    const hasNewReplies = notifications && !notifications.empty;
+
+    
     const handleEbookClick = (ebookData: any) => {
         const pdfUrlWithViewer = `https://docs.google.com/gview?url=${encodeURIComponent(ebookData.fileUrl)}&embedded=true`;
         setSelectedPdf({ url: pdfUrlWithViewer, title: ebookData.title });
@@ -107,10 +115,17 @@ export default function LibraryPage() {
                 />
             )}
             <div>
-                <h1 className="text-3xl md:text-4xl font-bold font-headline flex items-center gap-3">
+                 <div className="flex items-center gap-3">
                     <Library className="h-10 w-10 text-primary" />
-                    My Library
-                </h1>
+                    <h1 className="text-3xl md:text-4xl font-bold font-headline">
+                        My Library
+                    </h1>
+                     {hasNewReplies && (
+                        <Badge variant="destructive" className="animate-pulse">
+                            <BellDot className="h-4 w-4 mr-1.5"/> New Replies
+                        </Badge>
+                    )}
+                 </div>
                 <p className="text-muted-foreground mt-2">All your learning materials in one place.</p>
             </div>
              <Tabs defaultValue="courses" className="w-full">

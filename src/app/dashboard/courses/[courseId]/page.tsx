@@ -1,40 +1,31 @@
 
 'use client';
 
-import { useState, Suspense } from 'react';
+import { useState, Suspense, useEffect } from 'react';
 import { doc, DocumentData } from 'firebase/firestore';
-import { useDocument, useCollection } from 'react-firebase-hooks/firestore';
+import { useDocument, useCollection, useDocumentData } from 'react-firebase-hooks/firestore';
 import { firestore } from '@/lib/firebase';
-import { notFound, useParams, useRouter, useSearchParams } from 'next/navigation';
+import { notFound, useParams, useRouter } from 'next/navigation';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
-import { IndianRupee, BookOpen, Clock, Users, Lock, Video, PlayCircle, FileText, StickyNote, Send, HelpCircle, GraduationCap, ShieldQuestion, Bot, Languages, Sigma } from 'lucide-react';
+import { IndianRupee, BookOpen, Clock, Users, Video, PlayCircle, FileText, StickyNote, Send, HelpCircle, GraduationCap, ShieldQuestion, Bot, ThumbsUp, ThumbsDown, MessageSquare } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/use-auth';
-import { collection, query, where, orderBy, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, query, where, orderBy, addDoc, serverTimestamp, arrayUnion, updateDoc, arrayRemove } from 'firebase/firestore';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useToast } from '@/hooks/use-toast';
-import { generateAiTestAction } from '@/app/actions/ai-test';
-import type { GenerateAiTestOutput, GenerateAiTestInput } from '@/ai/flows/generate-ai-test';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
-import { Loader2, AlertTriangle, Award, Download, ArrowLeft, ArrowRight } from 'lucide-react';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Form, FormControl, FormField, FormItem, FormLabel } from '@/components/ui/form';
-import Certificate from '@/components/certificate';
-import { Progress } from '@/components/ui/progress';
+import AiTestGenerator from '@/app/dashboard/ai-test/page';
+import { addDoubtReplyAction } from '@/app/actions/doubts';
 
 const ContentIcon = ({ type }: { type: string }) => {
     switch (type) {
-        case 'video': return <Video className="h-5 w-5 text-primary"/>;
+        case 'video_lecture': return <Video className="h-5 w-5 text-primary"/>;
         case 'pdf': return <FileText className="h-5 w-5 text-primary"/>;
-        case 'note': return <StickyNote className="h-5 w-5 text-primary"/>;
         case 'test_series': return <FileText className="h-5 w-5 text-primary" />;
         case 'ai_test': return <ShieldQuestion className="h-5 w-5 text-primary" />;
         default: return <BookOpen className="h-5 w-5 text-primary"/>;
@@ -87,9 +78,9 @@ const VideoPlayer = ({ videoUrl, title, onOpenChange }: { videoUrl: string, titl
                             className="rounded-lg"
                         ></iframe>
                     ) : (
-                        <video controls autoPlay src={videoUrl} className="w-full h-full rounded-lg bg-black">
-                            Your browser does not support the video tag.
-                        </video>
+                         <div className="w-full h-full rounded-lg bg-black flex items-center justify-center">
+                            <p className="text-white">Unsupported video URL.</p>
+                        </div>
                     )}
                 </div>
             </DialogContent>
@@ -97,9 +88,32 @@ const VideoPlayer = ({ videoUrl, title, onOpenChange }: { videoUrl: string, titl
     );
 };
 
+const PDFViewer = ({ pdfUrl, title, onOpenChange }: { pdfUrl: string, title: string, onOpenChange: (open: boolean) => void }) => {
+    const googleDocsUrl = `https://docs.google.com/gview?url=${encodeURIComponent(pdfUrl)}&embedded=true`;
+    return (
+        <Dialog open={true} onOpenChange={onOpenChange}>
+            <DialogContent className="max-w-4xl h-[90vh] p-4 flex flex-col">
+                <DialogHeader>
+                    <DialogTitle>{title}</DialogTitle>
+                </DialogHeader>
+                <div className="flex-grow">
+                    <iframe
+                        src={googleDocsUrl}
+                        width="100%"
+                        height="100%"
+                        className="rounded-lg border"
+                        title={title}
+                    ></iframe>
+                </div>
+            </DialogContent>
+        </Dialog>
+    );
+};
+
+
 const CourseContentTab = ({ courseId, onContentClick }: { courseId: string, onContentClick: (content: any) => void }) => {
     const [courseContentCollection, courseContentLoading, courseContentError] = useCollection(
-        query(collection(firestore, 'courses', courseId, 'content'), where('type', 'in', ['pdf', 'note']), orderBy('createdAt', 'asc'))
+        query(collection(firestore, 'courses', courseId, 'content'), where('type', '==', 'pdf'), orderBy('createdAt', 'asc'))
     );
     return (
         <CardContent>
@@ -110,12 +124,12 @@ const CourseContentTab = ({ courseId, onContentClick }: { courseId: string, onCo
               {courseContentCollection.docs.map(doc => {
                 const content = doc.data();
                 return (
-                  <div key={doc.id} className="flex items-center justify-between p-3 rounded-lg border bg-muted/50">
+                  <div key={doc.id} onClick={() => onContentClick(content)} className="flex items-center justify-between p-3 rounded-lg border bg-muted/50 cursor-pointer hover:bg-muted transition-colors">
                     <div className="flex items-center gap-3">
                        <ContentIcon type={content.type} />
                        <p className="font-semibold">{content.title}</p>
                     </div>
-                    <Button variant="ghost" size="icon" onClick={() => onContentClick(content)}>
+                     <Button variant="ghost" size="icon">
                         <PlayCircle className="h-6 w-6" />
                     </Button>
                   </div>
@@ -133,6 +147,7 @@ const DoubtsTab = ({ courseId }: { courseId: string }) => {
     const { user } = useAuth();
     const { toast } = useToast();
     const [doubtText, setDoubtText] = useState('');
+    const [replyText, setReplyText] = useState<Record<string, string>>({});
 
     const [doubtsCollection, doubtsLoading, doubtsError] = useCollection(
         query(collection(firestore, 'courses', courseId, 'doubts'), orderBy('createdAt', 'desc'))
@@ -148,7 +163,9 @@ const DoubtsTab = ({ courseId }: { courseId: string }) => {
                 userName: user.displayName,
                 userPhoto: user.photoURL,
                 createdAt: serverTimestamp(),
-                answer: null,
+                likes: [],
+                dislikes: [],
+                replies: [],
             });
             setDoubtText('');
             toast({ description: "Your doubt has been submitted." });
@@ -156,6 +173,50 @@ const DoubtsTab = ({ courseId }: { courseId: string }) => {
             toast({ variant: 'destructive', description: "Could not submit your doubt." });
         }
     };
+    
+    const handleReplySubmit = async (doubtId: string, doubtAuthorId: string) => {
+        const text = replyText[doubtId];
+        if (!user || !text || !text.trim()) return;
+
+        const result = await addDoubtReplyAction({
+            doubtId,
+            doubtAuthorId,
+            reply: {
+                id: doc(collection(firestore, 'dummy')).id, // Unique ID for reply
+                userId: user.uid,
+                userName: user.displayName || 'Anonymous',
+                userPhoto: user.photoURL || null,
+                text: text,
+                createdAt: new Date().toISOString(),
+            }
+        });
+
+        if (result.success) {
+            setReplyText(prev => ({ ...prev, [doubtId]: '' }));
+        } else {
+            toast({ variant: 'destructive', description: result.error });
+        }
+    }
+    
+    const handleLikeToggle = async (doubtId: string, likes: string[]) => {
+        if (!user) return;
+        const doubtRef = doc(firestore, 'courses', courseId, 'doubts', doubtId);
+        if (likes.includes(user.uid)) {
+            await updateDoc(doubtRef, { likes: arrayRemove(user.uid) });
+        } else {
+            await updateDoc(doubtRef, { likes: arrayUnion(user.uid), dislikes: arrayRemove(user.uid) });
+        }
+    }
+    
+    const handleDislikeToggle = async (doubtId: string, dislikes: string[]) => {
+        if (!user) return;
+        const doubtRef = doc(firestore, 'courses', courseId, 'doubts', doubtId);
+        if (dislikes.includes(user.uid)) {
+            await updateDoc(doubtRef, { dislikes: arrayRemove(user.uid) });
+        } else {
+            await updateDoc(doubtRef, { dislikes: arrayUnion(user.uid), likes: arrayRemove(user.uid) });
+        }
+    }
 
     return (
         <CardContent className="space-y-6">
@@ -175,33 +236,59 @@ const DoubtsTab = ({ courseId }: { courseId: string }) => {
             <div className="space-y-4">
                 {doubtsLoading && <Skeleton className="h-20 w-full" />}
                 {doubtsError && <p className="text-destructive">Could not load doubts.</p>}
-                {doubtsCollection?.docs.map(doc => {
-                    const doubt = doc.data();
+                {doubtsCollection?.docs.map(doubtDoc => {
+                    const doubt = doubtDoc.data();
+                    const doubtId = doubtDoc.id;
+                    const isLiked = user && doubt.likes.includes(user.uid);
+                    const isDisliked = user && doubt.dislikes.includes(user.uid);
                     return (
-                        <div key={doc.id} className="p-4 border rounded-lg">
+                        <div key={doubtId} className="p-4 border rounded-lg">
                             <div className="flex items-start gap-3">
                                 <Avatar className="h-8 w-8">
                                     <AvatarImage src={doubt.userPhoto || undefined} />
                                     <AvatarFallback>{doubt.userName?.charAt(0) || 'A'}</AvatarFallback>
                                 </Avatar>
-                                <div>
+                                <div className="flex-1">
                                     <p className="font-semibold text-sm">{doubt.userName}</p>
                                     <p>{doubt.text}</p>
-                                </div>
-                            </div>
-                            {doubt.answer && (
-                                <div className="mt-3 ml-11 pl-4 border-l">
-                                    <div className="flex items-start gap-3">
-                                        <Avatar className="h-8 w-8 bg-primary text-primary-foreground">
-                                           <AvatarFallback><GraduationCap size={18}/></AvatarFallback>
-                                        </Avatar>
-                                        <div>
-                                            <p className="font-semibold text-sm">Instructor</p>
-                                            <p className="text-muted-foreground">{doubt.answer}</p>
-                                        </div>
+                                     <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
+                                        <Button variant="ghost" size="sm" className={`h-auto p-1 ${isLiked ? 'text-primary' : ''}`} onClick={() => handleLikeToggle(doubtId, doubt.likes)}>
+                                            <ThumbsUp size={14} className="mr-1.5"/> {doubt.likes.length}
+                                        </Button>
+                                         <Button variant="ghost" size="sm" className={`h-auto p-1 ${isDisliked ? 'text-destructive' : ''}`} onClick={() => handleDislikeToggle(doubtId, doubt.dislikes)}>
+                                            <ThumbsDown size={14} className="mr-1.5"/> {doubt.dislikes.length}
+                                        </Button>
+                                         <Button variant="ghost" size="sm" className="h-auto p-1">
+                                            <MessageSquare size={14} className="mr-1.5"/> Reply
+                                        </Button>
                                     </div>
                                 </div>
+                            </div>
+                            {doubt.replies && doubt.replies.length > 0 && (
+                                <div className="mt-3 ml-11 pl-4 border-l space-y-3">
+                                    {doubt.replies.map((reply: any) => (
+                                        <div key={reply.id} className="flex items-start gap-3">
+                                            <Avatar className="h-8 w-8">
+                                                <AvatarImage src={reply.userPhoto || undefined} />
+                                                <AvatarFallback>{reply.userName?.charAt(0) || 'A'}</AvatarFallback>
+                                            </Avatar>
+                                            <div>
+                                                <p className="font-semibold text-sm">{reply.userName}</p>
+                                                <p className="text-sm">{reply.text}</p>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
                             )}
+                             <form onSubmit={(e) => { e.preventDefault(); handleReplySubmit(doubtId, doubt.userId); }} className="mt-3 ml-11 pl-4 border-l flex gap-2">
+                                <Input 
+                                    value={replyText[doubtId] || ''}
+                                    onChange={(e) => setReplyText(prev => ({...prev, [doubtId]: e.target.value}))}
+                                    placeholder="Add a reply..."
+                                    className="h-9"
+                                />
+                                <Button size="sm" type="submit">Reply</Button>
+                            </form>
                         </div>
                     )
                 })}
@@ -215,7 +302,7 @@ const DoubtsTab = ({ courseId }: { courseId: string }) => {
 
 const VideoLecturesTab = ({ courseId, onContentClick }: { courseId: string; onContentClick: (content: any) => void }) => {
     const [videos, loading, error] = useCollection(
-        query(collection(firestore, 'courses', courseId, 'content'), where('type', '==', 'video'), orderBy('createdAt', 'asc'))
+        query(collection(firestore, 'courses', courseId, 'content'), where('type', '==', 'video_lecture'), orderBy('createdAt', 'asc'))
     );
 
     return (
@@ -227,12 +314,12 @@ const VideoLecturesTab = ({ courseId, onContentClick }: { courseId: string; onCo
                     {videos.docs.map(doc => {
                         const content = doc.data();
                         return (
-                            <div key={doc.id} className="flex items-center justify-between p-3 rounded-lg border bg-muted/50">
+                            <div key={doc.id} className="flex items-center justify-between p-3 rounded-lg border bg-muted/50 cursor-pointer hover:bg-muted transition-colors" onClick={() => onContentClick(content)}>
                                 <div className="flex items-center gap-3">
                                     <ContentIcon type={content.type} />
                                     <p className="font-semibold">{content.title}</p>
                                 </div>
-                                <Button variant="ghost" size="icon" onClick={() => onContentClick(content)}>
+                                <Button variant="ghost" size="icon">
                                     <PlayCircle className="h-6 w-6" />
                                 </Button>
                             </div>
@@ -240,7 +327,10 @@ const VideoLecturesTab = ({ courseId, onContentClick }: { courseId: string; onCo
                     })}
                 </div>
             ) : (
-                <p className="text-muted-foreground text-center py-8">No video lectures have been added yet.</p>
+                <div className="text-center py-8">
+                    <Video className="mx-auto h-12 w-12 text-muted-foreground" />
+                    <p className="mt-4">No video lectures have been added yet.</p>
+                </div>
             )}
         </CardContent>
     );
@@ -250,14 +340,13 @@ const TestsTab = ({ course, courseId }: { course: DocumentData, courseId: string
     const [tests, loading, error] = useCollection(
         query(collection(firestore, 'courses', courseId, 'content'), where('type', '==', 'test_series'), orderBy('createdAt', 'asc'))
     );
-    const router = useRouter();
     const [isAiTestModalOpen, setIsAiTestModalOpen] = useState(false);
 
     return (
         <CardContent className="space-y-4">
             <Dialog open={isAiTestModalOpen} onOpenChange={setIsAiTestModalOpen}>
-                <DialogContent className="max-w-2xl">
-                    <AiTestGenerator onTestGenerated={() => {}} subject={course.title} examType={course.category} />
+                <DialogContent className="max-w-md p-0 bg-transparent border-none">
+                    <AiTestGenerator onTestGenerated={() => { setIsAiTestModalOpen(false) }} isCourseContext={true} subject={course.title} examType={course.category} />
                 </DialogContent>
             </Dialog>
 
@@ -287,7 +376,10 @@ const TestsTab = ({ course, courseId }: { course: DocumentData, courseId: string
                             })}
                         </div>
                     ) : (
-                         <p className="text-muted-foreground text-center py-8">No official test series added to this course yet.</p>
+                         <div className="text-center py-8">
+                            <FileText className="mx-auto h-12 w-12 text-muted-foreground" />
+                            <p className="mt-4">No official test series added to this course yet.</p>
+                        </div>
                     )}
                 </TabsContent>
                 <TabsContent value="ai" className="pt-4">
@@ -341,7 +433,7 @@ function CourseDetailPageContent() {
   const courseId = params.courseId as string;
   const router = useRouter();
 
-  const [selectedVideo, setSelectedVideo] = useState<{ url: string, title: string } | null>(null);
+  const [selectedContent, setSelectedContent] = useState<{ type: string, url: string, title: string } | null>(null);
   
   const [courseDoc, courseLoading, courseError] = useDocument(doc(firestore, 'courses', courseId));
 
@@ -354,16 +446,12 @@ function CourseDetailPageContent() {
       )
     : null;
     
-  const [enrollmentDocs, enrollmentLoading, enrollmentError] = useCollection(enrollmentsQuery);
+  const [enrollmentDocs, enrollmentLoading] = useCollection(enrollmentsQuery);
 
   const isEnrolled = !!enrollmentDocs && !enrollmentDocs.empty;
 
   const handleContentClick = (content: { type: string, url: string, title: string }) => {
-    if (content.type === 'video') {
-        setSelectedVideo({ url: content.url, title: content.title });
-    } else {
-        window.open(content.url, '_blank', 'noopener,noreferrer');
-    }
+    setSelectedContent(content);
   };
 
 
@@ -394,11 +482,18 @@ function CourseDetailPageContent() {
 
   return (
     <div className="max-w-5xl mx-auto p-4 md:p-8">
-       {selectedVideo && (
+       {selectedContent?.type === 'video_lecture' && (
             <VideoPlayer 
-                videoUrl={selectedVideo.url}
-                title={selectedVideo.title}
-                onOpenChange={(isOpen) => !isOpen && setSelectedVideo(null)}
+                videoUrl={selectedContent.url}
+                title={selectedContent.title}
+                onOpenChange={(isOpen) => !isOpen && setSelectedContent(null)}
+            />
+        )}
+         {selectedContent?.type === 'pdf' && (
+            <PDFViewer 
+                pdfUrl={selectedContent.url}
+                title={selectedContent.title}
+                onOpenChange={(isOpen) => !isOpen && setSelectedContent(null)}
             />
         )}
       <div className="grid md:grid-cols-5 gap-8">
@@ -472,111 +567,6 @@ function CourseDetailPageContent() {
   );
 }
 
-// AI Test Component inside Course Page
-const LANGUAGES = ["English", "Hindi", "Kannada", "Tamil", "Telugu", "Bengali", "Marathi", "Gujarati", "Malayalam", "Punjabi", "Odia", "Assamese", "Urdu", "Sanskrit", "Nepali", "Sindhi", "Konkani", "Manipuri", "Bodo", "Dogri", "Maithili", "Santhali", "Kashmiri"];
-const DIFFICULTIES = ['Easy', 'Medium', 'Hard'] as const;
-
-const testGenerationSchema = z.object({
-  subject: z.string().min(1, 'Subject is required.'),
-  examType: z.string().min(1, 'Exam type is required.'),
-  language: z.string().min(1, 'Language is required.'),
-  testType: z.literal('Multiple Choice'),
-  questionCount: z.coerce.number().min(3, 'Minimum 3 questions').max(50, 'Maximum 50 questions'),
-  difficulty: z.enum(['Easy', 'Medium', 'Hard']),
-});
-
-type TestGenerationValues = z.infer<typeof testGenerationSchema>;
-
-
-function AiTestGenerator({ onTestGenerated, subject, examType }: { onTestGenerated: (data: GenerateAiTestOutput, formData: TestGenerationValues) => void, subject?: string, examType?: string }) {
-    const [step, setStep] = useState(0);
-    const [isLoading, setIsLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
-    const form = useForm<TestGenerationValues>({
-        resolver: zodResolver(testGenerationSchema),
-        defaultValues: {
-            subject: subject || '',
-            examType: examType || '',
-            language: 'English',
-            testType: 'Multiple Choice',
-            questionCount: 5,
-            difficulty: 'Medium',
-        },
-    });
-
-    const steps = [
-        { id: 'language', title: 'किस भाषा में टेस्ट बनाना है?', icon: Languages, options: LANGUAGES },
-        { id: 'questionCount', title: 'कितने सवाल चाहिए?', icon: HelpCircle, options: [5, 10, 15, 20, 25] },
-        { id: 'difficulty', title: 'टेस्ट कितना कठिन होना चाहिए?', icon: Sigma, options: DIFFICULTIES },
-    ];
-
-    const currentStep = steps[step];
-
-    const handleSelect = async (value: string | number) => {
-        // @ts-ignore
-        form.setValue(currentStep.id, value, { shouldValidate: true });
-
-        if (step < steps.length - 1) {
-            setStep(s => s + 1);
-        } else {
-            await form.handleSubmit(onGenerateSubmit)();
-        }
-    };
-    
-    async function onGenerateSubmit(data: TestGenerationValues) {
-        setIsLoading(true);
-        setError(null);
-        try {
-            const result = await generateAiTestAction(data);
-            onTestGenerated(result, data);
-        } catch (e: any) {
-            setError(e.message);
-        } finally {
-            setIsLoading(false);
-        }
-    }
-    
-    return (
-        <Card className="shadow-lg border-border/60 bg-gradient-to-br from-purple-400/10 via-blue-400/10 to-teal-400/10">
-            <CardHeader className="text-center">
-                <Bot className="h-12 w-12 mx-auto text-primary animate-bounce" />
-                <CardTitle>AI Test Generator</CardTitle>
-                <CardDescription>Let's create your personalized test!</CardDescription>
-            </CardHeader>
-            <CardContent className="min-h-[250px] flex flex-col justify-center items-center">
-                {isLoading ? (
-                    <div className="text-center space-y-3">
-                        <Loader2 className="h-10 w-10 animate-spin text-primary mx-auto" />
-                        <p className="font-semibold">Generating your test...</p>
-                        <p className="text-sm text-muted-foreground">This may take a moment.</p>
-                    </div>
-                ) : (
-                    <div className="w-full text-center space-y-4">
-                        <div className="flex items-center justify-center gap-2 font-semibold text-lg">
-                           <currentStep.icon className="h-6 w-6 text-primary" />
-                           <h3>{currentStep.title}</h3>
-                        </div>
-                        <div className="flex flex-wrap justify-center gap-3 pt-4">
-                            {currentStep.options.map(option => (
-                                <Button key={option} variant="outline" size="lg" onClick={() => handleSelect(option)}>
-                                    {option} {currentStep.id === 'questionCount' && 'Questions'}
-                                </Button>
-                            ))}
-                        </div>
-                    </div>
-                )}
-                 {error && (
-                    <Alert variant="destructive" className="mt-4">
-                        <AlertTriangle className="h-4 w-4" />
-                        <AlertTitle>Error Generating Test</AlertTitle>
-                        <AlertDescription>{error}</AlertDescription>
-                    </Alert>
-                )}
-            </CardContent>
-        </Card>
-    )
-}
-
 
 export default function CourseDetailPage() {
     return (
@@ -585,3 +575,5 @@ export default function CourseDetailPage() {
         </Suspense>
     )
 }
+
+    
