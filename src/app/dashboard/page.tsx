@@ -2,27 +2,17 @@
 "use client";
 import React, { useEffect, useState } from 'react';
 import {
-  BookOpen,
+  Book,
   Video,
   Award,
-  Newspaper,
   BookCopy,
-  Star,
   FileText,
-  Globe,
-  Trophy,
-  Briefcase,
-  Book,
-  Calendar,
-  Users,
-  Send,
   Youtube,
-  GraduationCap,
 } from 'lucide-react';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/hooks/use-auth';
-import { doc, getDoc, collection, query, orderBy, limit, getDocs, onSnapshot, addDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, collection, query, orderBy, limit, onSnapshot, addDoc, serverTimestamp } from 'firebase/firestore';
 import { firestore } from '@/lib/firebase';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -33,12 +23,11 @@ import {
   Carousel,
   CarouselContent,
   CarouselItem,
-  CarouselNext,
-  CarouselPrevious,
 } from "@/components/ui/carousel"
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
+import { Send } from 'lucide-react';
 
 
 const CountdownTimer = ({ targetDate }: { targetDate: Date }) => {
@@ -109,25 +98,16 @@ const MainDashboard = () => {
     }, []);
 
     useEffect(() => {
-        const fetchTopStudents = async () => {
-            try {
-                // Simplified: Fetching first 10 registered users.
-                // A real implementation would need complex logic to track activity.
-                const usersQuery = query(collection(firestore, 'users'), limit(10));
-                const usersSnapshot = await getDocs(usersQuery);
-                const students = usersSnapshot.docs.map((doc, index) => ({
-                    id: doc.id,
-                    rank: index + 1,
-                    ...doc.data()
-                }));
-                setTopStudents(students);
-            } catch (error) {
-                console.error("Error fetching top students:", error);
-            } finally {
-                setLoadingStudents(false);
-            }
-        }
-        fetchTopStudents();
+        const q = query(collection(firestore, 'users'), limit(10));
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+            const students = snapshot.docs.map((doc, index) => ({
+                id: doc.id,
+                rank: index + 1,
+                ...doc.data()
+            }));
+            setTopStudents(students);
+            setLoadingStudents(false);
+        });
 
         const reviewsQuery = query(collection(firestore, 'reviews'), orderBy('createdAt', 'desc'), limit(10));
         const unsubscribeReviews = onSnapshot(reviewsQuery, (snapshot) => {
@@ -136,7 +116,10 @@ const MainDashboard = () => {
             setLoadingReviews(false);
         });
 
-        return () => unsubscribeReviews();
+        return () => {
+            unsubscribe();
+            unsubscribeReviews();
+        };
     }, []);
     
     const handleReviewSubmit = async (e: React.FormEvent) => {
@@ -161,7 +144,7 @@ const MainDashboard = () => {
       { label: "Paid Courses", icon: Book, href: "/dashboard/courses", color: "bg-green-500" },
       { label: "Live Classes", icon: Video, href: "/dashboard/live-class", color: "bg-orange-500" },
       { label: "Video Lectures", icon: Youtube, href: "/dashboard/video-lectures", color: "bg-red-500" },
-      { label: "Test Series", icon: FileText, href: "/dashboard/ai-test?tab=series", color: "bg-purple-500" },
+      { label: "Test Series", icon: FileText, href: "/dashboard/test-series", color: "bg-purple-500" },
       { label: "Scholarship", icon: Award, href: "/dashboard/scholarship", color: "bg-yellow-500" },
     ];
     
