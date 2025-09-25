@@ -17,7 +17,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { addChatMessageAction, saveNoteAction } from '@/app/actions/live-class';
 import { Input } from '@/components/ui/input';
 
-const YouTubePlayer = ({ videoId }: { videoId: string }) => {
+const YouTubePlayer = ({ videoId }: { videoId: string | null }) => {
+    if (!videoId) {
+        return (
+            <div className="w-full aspect-video bg-black text-white flex items-center justify-center">
+                <p>Invalid or unsupported YouTube video URL.</p>
+            </div>
+        );
+    }
+
     return (
         <div className="w-full aspect-video">
             <iframe
@@ -153,9 +161,7 @@ const NotesSection = ({ classId }: { classId: string }) => {
 export default function LiveClassPlayerPage() {
     const params = useParams();
     const classId = params.classId as string;
-    const pageRef = useRef<HTMLDivElement>(null);
-
-
+    
     const [classDoc, loading, error] = useDocument(doc(firestore, 'live_classes', classId));
 
     const getYoutubeVideoId = (url: string): string | null => {
@@ -170,12 +176,6 @@ export default function LiveClassPlayerPage() {
         }
     }
     
-    useEffect(() => {
-        if (pageRef.current) {
-            pageRef.current.scrollTo(0, 0);
-        }
-    }, []);
-
     if (loading) {
         return <div className="p-0"><Skeleton className="w-full aspect-video" /></div>
     }
@@ -187,10 +187,10 @@ export default function LiveClassPlayerPage() {
     const videoId = getYoutubeVideoId(liveClass.youtubeUrl);
 
     return (
-        <div ref={pageRef} className="flex flex-col md:flex-row h-[calc(100vh-8rem)] md:h-[calc(100vh-4rem)] bg-background overflow-hidden">
+        <div className="flex flex-col md:flex-row h-[calc(100vh-8rem)] md:h-[calc(100vh-4rem)] bg-background overflow-hidden">
             <div className="md:w-[calc(100%-350px)] md:h-full flex flex-col">
                 <div className="w-full shrink-0">
-                    {videoId ? <YouTubePlayer videoId={videoId} /> : <div className="aspect-video bg-black text-white flex items-center justify-center"><p>Invalid or unsupported YouTube video URL.</p></div>}
+                    <YouTubePlayer videoId={videoId} />
                 </div>
                  <div className="flex-grow min-h-0 hidden md:block">
                      {/* This space is intentionally left for potential future use or can be removed */}
