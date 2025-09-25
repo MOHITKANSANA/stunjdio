@@ -2,7 +2,7 @@
 'use client';
 
 import { useCollection } from 'react-firebase-hooks/firestore';
-import { collection, query, orderBy, where } from 'firebase/firestore';
+import { collection, query, orderBy, where, doc, getDoc } from 'firebase/firestore';
 import { firestore } from '@/lib/firebase';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,8 +13,112 @@ import Image from 'next/image';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/hooks/use-auth';
 import type { DocumentData, QueryDocumentSnapshot } from 'firebase/firestore';
+import { useState } from 'react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { useToast } from '@/hooks/use-toast';
 
-const CourseCard = ({ course, courseId, isEnrolled }: { course: any, courseId: string, isEnrolled: boolean }) => {
+
+const CouponDialog = ({ 
+    isOpen, 
+    onOpenChange, 
+    course, 
+    courseId,
+    onEnrollSuccess 
+}: { 
+    isOpen: boolean, 
+    onOpenChange: (open: boolean) => void, 
+    course: any, 
+    courseId: string,
+    onEnrollSuccess: () => void 
+}) => {
+    const [couponCode, setCouponCode] = useState('');
+    const [discount, setDiscount] = useState(0);
+    const [isValidCoupon, setIsValidCoupon] = useState<boolean | null>(null);
+    const [isLoading, setIsLoading] = useState(false);
+    const { toast } = useToast();
+
+    const finalPrice = course.price - discount;
+
+    const checkCoupon = async () => {
+        if (!couponCode) return;
+        setIsLoading(true);
+        try {
+            const couponRef = doc(firestore, 'courses', courseId, 'coupons', couponCode);
+            const couponSnap = await getDoc(couponRef);
+            if (couponSnap.exists()) {
+                const couponData = couponSnap.data();
+                const now = new Date();
+                if (couponData.expiresAt.toDate() > now) {
+                    setDiscount(couponData.discountAmount);
+                    setIsValidCoupon(true);
+                    toast({ description: `Coupon applied! You get ₹${couponData.discountAmount} off.` });
+                } else {
+                    setDiscount(0);
+                    setIsValidCoupon(false);
+                    toast({ variant: 'destructive', description: 'This coupon has expired.' });
+                }
+            } else {
+                setDiscount(0);
+                setIsValidCoupon(false);
+                toast({ variant: 'destructive', description: 'Invalid coupon code.' });
+            }
+        } catch (error) {
+            toast({ variant: 'destructive', description: 'Could not validate coupon.' });
+        }
+        setIsLoading(false);
+    };
+
+    return (
+        <Dialog open={isOpen} onOpenChange={onOpenChange}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Enroll in {course.title}</DialogTitle>
+                    <DialogDescription>Apply a coupon or proceed to payment.</DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4">
+                    <div className="flex justify-between items-baseline">
+                        <span className="text-muted-foreground">Original Price:</span>
+                        <span className="font-semibold text-lg line-through">₹{course.price}</span>
+                    </div>
+                    {discount > 0 && (
+                        <div className="flex justify-between items-baseline text-green-600">
+                            <span className="text-muted-foreground">Discount:</span>
+                            <span className="font-semibold text-lg">- ₹{discount}</span>
+                        </div>
+                    )}
+                    <div className="flex justify-between items-baseline text-xl font-bold">
+                        <span>Final Price:</span>
+                        <span>₹{finalPrice}</span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                        <Input 
+                            placeholder="Enter Coupon Code" 
+                            value={couponCode}
+                            onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                        />
+                        <Button onClick={checkCoupon} disabled={isLoading || !couponCode}>
+                            {isLoading ? 'Checking...' : 'Apply'}
+                        </Button>
+                    </div>
+                </div>
+                <DialogFooter>
+                    <DialogClose asChild>
+                        <Button variant="outline">Cancel</Button>
+                    </DialogClose>
+                    <Button asChild onClick={onEnrollSuccess}>
+                       <Link href={`/dashboard/payment-verification?courseId=${courseId}&price=${finalPrice}&coupon=${couponCode}`}>
+                            Proceed to Pay ₹{finalPrice}
+                       </Link>
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
+};
+
+
+const CourseCard = ({ course, courseId, isEnrolled, onEnrollClick }: { course: any, courseId: string, isEnrolled: boolean, onEnrollClick: () => void }) => {
     return (
         <Card className="flex flex-col overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300">
             <div className="relative h-48 w-full">
@@ -36,17 +140,25 @@ const CourseCard = ({ course, courseId, isEnrolled }: { course: any, courseId: s
                 </div>
             </CardContent>
             <CardFooter>
-                 <Button asChild className="w-full">
-                    <Link href={`/dashboard/courses/${courseId}`}>
-                        {isEnrolled ? 'View Details' : 'Enroll Now'}
-                    </Link>
-                 </Button>
+                {isEnrolled ? (
+                     <Button asChild className="w-full" variant="secondary">
+                        <Link href={`/dashboard/courses/${courseId}`}>
+                            View Details
+                        </Link>
+                     </Button>
+                ) : (
+                    <Button onClick={onEnrollClick} className="w-full">
+                        Enroll Now
+                    </Button>
+                )}
             </CardFooter>
         </Card>
     );
 };
 
 const CourseGrid = ({ courses, enrollments }: { courses: QueryDocumentSnapshot<DocumentData>[] | undefined, enrollments: any }) => {
+    const [selectedCourse, setSelectedCourse] = useState<{ course: any, courseId: string } | null>(null);
+
     if (!courses) {
         return (
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
@@ -68,13 +180,32 @@ const CourseGrid = ({ courses, enrollments }: { courses: QueryDocumentSnapshot<D
     const enrolledCourseIds = new Set(enrollments?.docs.map(doc => doc.data().courseId));
 
     return (
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {courses.map((doc) => {
-                const course = doc.data();
-                const isEnrolled = enrolledCourseIds.has(doc.id);
-                return <CourseCard key={doc.id} course={course} courseId={doc.id} isEnrolled={isEnrolled} />
-            })}
-        </div>
+        <>
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                {courses.map((doc) => {
+                    const course = doc.data();
+                    const isEnrolled = enrolledCourseIds.has(doc.id);
+                    return (
+                        <CourseCard 
+                            key={doc.id} 
+                            course={course} 
+                            courseId={doc.id} 
+                            isEnrolled={isEnrolled} 
+                            onEnrollClick={() => setSelectedCourse({ course, courseId: doc.id })}
+                        />
+                    )
+                })}
+            </div>
+            {selectedCourse && (
+                <CouponDialog 
+                    isOpen={!!selectedCourse} 
+                    onOpenChange={() => setSelectedCourse(null)}
+                    course={selectedCourse.course}
+                    courseId={selectedCourse.courseId}
+                    onEnrollSuccess={() => setSelectedCourse(null)}
+                />
+            )}
+        </>
     );
 };
 

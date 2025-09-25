@@ -31,10 +31,9 @@ export default function AiTutorPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [response, setResponse] = useState<GenerateAiTutorResponseOutput | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [isAudioLoading, setIsAudioLoading] = useState(false);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const form = useForm<TutorFormValues>({
@@ -45,13 +44,33 @@ export default function AiTutorPage() {
     },
   });
   
-  // Effect to play audio when URL is set
-  useEffect(() => {
-    if (audioUrl && audioRef.current) {
-      audioRef.current.src = audioUrl;
-      audioRef.current.play().catch(e => console.error("Audio playback failed:", e));
+  const handlePlayAudio = async (text: string) => {
+    if (!text || !audioRef.current) return;
+    setIsAudioLoading(true);
+    audioRef.current.pause();
+    audioRef.current.src = "";
+    try {
+        const audioResult = await getAudioAction(text);
+        if (audioRef.current) {
+            audioRef.current.src = audioResult.media;
+            audioRef.current.play().catch(e => console.error("Audio playback failed:", e));
+        }
+    } catch (error) {
+        console.error("Error generating audio:", error);
+    } finally {
+        setIsAudioLoading(false);
     }
-  }, [audioUrl]);
+  }
+  
+  useEffect(() => {
+    // Cleanup audio on component unmount
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.src = "";
+      }
+    };
+  }, []);
 
 
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
@@ -80,26 +99,13 @@ export default function AiTutorPage() {
     });
   }
 
-  const handlePlayAudio = async (text: string) => {
-    if (!text) return;
-    setIsAudioLoading(true);
-    setAudioUrl(null);
-    try {
-        const audioResult = await getAudioAction(text);
-        setAudioUrl(audioResult.media);
-    } catch (error) {
-        console.error("Error generating audio:", error);
-        // Optionally set an error state for audio
-    } finally {
-        setIsAudioLoading(false);
-    }
-  }
-
   const onSubmit = async (data: TutorFormValues) => {
     setIsLoading(true);
     setResponse(null);
     setError(null);
-    setAudioUrl(null);
+    if (audioRef.current) {
+      audioRef.current.pause();
+    }
 
     let imageDataUri: string | undefined = undefined;
     if (data.imageFile) {
@@ -107,27 +113,17 @@ export default function AiTutorPage() {
     }
     
     try {
-      const resultPromise = generateAiTutorResponseAction({
+      const result = await generateAiTutorResponseAction({
         question: data.question || "Describe the attached image.",
         language: data.language,
         imageDataUri: imageDataUri
       });
       
-      // Start audio generation immediately with a placeholder/initial part of the question
-      const initialTextForAudio = data.question.substring(0, 100) || "Here is the answer.";
-      const audioPromise = getAudioAction(initialTextForAudio);
-
-      const result = await resultPromise;
       setResponse(result);
-
       if(result.answer){
-        // If the initial audio is still loading, wait for it.
-        // A more advanced implementation might cancel and restart with the full answer.
-        const audioResult = await getAudioAction(result.answer);
-        setAudioUrl(audioResult.media);
-      } else {
-         // If there's no answer, we don't need the audio.
+        handlePlayAudio(result.answer);
       }
+
     } catch (e: any) {
       console.error("Error generating AI response:", e);
       setError(e.message || "Sorry, I couldn't generate a response. Please try again.");

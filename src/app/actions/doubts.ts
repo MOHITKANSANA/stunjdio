@@ -9,6 +9,8 @@ import {
   serverTimestamp,
   collection,
   writeBatch,
+  DocumentReference,
+  runTransaction,
 } from 'firebase/firestore';
 
 interface Reply {
@@ -21,60 +23,41 @@ interface Reply {
 }
 
 interface AddReplyInput {
+    courseId: string;
     doubtId: string;
     doubtAuthorId: string;
     reply: Reply;
 }
 
 export async function addDoubtReplyAction(input: AddReplyInput): Promise<{ success: boolean; error?: string }> {
-  const { doubtId, doubtAuthorId, reply } = input;
+  const { courseId, doubtId, doubtAuthorId, reply } = input;
 
   try {
-    const batch = writeBatch(firestore);
-
-    // 1. Add reply to the doubt document
-    const doubtRef = doc(collection(firestore, 'courses', reply.userId, 'doubts'), doubtId); // This path seems wrong, should be generic
-    const courseDoubtsCollectionRef = collection(firestore, 'courseDoubts'); // A root collection would be better
-    const genericDoubtRef = doc(courseDoubtsCollectionRef, doubtId); // Assuming we change to a root collection. Let's find the course first.
+    const doubtRef = doc(firestore, 'courses', courseId, 'doubts', doubtId);
     
-    // This is complex because we don't know the courseId from here. A better DB structure is needed.
-    // For now, let's assume a root `courseDoubts` collection. This won't work with the current code.
-    // The user's code has the collection inside the course doc. `courses/{courseId}/doubts/{doubtId}`.
-    // The client doesn't pass the courseId. I need to modify the client to pass it.
-    // The client *does not* have the courseId. The doubtId is unique enough. Let's assume a root collection is better.
-    // I can't change the whole DB structure now. I will have to add the courseId to the action call.
+    await runTransaction(firestore, async (transaction) => {
+        const doubtDoc = await transaction.get(doubtRef);
+        if (!doubtDoc.exists()) {
+            throw new Error("Doubt does not exist!");
+        }
 
-    // Let's go back and check the client code. `[courseId]/page.tsx`
-    // The `DoubtsTab` component *has* the `courseId`.
-    // So the action should be `addDoubtReplyAction({ courseId, doubtId, ... })`
-    // The current signature is `addDoubtReplyAction(input: AddReplyInput)`
-    // I'll modify the input to include courseId.
-
-    // New signature:
-    // interface AddReplyInput { courseId: string; doubtId: string; doubtAuthorId: string; reply: Reply; }
-    // I will modify the client to pass this. And create this new action file.
-
-    // Okay, I will create `src/app/actions/doubts.ts` and call it from the client.
+        // 1. Add reply to the doubt document
+        transaction.update(doubtRef, { replies: arrayUnion(reply) });
     
-    // Let's create the action.
-    const theDoubtRef = doc(firestore, 'courses', input.courseId, 'doubts', doubtId);
-    batch.update(theDoubtRef, { replies: arrayUnion(reply) });
-
-
-    // 2. Create a notification for the doubt's author if the replier is not the author
-    if (reply.userId !== doubtAuthorId) {
-      const notificationRef = doc(collection(firestore, 'users', doubtAuthorId, 'notifications'));
-      batch.set(notificationRef, {
-        type: 'doubt_reply',
-        doubtId: doubtId,
-        courseId: input.courseId,
-        replierName: reply.userName,
-        read: false,
-        createdAt: serverTimestamp(),
-      });
-    }
-    
-    await batch.commit();
+        // 2. Create a notification for the doubt's author if the replier is not the author
+        if (reply.userId !== doubtAuthorId) {
+          const notificationRef = doc(collection(firestore, 'users', doubtAuthorId, 'notifications'));
+          transaction.set(notificationRef, {
+            type: 'doubt_reply',
+            doubtId: doubtId,
+            courseId: courseId, // Pass courseId to link back
+            doubtText: doubtDoc.data().text.substring(0, 50) + '...', // Add context
+            replierName: reply.userName,
+            read: false,
+            createdAt: serverTimestamp(),
+          });
+        }
+    });
 
     return { success: true };
   } catch (error: any) {
@@ -82,5 +65,3 @@ export async function addDoubtReplyAction(input: AddReplyInput): Promise<{ succe
     return { success: false, error: error.message || 'Failed to add reply.' };
   }
 }
-
-    

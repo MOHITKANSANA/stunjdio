@@ -10,7 +10,7 @@ import {
   Youtube,
 } from 'lucide-react';
 import Link from 'next/link';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { useAuth } from '@/hooks/use-auth';
 import { doc, getDoc, collection, query, orderBy, limit, onSnapshot, addDoc, serverTimestamp } from 'firebase/firestore';
 import { firestore } from '@/lib/firebase';
@@ -48,6 +48,7 @@ const CountdownTimer = ({ targetDate }: { targetDate: Date }) => {
     const [timeLeft, setTimeLeft] = useState(calculateTimeLeft());
 
     useEffect(() => {
+        if (+targetDate < +new Date()) return;
         const timer = setTimeout(() => {
             setTimeLeft(calculateTimeLeft());
         }, 1000);
@@ -121,6 +122,17 @@ const MainDashboard = () => {
             unsubscribeReviews();
         };
     }, []);
+
+    const [currentStudentIndex, setCurrentStudentIndex] = useState(0);
+
+    useEffect(() => {
+        if (topStudents.length > 0) {
+            const interval = setInterval(() => {
+                setCurrentStudentIndex(prevIndex => (prevIndex + 1) % topStudents.length);
+            }, 3000); // Change student every 3 seconds
+            return () => clearInterval(interval);
+        }
+    }, [topStudents]);
     
     const handleReviewSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -165,7 +177,7 @@ const MainDashboard = () => {
             
             <div>
                 <h2 className="text-xl font-bold mb-3">Top 10 Students of the Week</h2>
-                 <Carousel opts={{ align: "start", loop: false }} className="w-full">
+                 <Carousel opts={{ align: "start", loop: true }} className="w-full">
                     <CarouselContent className="-ml-4">
                         {loadingStudents ? (
                             [...Array(3)].map((_, i) => (
@@ -174,7 +186,7 @@ const MainDashboard = () => {
                                 </CarouselItem>
                             ))
                         ) : (
-                             topStudents.map((student) => (
+                             topStudents.map((student, index) => (
                                 <CarouselItem key={student.id} className="pl-4 basis-1/2 md:basis-1/3 lg:basis-1/4">
                                     <Card className="bg-card border-border/60">
                                         <CardContent className="p-3 flex flex-col items-center justify-center gap-2">
@@ -204,7 +216,7 @@ const MainDashboard = () => {
                  <h2 className="text-xl font-bold mb-3">What Our Students Say</h2>
                  <div className="space-y-4">
                     {loadingReviews ? <Skeleton className="h-24 w-full" /> : reviews.map((review, index) => (
-                        <Card key={index} className="bg-muted/50">
+                        <Card key={index} className="bg-muted/50 animate-fade-in">
                             <CardContent className="p-4">
                                 <div className="flex items-start gap-3">
                                     <Avatar className="h-8 w-8">

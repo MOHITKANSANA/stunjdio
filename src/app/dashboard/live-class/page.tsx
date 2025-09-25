@@ -10,7 +10,6 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Video } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 const ClassGrid = ({ classes, loading, error }: { classes: any[] | undefined, loading: boolean, error: any }) => {
     if (loading) {

@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from '@/hooks/use-auth';
 import { useCollection } from 'react-firebase-hooks/firestore';
-import { collection, query, where, orderBy } from 'firebase/firestore';
+import { collection, query, where, orderBy, updateDoc, doc, getDocs } from 'firebase/firestore';
 import { firestore } from '@/lib/firebase';
 import { Skeleton } from "@/components/ui/skeleton";
 import Image from 'next/image';
@@ -14,6 +14,7 @@ import Link from 'next/link';
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 
 const PDFViewer = ({ pdfUrl, title, onOpenChange }: { pdfUrl: string, title: string, onOpenChange: (open: boolean) => void }) => {
     return (
@@ -93,8 +94,8 @@ export default function LibraryPage() {
         query(collection(firestore, 'ebooks'), orderBy('createdAt', 'desc'))
     );
     
-    const [notifications, notificationsLoading] = useCollection(
-        user ? query(collection(firestore, 'users', user.uid, 'notifications'), where('read', '==', false)) : null
+    const [notifications, notificationsLoading, notificationsError] = useCollection(
+        user ? query(collection(firestore, 'users', user.uid, 'notifications'), where('read', '==', false), orderBy('createdAt', 'desc')) : null
     );
 
     const hasNewReplies = notifications && !notifications.empty;
@@ -104,6 +105,14 @@ export default function LibraryPage() {
         const pdfUrlWithViewer = `https://docs.google.com/gview?url=${encodeURIComponent(ebookData.fileUrl)}&embedded=true`;
         setSelectedPdf({ url: pdfUrlWithViewer, title: ebookData.title });
     };
+
+    const markAllAsRead = async () => {
+        if (!user || !notifications) return;
+        const batch = await getDocs(query(collection(firestore, 'users', user.uid, 'notifications'), where('read', '==', false)));
+        batch.forEach(async (docSnapshot) => {
+            await updateDoc(doc(firestore, 'users', user.uid, 'notifications', docSnapshot.id), { read: true });
+        });
+    }
     
     return (
         <div className="space-y-8 p-4 md:p-8">
@@ -129,10 +138,11 @@ export default function LibraryPage() {
                 <p className="text-muted-foreground mt-2">All your learning materials in one place.</p>
             </div>
              <Tabs defaultValue="courses" className="w-full">
-                <TabsList className="grid w-full grid-cols-3 max-w-lg">
+                <TabsList className="grid w-full grid-cols-4 max-w-lg">
                     <TabsTrigger value="courses">My Courses</TabsTrigger>
                     <TabsTrigger value="ebooks">E-Books</TabsTrigger>
                     <TabsTrigger value="scholarships">Scholarships</TabsTrigger>
+                    <TabsTrigger value="notifications">Notifications</TabsTrigger>
                 </TabsList>
                 <TabsContent value="courses" className="mt-6">
                     {(authLoading || enrollmentsLoading || myCoursesLoading) && (
@@ -182,9 +192,43 @@ export default function LibraryPage() {
                         <p className="mt-1 text-sm text-muted-foreground">Your scholarship test history will be shown here.</p>
                     </div>
                 </TabsContent>
+                <TabsContent value="notifications" className="mt-6">
+                    <Card>
+                        <CardHeader className="flex flex-row items-center justify-between">
+                            <div>
+                                <CardTitle>Notifications</CardTitle>
+                                <CardDescription>Replies to your doubts and other updates.</CardDescription>
+                            </div>
+                            {hasNewReplies && <Button onClick={markAllAsRead}>Mark all as read</Button>}
+                        </CardHeader>
+                        <CardContent>
+                            {notificationsLoading && <Skeleton className="h-24 w-full" />}
+                            {notificationsError && <p className="text-destructive">Could not load notifications.</p>}
+                            {notifications && !notifications.empty ? (
+                                <div className="space-y-4">
+                                    {notifications.docs.map(doc => {
+                                        const notif = doc.data();
+                                        return (
+                                            <Link href={`/dashboard/courses/${notif.courseId}?tab=doubts`} key={doc.id}>
+                                            <div className="p-3 border rounded-lg hover:bg-muted">
+                                                <p><span className="font-bold">{notif.replierName}</span> replied to your doubt:</p>
+                                                <p className="text-sm text-muted-foreground italic">"{notif.doubtText}"</p>
+                                                <p className="text-xs text-muted-foreground mt-1">{notif.createdAt?.toDate().toLocaleString()}</p>
+                                            </div>
+                                            </Link>
+                                        )
+                                    })}
+                                </div>
+                            ) : (
+                                <div className="text-center py-12">
+                                    <BellDot className="mx-auto h-12 w-12 text-muted-foreground" />
+                                    <h3 className="mt-4 text-lg font-semibold">No New Notifications</h3>
+                                </div>
+                            )}
+                        </CardContent>
+                    </Card>
+                </TabsContent>
             </Tabs>
         </div>
     );
 }
-
-    

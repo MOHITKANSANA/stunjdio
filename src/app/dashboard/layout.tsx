@@ -21,9 +21,7 @@ import {
   Trophy,
   Clock,
   Download,
-  Sparkles,
   Youtube,
-  Wand2,
   Bot,
 } from 'lucide-react';
 
@@ -55,7 +53,6 @@ const bottomNavItems = [
     { href: '/dashboard', icon: Home, label: 'Home' },
     { href: '/dashboard/library', icon: Library, label: 'My Library' },
     { href: '/dashboard/tutor', icon: Bot, label: 'AI Tutor' },
-    { href: '/dashboard/ai-magic', icon: Wand2, label: 'AI Magic' },
     { href: '/dashboard/profile', icon: User, label: 'Profile' },
 ];
 
@@ -77,12 +74,11 @@ const sidebarNavItems = [
     { href: '/dashboard/live-class', icon: Video, label: 'Free Live Classes' },
     { href: '/dashboard/video-lectures', icon: Youtube, label: 'Video Lectures' },
     { href: '/dashboard/tutor', icon: Bot, label: 'AI Tutor' },
-    { href: '/dashboard/ai-magic', icon: Wand2, label: 'AI Magic' },
     { href: '/dashboard/ai-test', icon: ShieldQuestion, label: 'ai_tests' },
 ];
 
 const kidsSidebarNavItems = [
-    { href: '/dashboard', icon: Sparkles, label: 'Kids Tube' },
+    { href: '/dashboard', icon: Youtube, label: 'Kids Tube' },
     { href: '/dashboard/profile', icon: User, label: 'My Profile' },
     { href: '/dashboard/kids/rewards', icon: Trophy, label: 'My Rewards' },
     { href: '/dashboard/kids/doubts', icon: HelpCircle, label: 'My Doubts' },

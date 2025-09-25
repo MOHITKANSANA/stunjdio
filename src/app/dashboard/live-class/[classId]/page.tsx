@@ -169,8 +169,9 @@ export default function LiveClassPlayerPage() {
                 <div className="w-full shrink-0">
                     <YouTubePlayer videoId={videoId} />
                 </div>
-                 <div className="flex-grow min-h-0 hidden md:block">
-                     {/* This space is intentionally left for potential future use or can be removed */}
+                 <div className="flex-grow min-h-0 hidden md:block p-4">
+                     <h1 className="text-2xl font-bold">{liveClass.title}</h1>
+                     <p className="text-muted-foreground">{liveClass.startTime?.toDate()?.toLocaleString()}</p>
                 </div>
             </div>
             
