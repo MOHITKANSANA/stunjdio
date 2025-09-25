@@ -22,6 +22,7 @@ import { useToast } from '@/hooks/use-toast';
 import AiTestGenerator from '@/app/dashboard/ai-test/page';
 import { addDoubtReplyAction } from '@/app/actions/doubts';
 import type { GenerateAiTestOutput } from '@/ai/flows/generate-ai-test';
+import { Input } from '@/components/ui/input';
 
 const ContentIcon = ({ type }: { type: string }) => {
     switch (type) {
