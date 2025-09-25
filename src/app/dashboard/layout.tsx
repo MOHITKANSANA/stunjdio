@@ -23,6 +23,7 @@ import {
   Download,
   Sparkles,
   Youtube,
+  Wand2,
 } from 'lucide-react';
 
 import { useAuth } from '@/hooks/use-auth';
@@ -52,7 +53,7 @@ import { firestore } from '@/lib/firebase';
 const bottomNavItems = [
     { href: '/dashboard', icon: Home, label: 'Home' },
     { href: '/dashboard/library', icon: Library, label: 'My Library' },
-    { href: '/dashboard/live-class', icon: Video, label: 'Live' },
+    { href: '/dashboard/ai-magic', icon: Wand2, label: 'AI Magic' },
     { href: '/dashboard/downloads', icon: Download, label: 'Downloads' },
     { href: '/dashboard/profile', icon: User, label: 'Profile' },
 ];
@@ -74,7 +75,7 @@ const sidebarNavItems = [
     { href: '/dashboard/scholarship', icon: Award, label: 'scholarship' },
     { href: '/dashboard/live-class', icon: Video, label: 'Free Live Classes' },
     { href: '/dashboard/video-lectures', icon: Youtube, label: 'Video Lectures' },
-    { href: '/dashboard/tutor', icon: GraduationCap, label: 'ai_tutor' },
+    { href: '/dashboard/ai-magic', icon: Wand2, label: 'AI Magic' },
     { href: '/dashboard/ai-test', icon: ShieldQuestion, label: 'ai_tests' },
 ];
 
@@ -357,5 +358,3 @@ export default function DashboardLayout({
       </SidebarProvider>
   );
 }
-
-    
