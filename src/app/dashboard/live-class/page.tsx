@@ -63,13 +63,10 @@ const ClassGrid = ({ classes, loading, error }: { classes: any[] | undefined, lo
 }
 
 export default function LiveClassGalleryPage() {
-    const [liveClasses, loading, error] = useCollection(
-        query(collection(firestore, 'live_classes'), orderBy('startTime', 'desc'))
-    );
-
     const now = new Date();
-    const upcomingClasses = liveClasses?.docs.filter(doc => doc.data().startTime?.toDate() > now);
-    const pastClasses = liveClasses?.docs.filter(doc => doc.data().startTime?.toDate() <= now);
+    const [liveClasses, loading, error] = useCollection(
+        query(collection(firestore, 'live_classes'), where('startTime', '>', now), orderBy('startTime', 'asc'))
+    );
 
     return (
         <div className="max-w-6xl mx-auto space-y-8 p-4 md:p-8">
@@ -78,18 +75,7 @@ export default function LiveClassGalleryPage() {
                 <p className="text-muted-foreground mt-2">Join our live sessions and learn from experts in real-time.</p>
             </div>
             
-            <Tabs defaultValue="upcoming">
-                <TabsList className="grid w-full grid-cols-2 max-w-sm mx-auto">
-                    <TabsTrigger value="upcoming">Upcoming Classes</TabsTrigger>
-                    <TabsTrigger value="lectures">Video Lectures</TabsTrigger>
-                </TabsList>
-                <TabsContent value="upcoming" className="mt-6">
-                    <ClassGrid classes={upcomingClasses} loading={loading} error={error} />
-                </TabsContent>
-                <TabsContent value="lectures" className="mt-6">
-                    <ClassGrid classes={pastClasses} loading={loading} error={error} />
-                </TabsContent>
-            </Tabs>
+            <ClassGrid classes={liveClasses?.docs} loading={loading} error={error} />
         </div>
     );
 }

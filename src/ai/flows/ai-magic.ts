@@ -38,8 +38,7 @@ const aiMagicFlow = ai.defineFlow(
   },
   async (input) => {
     // Step 1: Determine user's intent - question answering or image generation.
-    const intentPrompt = ai.definePrompt({
-      name: 'intentDetectionPrompt',
+    const intentResponse = await ai.generate({
       prompt: `Analyze the user's prompt to determine their primary intent. Respond with "image_generation" if they are asking to create, draw, or generate an image. Otherwise, respond with "question_answering".
 
 User Prompt: "${input.prompt}"
@@ -47,13 +46,12 @@ User Intent:`,
       config: { temperature: 0 },
     });
     
-    const intentResponse = await intentPrompt();
     const intent = intentResponse.text.trim().toLowerCase();
 
     let answer = '';
     let generatedImageDataUri: string | undefined = undefined;
 
-    if (intent === 'image_generation') {
+    if (intent.includes('image_generation')) {
       // Step 2a: Image Generation
       answer = "Here is the image you requested. I hope you like it!";
       const { media } = await ai.generate({
@@ -66,6 +64,7 @@ User Intent:`,
       // Step 2b: Question Answering
       const qaPrompt = ai.definePrompt({
         name: 'qaPrompt',
+        input: {schema: z.object({ prompt: z.string(), imageDataUri: z.string().optional() }) },
         prompt: `You are a helpful AI assistant. Provide a clear and concise answer to the user's question. Use the provided image as context if available.
         
 User Question: {{{prompt}}}
@@ -85,3 +84,4 @@ User Question: {{{prompt}}}
     };
   }
 );
+

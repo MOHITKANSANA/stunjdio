@@ -12,7 +12,6 @@ import Image from 'next/image';
 
 export default function VideoLecturesPage() {
     const now = new Date();
-    // Fetch classes that have already started
     const [pastClasses, loading, error] = useCollection(
         query(collection(firestore, 'live_classes'), where('startTime', '<=', now), orderBy('startTime', 'desc'))
     );
