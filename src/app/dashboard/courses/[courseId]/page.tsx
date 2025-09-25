@@ -203,8 +203,9 @@ const DoubtsTab = ({ courseId }: { courseId: string }) => {
     
     const handleLikeToggle = async (doubtId: string, likes: string[]) => {
         if (!user) return;
+        const currentLikes = likes || [];
         const doubtRef = doc(firestore, 'courses', courseId, 'doubts', doubtId);
-        if (likes.includes(user.uid)) {
+        if (currentLikes.includes(user.uid)) {
             await updateDoc(doubtRef, { likes: arrayRemove(user.uid) });
         } else {
             await updateDoc(doubtRef, { likes: arrayUnion(user.uid), dislikes: arrayRemove(user.uid) });
@@ -213,8 +214,9 @@ const DoubtsTab = ({ courseId }: { courseId: string }) => {
     
     const handleDislikeToggle = async (doubtId: string, dislikes: string[]) => {
         if (!user) return;
+        const currentDislikes = dislikes || [];
         const doubtRef = doc(firestore, 'courses', courseId, 'doubts', doubtId);
-        if (dislikes.includes(user.uid)) {
+        if (currentDislikes.includes(user.uid)) {
             await updateDoc(doubtRef, { dislikes: arrayRemove(user.uid) });
         } else {
             await updateDoc(doubtRef, { dislikes: arrayUnion(user.uid), likes: arrayRemove(user.uid) });
@@ -242,8 +244,8 @@ const DoubtsTab = ({ courseId }: { courseId: string }) => {
                 {doubtsCollection?.docs.map(doubtDoc => {
                     const doubt = doubtDoc.data();
                     const doubtId = doubtDoc.id;
-                    const isLiked = user && doubt.likes.includes(user.uid);
-                    const isDisliked = user && doubt.dislikes.includes(user.uid);
+                    const isLiked = user && (doubt.likes || []).includes(user.uid);
+                    const isDisliked = user && (doubt.dislikes || []).includes(user.uid);
                     return (
                         <div key={doubtId} className="p-4 border rounded-lg">
                             <div className="flex items-start gap-3">
@@ -256,10 +258,10 @@ const DoubtsTab = ({ courseId }: { courseId: string }) => {
                                     <p>{doubt.text}</p>
                                      <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
                                         <Button variant="ghost" size="sm" className={`h-auto p-1 ${isLiked ? 'text-primary' : ''}`} onClick={() => handleLikeToggle(doubtId, doubt.likes)}>
-                                            <ThumbsUp size={14} className="mr-1.5"/> {doubt.likes.length}
+                                            <ThumbsUp size={14} className="mr-1.5"/> {doubt.likes?.length || 0}
                                         </Button>
                                          <Button variant="ghost" size="sm" className={`h-auto p-1 ${isDisliked ? 'text-destructive' : ''}`} onClick={() => handleDislikeToggle(doubtId, doubt.dislikes)}>
-                                            <ThumbsDown size={14} className="mr-1.5"/> {doubt.dislikes.length}
+                                            <ThumbsDown size={14} className="mr-1.5"/> {doubt.dislikes?.length || 0}
                                         </Button>
                                          <Button variant="ghost" size="sm" className="h-auto p-1">
                                             <MessageSquare size={14} className="mr-1.5"/> Reply
@@ -549,7 +551,7 @@ function CourseDetailPageContent() {
                 <Button size="lg" className="w-full text-lg" disabled>Enrolled</Button>
               ) : (
                 <Button asChild size="lg" className="w-full text-lg">
-                   <Link href={isFreeCourse ? `/dashboard/courses/free` : `/dashboard/courses/${courseId}/enroll`}>
+                   <Link href={isFreeCourse ? `/dashboard/courses/free` : `/dashboard/payment-verification?courseId=${courseId}`}>
                         {isFreeCourse ? 'Enroll for Free' : 'Enroll Now'}
                    </Link>
                 </Button>
@@ -586,5 +588,3 @@ export default function CourseDetailPage() {
         </Suspense>
     )
 }
-
-    
