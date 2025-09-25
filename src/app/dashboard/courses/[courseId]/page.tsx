@@ -21,11 +21,13 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useToast } from '@/hooks/use-toast';
 import AiTestGenerator from '@/app/dashboard/ai-test/page';
 import { addDoubtReplyAction } from '@/app/actions/doubts';
+import type { GenerateAiTestOutput } from '@/ai/flows/generate-ai-test';
 
 const ContentIcon = ({ type }: { type: string }) => {
     switch (type) {
-        case 'video_lecture': return <Video className="h-5 w-5 text-primary"/>;
+        case 'video': return <Video className="h-5 w-5 text-primary"/>;
         case 'pdf': return <FileText className="h-5 w-5 text-primary"/>;
+        case 'note': return <StickyNote className="h-5 w-5 text-primary"/>;
         case 'test_series': return <FileText className="h-5 w-5 text-primary" />;
         case 'ai_test': return <ShieldQuestion className="h-5 w-5 text-primary" />;
         default: return <BookOpen className="h-5 w-5 text-primary"/>;
@@ -113,7 +115,7 @@ const PDFViewer = ({ pdfUrl, title, onOpenChange }: { pdfUrl: string, title: str
 
 const CourseContentTab = ({ courseId, onContentClick }: { courseId: string, onContentClick: (content: any) => void }) => {
     const [courseContentCollection, courseContentLoading, courseContentError] = useCollection(
-        query(collection(firestore, 'courses', courseId, 'content'), where('type', '==', 'pdf'), orderBy('createdAt', 'asc'))
+        query(collection(firestore, 'courses', courseId, 'content'), where('type', 'in', ['pdf', 'note']), orderBy('createdAt', 'asc'))
     );
     return (
         <CardContent>
@@ -137,7 +139,7 @@ const CourseContentTab = ({ courseId, onContentClick }: { courseId: string, onCo
               })}
             </div>
           ) : (
-            <p className="text-muted-foreground text-center py-8">No content has been added to this course yet.</p>
+            <p className="text-muted-foreground text-center py-8">No PDF or note content has been added to this course yet.</p>
           )}
         </CardContent>
     )
@@ -179,6 +181,7 @@ const DoubtsTab = ({ courseId }: { courseId: string }) => {
         if (!user || !text || !text.trim()) return;
 
         const result = await addDoubtReplyAction({
+            courseId,
             doubtId,
             doubtAuthorId,
             reply: {
@@ -302,7 +305,7 @@ const DoubtsTab = ({ courseId }: { courseId: string }) => {
 
 const VideoLecturesTab = ({ courseId, onContentClick }: { courseId: string; onContentClick: (content: any) => void }) => {
     const [videos, loading, error] = useCollection(
-        query(collection(firestore, 'courses', courseId, 'content'), where('type', '==', 'video_lecture'), orderBy('createdAt', 'asc'))
+        query(collection(firestore, 'courses', courseId, 'content'), where('type', '==', 'video'), orderBy('createdAt', 'asc'))
     );
 
     return (
@@ -346,7 +349,15 @@ const TestsTab = ({ course, courseId }: { course: DocumentData, courseId: string
         <CardContent className="space-y-4">
             <Dialog open={isAiTestModalOpen} onOpenChange={setIsAiTestModalOpen}>
                 <DialogContent className="max-w-md p-0 bg-transparent border-none">
-                    <AiTestGenerator onTestGenerated={() => { setIsAiTestModalOpen(false) }} isCourseContext={true} subject={course.title} examType={course.category} />
+                    <AiTestGenerator 
+                        onTestGenerated={(testData: GenerateAiTestOutput, formData: any) => { 
+                            setIsAiTestModalOpen(false);
+                            // Potentially navigate to a test player page with the generated test data
+                        }} 
+                        isCourseContext={true} 
+                        subject={course.title} 
+                        examType={course.category} 
+                    />
                 </DialogContent>
             </Dialog>
 
@@ -391,7 +402,7 @@ const TestsTab = ({ course, courseId }: { course: DocumentData, courseId: string
                             <Bot className="h-8 w-8" />
                         </div>
                         <h3 className="font-bold text-lg">AI Generated Test</h3>
-                        <p className="text-muted-foreground text-sm">Create a personalized test based on this course.</p>
+                        <p className="text-muted-foreground text-sm">Create unlimited personalized tests for this course.</p>
                      </div>
                 </TabsContent>
             </Tabs>
@@ -482,14 +493,14 @@ function CourseDetailPageContent() {
 
   return (
     <div className="max-w-5xl mx-auto p-4 md:p-8">
-       {selectedContent?.type === 'video_lecture' && (
+       {selectedContent?.type === 'video' && (
             <VideoPlayer 
                 videoUrl={selectedContent.url}
                 title={selectedContent.title}
                 onOpenChange={(isOpen) => !isOpen && setSelectedContent(null)}
             />
         )}
-         {selectedContent?.type === 'pdf' && (
+         {(selectedContent?.type === 'pdf' || selectedContent?.type === 'note') && (
             <PDFViewer 
                 pdfUrl={selectedContent.url}
                 title={selectedContent.title}
@@ -538,7 +549,7 @@ function CourseDetailPageContent() {
                 <Button size="lg" className="w-full text-lg" disabled>Enrolled</Button>
               ) : (
                 <Button asChild size="lg" className="w-full text-lg">
-                   <Link href={isFreeCourse ? `/dashboard/courses/free` : `/dashboard/payment-verification?courseId=${courseId}`}>
+                   <Link href={isFreeCourse ? `/dashboard/courses/free` : `/dashboard/courses/${courseId}/enroll`}>
                         {isFreeCourse ? 'Enroll for Free' : 'Enroll Now'}
                    </Link>
                 </Button>

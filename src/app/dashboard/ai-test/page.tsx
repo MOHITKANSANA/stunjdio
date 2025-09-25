@@ -9,7 +9,7 @@ import { generateAiTestAction } from '@/app/actions/ai-test';
 import type { GenerateAiTestOutput } from '@/ai/flows/generate-ai-test';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useCollection } from 'react-firebase-hooks/firestore';
-import { collection, query, orderBy } from 'firebase/firestore';
+import { collection, query, orderBy, doc, getDoc, setDoc, increment, serverTimestamp } from 'firebase/firestore';
 import { firestore } from '@/lib/firebase';
 import Link from 'next/link';
 
@@ -56,6 +56,7 @@ const DIFFICULTIES = ['Easy', 'Hard'] as const;
 const CLASSES = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"];
 const EXAMS = ["UPSC", "SSC CGL", "NDA", "CDS", "Army", "NTPC", "PCS"];
 const BIG_EXAMS = ["UPSC", "SSC CGL", "NDA", "CDS", "Army", "NTPC", "PCS"];
+const MAX_FREE_TESTS = 15;
 
 
 function AiTestGenerator({ onTestGenerated, isCourseContext = false, subject: courseSubject = 'General', examType: courseExamType = 'General' }: { onTestGenerated: (data: GenerateAiTestOutput, formData: TestGenerationValues) => void; isCourseContext?: boolean; subject?: string; examType?: string; }) {
@@ -65,6 +66,9 @@ function AiTestGenerator({ onTestGenerated, isCourseContext = false, subject: co
     const [history, setHistory] = useState<{ type: 'user' | 'ai'; content: string; options?: string[] }[]>([]);
     const [showOtherLanguages, setShowOtherLanguages] = useState(false);
     const { user } = useAuth();
+    const [testCount, setTestCount] = useState(0);
+    const [limitReached, setLimitReached] = useState(false);
+    const scrollAreaRef = useRef<HTMLDivElement>(null);
     
     const form = useForm<TestGenerationValues>({
         resolver: zodResolver(testGenerationSchema),
@@ -78,27 +82,45 @@ function AiTestGenerator({ onTestGenerated, isCourseContext = false, subject: co
         },
     });
 
-    const isBigExam = BIG_EXAMS.includes(form.watch('examType'));
-
     useEffect(() => {
-        setHistory([{ type: 'ai', content: 'What is your language?', options: [...LANGUAGES, 'Other Languages'] }]);
-    }, []);
+        if (!isCourseContext && user) {
+            const usageRef = doc(firestore, 'aiTestUsage', user.uid);
+            getDoc(usageRef).then(docSnap => {
+                const count = docSnap.exists() ? docSnap.data().count : 0;
+                setTestCount(count);
+                if (count >= MAX_FREE_TESTS) {
+                    setLimitReached(true);
+                    setHistory([{ type: 'ai', content: `You have reached your free limit of ${MAX_FREE_TESTS} tests. Please enroll in a course for unlimited tests.` }]);
+                } else {
+                     setHistory([{ type: 'ai', content: 'What is your language?', options: [...LANGUAGES, 'Other Languages'] }]);
+                }
+            });
+        } else {
+             setHistory([{ type: 'ai', content: 'What is your language?', options: [...LANGUAGES, 'Other Languages'] }]);
+        }
+    }, [user, isCourseContext]);
+
+     useEffect(() => {
+        if (scrollAreaRef.current) {
+            scrollAreaRef.current.scrollTo({ top: scrollAreaRef.current.scrollHeight, behavior: 'smooth' });
+        }
+    }, [history]);
 
     const handleSelect = async (value: string | number) => {
+        if (limitReached) return;
         setHistory(prev => [...prev, { type: 'user', content: String(value) }]);
 
         if (step === 0) { // Language Step
             if (value === 'Other Languages') {
                 setShowOtherLanguages(true);
                 setHistory(prev => [...prev, { type: 'ai', content: 'Please select your language.', options: OTHER_LANGUAGES }]);
-                return; // Wait for user to select from the new list
+                return;
             }
             form.setValue('language', String(value));
             setStep(1);
             setHistory(prev => [...prev, { type: 'ai', content: `Which exam are you preparing for, or which class are you in?`, options: [...CLASSES, ...EXAMS, 'Other Exam'] }]);
         } else if (step === 1) { // Exam/Class Step
              if (value === 'Other Exam') {
-                 // Handle custom exam input if needed in the future
                  form.setValue('examType', 'General');
              } else {
                 form.setValue('examType', String(value));
@@ -110,7 +132,6 @@ function AiTestGenerator({ onTestGenerated, isCourseContext = false, subject: co
             setStep(3);
             if (BIG_EXAMS.includes(form.getValues('examType'))) {
                 form.setValue('difficulty', 'Hard');
-                 // Skip difficulty selection and submit
                  await form.handleSubmit(onGenerateSubmit)();
             } else {
                  setHistory(prev => [...prev, { type: 'ai', content: 'How difficult should the test be?', options: ['Easy', 'Hard'] }]);
@@ -119,17 +140,21 @@ function AiTestGenerator({ onTestGenerated, isCourseContext = false, subject: co
             // @ts-ignore
             form.setValue('difficulty', value);
             setStep(4);
-            // Submit the form
             await form.handleSubmit(onGenerateSubmit)();
         }
     };
     
     async function onGenerateSubmit(data: TestGenerationValues) {
+        if (limitReached) return;
         setIsLoading(true);
         setError(null);
         setHistory(prev => [...prev, { type: 'ai', content: 'Generating your test...' }]);
         try {
             const result = await generateAiTestAction(data);
+             if (!isCourseContext && user) {
+                const usageRef = doc(firestore, 'aiTestUsage', user.uid);
+                await setDoc(usageRef, { count: increment(1), lastTest: serverTimestamp() }, { merge: true });
+            }
             onTestGenerated(result, data);
         } catch (e: any) {
             setError(e.message);
@@ -143,49 +168,51 @@ function AiTestGenerator({ onTestGenerated, isCourseContext = false, subject: co
         <header className="bg-blue-600 p-3 flex items-center justify-between rounded-t-2xl">
           <h2 className="font-bold text-lg">AI Test Generator</h2>
         </header>
-        <ScrollArea className="flex-1 p-4">
+        <div className="flex-1 p-4 overflow-y-auto" ref={scrollAreaRef}>
             <div className="space-y-4">
             {history.map((item, index) => (
-                <div key={index} className={`flex ${item.type === 'user' ? 'justify-end' : 'justify-start'}`}>
-                {item.type === 'ai' && (
-                    <Avatar className="h-8 w-8 mr-2">
-                        <AvatarImage src="https://i.postimg.cc/44J0Z5V9/ai-icon.png" />
-                        <AvatarFallback>AI</AvatarFallback>
-                    </Avatar>
-                )}
-                <div className={`rounded-xl p-3 max-w-xs ${item.type === 'user' ? 'bg-green-600' : 'bg-gray-700'}`}>
-                    <p>{item.content}</p>
-                    {item.options && (
-                        <div className="mt-3 flex flex-col gap-2">
-                            {item.options.map(opt => (
-                                <button key={opt} onClick={() => handleSelect(opt)} className="bg-gray-600 hover:bg-gray-500 text-white font-semibold py-2 px-4 rounded-lg text-left transition-colors">
-                                    {opt}
-                                </button>
-                            ))}
-                        </div>
+                <div key={index} className={`flex flex-col ${item.type === 'user' ? 'items-end' : 'items-start'}`}>
+                <div className="flex items-end gap-2 max-w-xs">
+                    {item.type === 'ai' && (
+                        <Avatar className="h-8 w-8">
+                            <AvatarImage src="https://i.postimg.cc/44J0Z5V9/ai-icon.png" />
+                            <AvatarFallback>AI</AvatarFallback>
+                        </Avatar>
+                    )}
+                    <div className={`rounded-xl p-3 ${item.type === 'user' ? 'bg-green-600 rounded-br-none' : 'bg-gray-700 rounded-bl-none'}`}>
+                        <p>{item.content}</p>
+                    </div>
+                     {item.type === 'user' && (
+                        <Avatar className="h-8 w-8">
+                            <AvatarImage src={user?.photoURL || ''} />
+                            <AvatarFallback>{user?.displayName?.charAt(0) || 'U'}</AvatarFallback>
+                        </Avatar>
                     )}
                 </div>
-                 {item.type === 'user' && (
-                    <Avatar className="h-8 w-8 ml-2">
-                        <AvatarImage src={user?.photoURL || ''} />
-                        <AvatarFallback>{user?.displayName?.charAt(0) || 'U'}</AvatarFallback>
-                    </Avatar>
-                )}
+                 {item.options && (
+                    <div className="mt-3 flex flex-col gap-2 w-full max-w-xs items-start">
+                        {item.options.map(opt => (
+                            <button key={opt} onClick={() => handleSelect(opt)} className="bg-gray-600 hover:bg-gray-500 text-white font-semibold py-2 px-4 rounded-lg text-left transition-colors w-full">
+                                {opt}
+                            </button>
+                        ))}
+                    </div>
+                 )}
                 </div>
             ))}
              {isLoading && (
-                 <div className="flex justify-start">
-                      <Avatar className="h-8 w-8 mr-2">
+                 <div className="flex items-end gap-2 max-w-xs">
+                    <Avatar className="h-8 w-8">
                         <AvatarImage src="https://i.postimg.cc/44J0Z5V9/ai-icon.png" />
                         <AvatarFallback>AI</AvatarFallback>
                     </Avatar>
-                     <div className="rounded-xl p-3 max-w-xs bg-gray-700 flex items-center">
+                    <div className="rounded-xl p-3 bg-gray-700 rounded-bl-none flex items-center">
                         <Loader2 className="h-5 w-5 animate-spin"/>
-                     </div>
+                    </div>
                  </div>
              )}
             </div>
-        </ScrollArea>
+        </div>
           {error && (
             <div className="p-4">
                 <Alert variant="destructive">
@@ -338,7 +365,7 @@ function AiTestPageContent() {
      const currentQuestion = testData.questions[currentQuestionIndex];
      const isLastQuestion = currentQuestionIndex === testData.questions.length - 1;
      const progress = ((currentQuestionIndex + 1) / testData.questions.length) * 100;
-     const timerValue = (generationData.questionCount + 20) * 60; // Example timer logic
+     const timerValue = (generationData.questionCount + 20) * 60;
 
      return (
         <div className="max-w-4xl mx-auto space-y-6 p-4">
