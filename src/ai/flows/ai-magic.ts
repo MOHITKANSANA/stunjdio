@@ -12,7 +12,7 @@ import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 import { googleAI } from '@genkit-ai/googleai';
 
-export const AiMagicInputSchema = z.object({
+const AiMagicInputSchema = z.object({
   prompt: z.string().describe('The user\'s request, which could be a question or an image generation prompt.'),
   imageDataUri: z.string().optional().describe(
     "An optional image provided by the user to ask questions about, as a data URI that must include a MIME type and use Base64 encoding. Expected format: 'data:<mimetype>;base64,<encoded_data>'."
@@ -20,7 +20,7 @@ export const AiMagicInputSchema = z.object({
 });
 export type AiMagicInput = z.infer<typeof AiMagicInputSchema>;
 
-export const AiMagicOutputSchema = z.object({
+const AiMagicOutputSchema = z.object({
   answer: z.string().describe("The AI's text-based answer to the user's prompt."),
   generatedImageDataUri: z.string().optional().describe("A generated image as a data URI, if the user requested one. Expected format: 'data:image/png;base64,<encoded_data>'."),
 });
