@@ -352,6 +352,9 @@ const TestsTab = ({ course, courseId }: { course: DocumentData, courseId: string
         <CardContent className="space-y-4">
             <Dialog open={isAiTestModalOpen} onOpenChange={setIsAiTestModalOpen}>
                 <DialogContent className="max-w-md p-0 bg-transparent border-none">
+                    <DialogHeader>
+                        <DialogTitle className="sr-only">AI Test Generator</DialogTitle>
+                    </DialogHeader>
                     <AiTestGenerator 
                         onTestGenerated={(testData: GenerateAiTestOutput, formData: any) => { 
                             setIsAiTestModalOpen(false);
