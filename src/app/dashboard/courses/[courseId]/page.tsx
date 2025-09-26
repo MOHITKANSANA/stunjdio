@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/button';
 import { IndianRupee, BookOpen, Clock, Users, Video, PlayCircle, FileText, StickyNote, Send, HelpCircle, GraduationCap, ShieldQuestion, Bot, ThumbsUp, ThumbsDown, MessageSquare } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/use-auth';
-import { collection, query, where, orderBy, addDoc, serverTimestamp, arrayUnion, updateDoc, arrayRemove, getDocs } from 'firebase/firestore';
+import { collection, query, where, orderBy, addDoc, serverTimestamp, arrayUnion, updateDoc, arrayRemove, getDocs, limit, onSnapshot } from 'firebase/firestore';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
@@ -178,7 +178,7 @@ const intToRGB = (i: number) => {
     return "00000".substring(0, 6 - c.length) + c;
 }
 
-const CourseContentTab = ({ courseId, onContentClick }: { courseId: string, onContentClick: (content: any) => void }) => {
+const ContentTab = ({ courseId, onContentClick }: { courseId: string, onContentClick: (content: any) => void }) => {
     const [courseContentCollection, courseContentLoading, courseContentError] = useCollection(
         query(collection(firestore, 'courses', courseId, 'content'), where('type', 'in', ['pdf', 'note']))
     );
@@ -378,11 +378,11 @@ const DoubtsTab = ({ courseId }: { courseId: string }) => {
 };
 
 const VideoLecturesTab = ({ courseId, onContentClick, activeContentId }: { courseId: string; onContentClick: (content: any) => void; activeContentId: string | null }) => {
-    const [videos, loading, error] = useCollection(
+    const [videosCollection, loading, error] = useCollection(
         query(collection(firestore, 'courses', courseId, 'content'), where('type', '==', 'video'))
     );
 
-    const sortedVideos = videos?.docs.sort((a, b) => {
+    const sortedVideos = videosCollection?.docs.sort((a, b) => {
         const dateA = a.data().createdAt?.toDate() || 0;
         const dateB = b.data().createdAt?.toDate() || 0;
         if (dateA < dateB) return -1;
@@ -539,7 +539,7 @@ const EnrolledCourseView = ({ course, courseId }: { course: DocumentData, course
                  <PDFViewer 
                     pdfUrl={selectedContent.url}
                     title={selectedContent.title}
-                    onOpenChange={(isOpen) => !isOpen && setIsPdfOpen(null)}
+                    onOpenChange={(isOpen) => !isOpen && setIsPdfOpen(false)}
                 />
             )}
             <div className="lg:w-[65%] w-full flex-shrink-0">
@@ -581,7 +581,7 @@ const EnrolledCourseView = ({ course, courseId }: { course: DocumentData, course
                         <VideoLecturesTab courseId={courseId} onContentClick={handleContentClick} activeContentId={selectedContent?.id} />
                     </TabsContent>
                     <TabsContent value="content">
-                        <CourseContentTab courseId={courseId} onContentClick={handleContentClick} />
+                        <ContentTab courseId={courseId} onContentClick={handleContentClick} />
                     </TabsContent>
                     <TabsContent value="tests">
                         <TestsTab course={course} courseId={courseId} />
@@ -713,4 +713,3 @@ export default function CourseDetailPage() {
         </Suspense>
     )
 }
-
