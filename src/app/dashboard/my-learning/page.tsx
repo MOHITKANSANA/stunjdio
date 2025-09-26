@@ -1,7 +1,7 @@
 
 'use client';
 
-import { BookOpenCheck, Trophy, Library, BookMarked, BellDot } from "lucide-react";
+import { BookOpenCheck, Trophy, Library, BookMarked, BellDot, Newspaper } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from '@/hooks/use-auth';
@@ -138,9 +138,10 @@ export default function MyLearningPage() {
                 <p className="text-muted-foreground mt-2">All your learning materials in one place.</p>
             </div>
              <Tabs defaultValue="courses" className="w-full">
-                <TabsList className="grid w-full grid-cols-4 max-w-lg">
+                <TabsList className="grid w-full grid-cols-5 max-w-xl">
                     <TabsTrigger value="courses">My Courses</TabsTrigger>
                     <TabsTrigger value="ebooks">E-Books</TabsTrigger>
+                    <TabsTrigger value="papers">Previous Papers</TabsTrigger>
                     <TabsTrigger value="scholarships">Scholarships</TabsTrigger>
                     <TabsTrigger value="notifications">Notifications</TabsTrigger>
                 </TabsList>
@@ -184,6 +185,16 @@ export default function MyLearningPage() {
                             <EBookCard key={doc.id} ebook={doc.data()} onClick={() => handleEbookClick(doc.data())} />
                         ))}
                     </div>
+                </TabsContent>
+                 <TabsContent value="papers" className="mt-6">
+                    <Link href="/dashboard/papers">
+                        <Card className="hover:bg-muted">
+                            <CardHeader>
+                                <CardTitle className="flex items-center gap-3"><Newspaper/> View Previous Year Papers</CardTitle>
+                                <CardDescription>Access our full library of past exam papers to practice.</CardDescription>
+                            </CardHeader>
+                        </Card>
+                    </Link>
                 </TabsContent>
                 <TabsContent value="scholarships" className="mt-6">
                     <div className="text-center py-12">

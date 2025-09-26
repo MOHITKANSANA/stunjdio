@@ -23,6 +23,7 @@ import {
   Download,
   Youtube,
   Bot,
+  Newspaper,
 } from 'lucide-react';
 
 import { useAuth } from '@/hooks/use-auth';
@@ -72,6 +73,7 @@ const sidebarNavItems = [
     { href: '/dashboard/courses/free', icon: BookCopy, label: 'Free Courses' },
     { href: '/dashboard/scholarship', icon: Award, label: 'scholarship' },
     { href: '/dashboard/classes-lectures', icon: Video, label: 'Classes & Lectures' },
+    { href: '/dashboard/papers', icon: Newspaper, label: 'Previous Papers' },
     { href: '/dashboard/tutor', icon: Bot, label: 'AI Tutor' },
     { href: '/dashboard/ai-test', icon: ShieldQuestion, label: 'ai_tests' },
 ];
@@ -344,7 +346,7 @@ export default function DashboardLayout({
                 <AppHeader />
                  <main className="flex-1 overflow-y-auto h-full">
                     <SidebarInset>
-                        <div className={cn(!pathname.includes('/live-class/') && 'p-4 md:p-6')}>
+                        <div className={cn(!pathname.includes('/live-class/') && !pathname.includes('/video/') && 'p-4 md:p-6')}>
                             {children}
                         </div>
                     </SidebarInset>
