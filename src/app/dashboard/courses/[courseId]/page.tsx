@@ -308,16 +308,24 @@ const DoubtsTab = ({ courseId }: { courseId: string }) => {
 
 const VideoLecturesTab = ({ courseId, onContentClick }: { courseId: string; onContentClick: (content: any) => void }) => {
     const [videos, loading, error] = useCollection(
-        query(collection(firestore, 'courses', courseId, 'content'), where('type', '==', 'video'), orderBy('createdAt', 'asc'))
+        query(collection(firestore, 'courses', courseId, 'content'), where('type', '==', 'video'))
     );
+
+    const sortedVideos = videos?.docs.sort((a, b) => {
+        const dateA = a.data().createdAt?.toDate() || 0;
+        const dateB = b.data().createdAt?.toDate() || 0;
+        if (dateA < dateB) return -1;
+        if (dateA > dateB) return 1;
+        return 0;
+    });
 
     return (
         <CardContent>
             {error && <p className="text-destructive">Could not load videos: {error.message}</p>}
             {loading && <Skeleton className="w-full h-24" />}
-            {videos && videos.docs.length > 0 ? (
+            {sortedVideos && sortedVideos.length > 0 ? (
                 <div className="space-y-4">
-                    {videos.docs.map(doc => {
+                    {sortedVideos.map(doc => {
                         const content = doc.data();
                         return (
                             <div key={doc.id} className="flex items-center justify-between p-3 rounded-lg border bg-muted/50 cursor-pointer hover:bg-muted transition-colors" onClick={() => onContentClick(content)}>
@@ -609,5 +617,3 @@ export default function CourseDetailPage() {
         </Suspense>
     )
 }
-
-    
