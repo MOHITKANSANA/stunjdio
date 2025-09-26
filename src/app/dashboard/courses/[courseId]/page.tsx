@@ -343,10 +343,18 @@ const VideoLecturesTab = ({ courseId, onContentClick }: { courseId: string; onCo
 };
 
 const TestsTab = ({ course, courseId }: { course: DocumentData, courseId: string }) => {
-    const [tests, loading, error] = useCollection(
-        query(collection(firestore, 'courses', courseId, 'content'), where('type', '==', 'test_series'), orderBy('createdAt', 'asc'))
+    const [testsCollection, loading, error] = useCollection(
+        query(collection(firestore, 'courses', courseId, 'content'), where('type', '==', 'test_series'))
     );
     const [isAiTestModalOpen, setIsAiTestModalOpen] = useState(false);
+
+    const tests = testsCollection?.docs.sort((a, b) => {
+        const dateA = a.data().createdAt?.toDate() || 0;
+        const dateB = b.data().createdAt?.toDate() || 0;
+        if (dateA < dateB) return -1;
+        if (dateA > dateB) return 1;
+        return 0;
+    });
     
     return (
         <CardContent className="space-y-4">
@@ -375,9 +383,9 @@ const TestsTab = ({ course, courseId }: { course: DocumentData, courseId: string
                 <TabsContent value="series" className="pt-4">
                     {error && <p className="text-destructive">Could not load test series: {error.message}</p>}
                     {loading && <Skeleton className="w-full h-24" />}
-                    {tests && tests.docs.length > 0 ? (
+                    {tests && tests.length > 0 ? (
                         <div className="space-y-4">
-                            {tests.docs.map(doc => {
+                            {tests.map(doc => {
                                 const content = doc.data();
                                 return (
                                     <Link href={`/dashboard/test-series/${content.testSeriesId}`} key={doc.id}>
@@ -601,3 +609,5 @@ export default function CourseDetailPage() {
         </Suspense>
     )
 }
+
+    
