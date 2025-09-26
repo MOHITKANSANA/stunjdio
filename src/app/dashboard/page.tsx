@@ -144,7 +144,6 @@ const MainDashboard = () => {
       { label: "Free Courses", icon: BookCopy, href: "/dashboard/courses/free", color: "bg-blue-500" },
       { label: "Paid Courses", icon: Book, href: "/dashboard/courses", color: "bg-green-500" },
       { label: "Classes & Lectures", icon: Video, href: "/dashboard/classes-lectures", color: "bg-orange-500" },
-      { label: "Classes & Lectures", icon: Youtube, href: "/dashboard/classes-lectures", color: "bg-red-500" },
       { label: "Test Series", icon: FileText, href: "/dashboard/test-series", color: "bg-purple-500" },
       { label: "Scholarship", icon: Award, href: "/dashboard/scholarship", color: "bg-yellow-500" },
     ];
