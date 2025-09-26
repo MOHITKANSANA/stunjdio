@@ -14,7 +14,7 @@ import { IndianRupee, BookOpen, Clock, Users, Video, PlayCircle, FileText, Stick
 import Link from 'next/link';
 import { useAuth } from '@/hooks/use-auth';
 import { collection, query, where, orderBy, addDoc, serverTimestamp, arrayUnion, updateDoc, arrayRemove, getDocs } from 'firebase/firestore';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -120,7 +120,7 @@ const CourseContentTab = ({ courseId, onContentClick }: { courseId: string, onCo
     );
     return (
         <CardContent>
-          {courseContentError && <p className="text-destructive">Could not load course content.</p>}
+          {courseContentError && <p className="text-destructive">Could not load course content: {courseContentError.message}</p>}
           {courseContentLoading && <Skeleton className="w-full h-24" />}
           {courseContentCollection && courseContentCollection.docs.length > 0 ? (
             <div className="space-y-4">
@@ -139,7 +139,7 @@ const CourseContentTab = ({ courseId, onContentClick }: { courseId: string, onCo
                 )
               })}
             </div>
-          ) : (
+          ) : !courseContentLoading && (
             <p className="text-muted-foreground text-center py-8">No PDF or note content has been added to this course yet.</p>
           )}
         </CardContent>
@@ -172,8 +172,8 @@ const DoubtsTab = ({ courseId }: { courseId: string }) => {
             });
             setDoubtText('');
             toast({ description: "Your doubt has been submitted." });
-        } catch (error) {
-            toast({ variant: 'destructive', description: "Could not submit your doubt." });
+        } catch (error: any) {
+            toast({ variant: 'destructive', description: `Could not submit your doubt: ${error.message}` });
         }
     };
     
@@ -241,7 +241,7 @@ const DoubtsTab = ({ courseId }: { courseId: string }) => {
 
             <div className="space-y-4">
                 {doubtsLoading && <Skeleton className="h-20 w-full" />}
-                {doubtsError && <p className="text-destructive">Could not load doubts.</p>}
+                {doubtsError && <p className="text-destructive">Could not load doubts: {doubtsError.message}</p>}
                 {doubtsCollection?.docs.map(doubtDoc => {
                     const doubt = doubtDoc.data();
                     const doubtId = doubtDoc.id;
@@ -313,7 +313,7 @@ const VideoLecturesTab = ({ courseId, onContentClick }: { courseId: string; onCo
 
     return (
         <CardContent>
-            {error && <p className="text-destructive">Could not load videos.</p>}
+            {error && <p className="text-destructive">Could not load videos: {error.message}</p>}
             {loading && <Skeleton className="w-full h-24" />}
             {videos && videos.docs.length > 0 ? (
                 <div className="space-y-4">
@@ -332,7 +332,7 @@ const VideoLecturesTab = ({ courseId, onContentClick }: { courseId: string; onCo
                         )
                     })}
                 </div>
-            ) : (
+            ) : !loading && (
                 <div className="text-center py-8">
                     <Video className="mx-auto h-12 w-12 text-muted-foreground" />
                     <p className="mt-4">No video lectures have been added yet.</p>
@@ -348,28 +348,14 @@ const TestsTab = ({ course, courseId }: { course: DocumentData, courseId: string
     );
     const [isAiTestModalOpen, setIsAiTestModalOpen] = useState(false);
     
-    // This state is to hold the list of test series that are NOT part of this course, to avoid duplication.
-    const [availableTestSeries, setAvailableTestSeries] = useState<any[]>([]);
-
-    useEffect(() => {
-        const fetchAvailableTestSeries = async () => {
-            if (tests) { // once we know which tests are IN the course
-                const courseTestSeriesIds = tests.docs.map(doc => doc.data().testSeriesId);
-                const allTestSeriesQuery = query(collection(firestore, 'testSeries'), orderBy('createdAt', 'desc'));
-                const allTestSeriesSnapshot = await getDocs(allTestSeriesQuery);
-                const available = allTestSeriesSnapshot.docs.filter(doc => !courseTestSeriesIds.includes(doc.id));
-                setAvailableTestSeries(available);
-            }
-        };
-        fetchAvailableTestSeries();
-    }, [tests]);
-
-
     return (
         <CardContent className="space-y-4">
             <Dialog open={isAiTestModalOpen} onOpenChange={setIsAiTestModalOpen}>
                 <DialogContent className="max-w-md p-0 bg-transparent border-none">
-                     <DialogHeader className="p-4 bg-blue-600 rounded-t-2xl"><DialogTitle className="text-white">AI Test Generator</DialogTitle></DialogHeader>
+                     <DialogHeader className="p-4 bg-blue-600 rounded-t-2xl">
+                        <DialogTitle className="text-white">AI Test Generator</DialogTitle>
+                        <DialogDescription className="text-blue-100">Create a test for {course.title}.</DialogDescription>
+                     </DialogHeader>
                     <AiTestGenerator 
                         onTestGenerated={(testData: GenerateAiTestOutput, formData: any) => { 
                             setIsAiTestModalOpen(false);
@@ -387,7 +373,7 @@ const TestsTab = ({ course, courseId }: { course: DocumentData, courseId: string
                     <TabsTrigger value="ai">AI Generated Test</TabsTrigger>
                 </TabsList>
                 <TabsContent value="series" className="pt-4">
-                    {error && <p className="text-destructive">Could not load test series.</p>}
+                    {error && <p className="text-destructive">Could not load test series: {error.message}</p>}
                     {loading && <Skeleton className="w-full h-24" />}
                     {tests && tests.docs.length > 0 ? (
                         <div className="space-y-4">
@@ -406,7 +392,7 @@ const TestsTab = ({ course, courseId }: { course: DocumentData, courseId: string
                                 )
                             })}
                         </div>
-                    ) : (
+                    ) : !loading && (
                          <div className="text-center py-8">
                             <FileText className="mx-auto h-12 w-12 text-muted-foreground" />
                             <p className="mt-4">No official test series added to this course yet.</p>
@@ -504,7 +490,16 @@ function CourseDetailPageContent() {
     );
   }
 
-  if (courseError || !courseDoc?.exists()) {
+  if (courseError) {
+    return (
+        <div className="max-w-4xl mx-auto p-4 md:p-8 space-y-6">
+            <h1 className="text-2xl font-bold text-destructive">Error Loading Course</h1>
+            <p>Could not load course details: {courseError.message}</p>
+        </div>
+    )
+  }
+  
+  if (!courseDoc?.exists()) {
     notFound();
   }
 
