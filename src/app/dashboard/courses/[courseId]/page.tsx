@@ -3,9 +3,9 @@
 
 import { useState, Suspense, useEffect } from 'react';
 import { doc, DocumentData } from 'firebase/firestore';
-import { useDocument, useCollection, useDocumentData } from 'react-firebase-hooks/firestore';
+import { useDocument, useCollection } from 'react-firebase-hooks/firestore';
 import { firestore } from '@/lib/firebase';
-import { notFound, useParams, useRouter } from 'next/navigation';
+import { notFound, useParams } from 'next/navigation';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import Image from 'next/image';
@@ -23,6 +23,8 @@ import { AiTestGenerator } from '@/app/dashboard/ai-test/page';
 import { addDoubtReplyAction } from '@/app/actions/doubts';
 import type { GenerateAiTestOutput } from '@/ai/flows/generate-ai-test';
 import { Input } from '@/components/ui/input';
+import { saveNoteAction } from '@/app/actions/live-class';
+import { cn } from '@/lib/utils';
 
 const ContentIcon = ({ type }: { type: string }) => {
     switch (type) {
@@ -58,38 +60,33 @@ const getYoutubeVideoId = (url: string): string | null => {
     return videoId;
 }
 
-
-const VideoPlayer = ({ videoUrl, title, onOpenChange }: { videoUrl: string, title: string, onOpenChange: (open: boolean) => void }) => {
+const VideoPlayer = ({ videoUrl }: { videoUrl: string }) => {
     const youtubeVideoId = getYoutubeVideoId(videoUrl);
 
+    if (!youtubeVideoId) {
+        return (
+            <div className="w-full aspect-video bg-black text-white flex items-center justify-center rounded-lg">
+                <p>Unsupported video URL.</p>
+            </div>
+        )
+    }
+
     return (
-        <Dialog open={true} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-3xl p-4">
-                <DialogHeader>
-                    <DialogTitle>{title}</DialogTitle>
-                </DialogHeader>
-                <div className="aspect-video">
-                    {youtubeVideoId ? (
-                        <iframe
-                            width="100%"
-                            height="100%"
-                            src={`https://www.youtube.com/embed/${youtubeVideoId}?autoplay=1`}
-                            title={title}
-                            frameBorder="0"
-                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                            allowFullScreen
-                            className="rounded-lg"
-                        ></iframe>
-                    ) : (
-                         <div className="w-full h-full rounded-lg bg-black flex items-center justify-center">
-                            <p className="text-white">Unsupported video URL.</p>
-                        </div>
-                    )}
-                </div>
-            </DialogContent>
-        </Dialog>
+        <div className="w-full aspect-video">
+            <iframe
+                width="100%"
+                height="100%"
+                src={`https://www.youtube.com/embed/${youtubeVideoId}?autoplay=1&rel=0`}
+                title="Course Video Player"
+                frameBorder="0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                allowFullScreen
+                className="rounded-lg"
+            ></iframe>
+        </div>
     );
 };
+
 
 const PDFViewer = ({ pdfUrl, title, onOpenChange }: { pdfUrl: string, title: string, onOpenChange: (open: boolean) => void }) => {
     const googleDocsUrl = `https://docs.google.com/gview?url=${encodeURIComponent(pdfUrl)}&embedded=true`;
@@ -113,21 +110,95 @@ const PDFViewer = ({ pdfUrl, title, onOpenChange }: { pdfUrl: string, title: str
     );
 };
 
+const NotesSection = ({ contentId }: { contentId: string }) => {
+    const { user } = useAuth();
+    const { toast } = useToast();
+    const [notes, setNotes] = useState('');
+    const [isSaving, setIsSaving] = useState(false);
+
+    useEffect(() => {
+        if (user) {
+            const q = query(
+                collection(firestore, 'liveClassNotes'),
+                where('classId', '==', contentId), // Using classId as a generic content ID
+                where('userId', '==', user.uid),
+                limit(1)
+            );
+            const unsubscribe = onSnapshot(q, (querySnapshot) => {
+                if (!querySnapshot.empty) {
+                    const doc = querySnapshot.docs[0];
+                    setNotes(doc.data().content);
+                } else {
+                    setNotes('');
+                }
+            });
+            return () => unsubscribe();
+        }
+    }, [contentId, user]);
+
+    const handleSave = async () => {
+        if (!user) return;
+        setIsSaving(true);
+        const result = await saveNoteAction(contentId, user.uid, notes);
+        if (result.success) {
+            toast({ description: 'Notes saved successfully.' });
+        } else {
+            toast({ variant: 'destructive', description: 'Failed to save notes.' });
+        }
+        setIsSaving(false);
+    };
+
+    return (
+        <div className="p-4 flex flex-col h-full">
+            <Textarea
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="Write your personal notes here... they are only visible to you."
+                className="flex-1 min-h-[200px]"
+            />
+            <Button onClick={handleSave} disabled={isSaving} className="mt-4">
+                {isSaving ? 'Saving...' : 'Save Notes'}
+            </Button>
+        </div>
+    );
+};
+
+const hashCode = (str: string) => {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+       hash = str.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    return hash;
+}
+
+const intToRGB = (i: number) => {
+    const c = (i & 0x00FFFFFF)
+        .toString(16)
+        .toUpperCase();
+    return "00000".substring(0, 6 - c.length) + c;
+}
 
 const CourseContentTab = ({ courseId, onContentClick }: { courseId: string, onContentClick: (content: any) => void }) => {
     const [courseContentCollection, courseContentLoading, courseContentError] = useCollection(
-        query(collection(firestore, 'courses', courseId, 'content'), where('type', 'in', ['pdf', 'note']), orderBy('createdAt', 'asc'))
+        query(collection(firestore, 'courses', courseId, 'content'), where('type', 'in', ['pdf', 'note']))
     );
+
+    const sortedContent = courseContentCollection?.docs.sort((a, b) => {
+        const dateA = a.data().createdAt?.toDate() || 0;
+        const dateB = b.data().createdAt?.toDate() || 0;
+        if (dateA < dateB) return -1; if (dateA > dateB) return 1; return 0;
+    });
+
     return (
         <CardContent>
           {courseContentError && <p className="text-destructive">Could not load course content: {courseContentError.message}</p>}
           {courseContentLoading && <Skeleton className="w-full h-24" />}
-          {courseContentCollection && courseContentCollection.docs.length > 0 ? (
+          {sortedContent && sortedContent.length > 0 ? (
             <div className="space-y-4">
-              {courseContentCollection.docs.map(doc => {
+              {sortedContent.map(doc => {
                 const content = doc.data();
                 return (
-                  <div key={doc.id} onClick={() => onContentClick(content)} className="flex items-center justify-between p-3 rounded-lg border bg-muted/50 cursor-pointer hover:bg-muted transition-colors">
+                  <div key={doc.id} onClick={() => onContentClick({ id: doc.id, ...content })} className="flex items-center justify-between p-3 rounded-lg border bg-muted/50 cursor-pointer hover:bg-muted transition-colors">
                     <div className="flex items-center gap-3">
                        <ContentIcon type={content.type} />
                        <p className="font-semibold">{content.title}</p>
@@ -229,7 +300,7 @@ const DoubtsTab = ({ courseId }: { courseId: string }) => {
             <form onSubmit={handleDoubtSubmit} className="flex items-start gap-3">
                 <Avatar className="h-9 w-9">
                     <AvatarImage src={user?.photoURL || undefined} />
-                    <AvatarFallback>{user?.displayName?.charAt(0) || 'A'}</AvatarFallback>
+                    <AvatarFallback style={{ backgroundColor: `#${intToRGB(hashCode(user?.displayName || 'U'))}` }}>{user?.displayName?.charAt(0) || 'A'}</AvatarFallback>
                 </Avatar>
                 <Textarea 
                     value={doubtText} 
@@ -252,7 +323,7 @@ const DoubtsTab = ({ courseId }: { courseId: string }) => {
                             <div className="flex items-start gap-3">
                                 <Avatar className="h-8 w-8">
                                     <AvatarImage src={doubt.userPhoto || undefined} />
-                                    <AvatarFallback>{doubt.userName?.charAt(0) || 'A'}</AvatarFallback>
+                                    <AvatarFallback style={{ backgroundColor: `#${intToRGB(hashCode(doubt.userName || 'U'))}` }}>{doubt.userName?.charAt(0) || 'A'}</AvatarFallback>
                                 </Avatar>
                                 <div className="flex-1">
                                     <p className="font-semibold text-sm">{doubt.userName}</p>
@@ -276,7 +347,7 @@ const DoubtsTab = ({ courseId }: { courseId: string }) => {
                                         <div key={reply.id} className="flex items-start gap-3">
                                             <Avatar className="h-8 w-8">
                                                 <AvatarImage src={reply.userPhoto || undefined} />
-                                                <AvatarFallback>{reply.userName?.charAt(0) || 'A'}</AvatarFallback>
+                                                <AvatarFallback style={{ backgroundColor: `#${intToRGB(hashCode(reply.userName || 'U'))}` }}>{reply.userName?.charAt(0) || 'A'}</AvatarFallback>
                                             </Avatar>
                                             <div>
                                                 <p className="font-semibold text-sm">{reply.userName}</p>
@@ -306,7 +377,7 @@ const DoubtsTab = ({ courseId }: { courseId: string }) => {
     );
 };
 
-const VideoLecturesTab = ({ courseId, onContentClick }: { courseId: string; onContentClick: (content: any) => void }) => {
+const VideoLecturesTab = ({ courseId, onContentClick, activeContentId }: { courseId: string; onContentClick: (content: any) => void; activeContentId: string | null }) => {
     const [videos, loading, error] = useCollection(
         query(collection(firestore, 'courses', courseId, 'content'), where('type', '==', 'video'))
     );
@@ -326,9 +397,9 @@ const VideoLecturesTab = ({ courseId, onContentClick }: { courseId: string; onCo
             {sortedVideos && sortedVideos.length > 0 ? (
                 <div className="space-y-4">
                     {sortedVideos.map(doc => {
-                        const content = doc.data();
+                        const content = { id: doc.id, ...doc.data() };
                         return (
-                            <div key={doc.id} className="flex items-center justify-between p-3 rounded-lg border bg-muted/50 cursor-pointer hover:bg-muted transition-colors" onClick={() => onContentClick(content)}>
+                            <div key={doc.id} className={cn("flex items-center justify-between p-3 rounded-lg border cursor-pointer transition-colors", activeContentId === doc.id ? 'bg-primary/10 border-primary' : 'bg-muted/50 hover:bg-muted')} onClick={() => onContentClick(content)}>
                                 <div className="flex items-center gap-3">
                                     <ContentIcon type={content.type} />
                                     <p className="font-semibold">{content.title}</p>
@@ -370,7 +441,6 @@ const TestsTab = ({ course, courseId }: { course: DocumentData, courseId: string
                 <DialogContent className="max-w-md p-0 bg-transparent border-none">
                      <DialogHeader className="p-4 bg-blue-600 rounded-t-2xl">
                         <DialogTitle className="text-white">AI Test Generator</DialogTitle>
-                        <DialogDescription className="text-blue-100">Create a test for {course.title}.</DialogDescription>
                      </DialogHeader>
                     <AiTestGenerator 
                         onTestGenerated={(testData: GenerateAiTestOutput, formData: any) => { 
@@ -432,41 +502,101 @@ const TestsTab = ({ course, courseId }: { course: DocumentData, courseId: string
     );
 };
 
+const EnrolledCourseView = ({ course, courseId }: { course: DocumentData, courseId: string }) => {
+    const [selectedContent, setSelectedContent] = useState<any>(null);
+    const [isPdfOpen, setIsPdfOpen] = useState(false);
 
-const CourseTabs = ({ courseId, course, onContentClick }: { courseId: string; course: DocumentData, onContentClick: (content: any) => void }) => {
+    // Fetch initial video to display
+    useEffect(() => {
+        const fetchFirstVideo = async () => {
+            const q = query(
+                collection(firestore, 'courses', courseId, 'content'), 
+                where('type', '==', 'video'),
+                orderBy('createdAt', 'asc'),
+                limit(1)
+            );
+            const querySnapshot = await getDocs(q);
+            if (!querySnapshot.empty) {
+                const firstVideo = querySnapshot.docs[0];
+                setSelectedContent({ id: firstVideo.id, ...firstVideo.data() });
+            }
+        };
+        fetchFirstVideo();
+    }, [courseId]);
+
+    const handleContentClick = (content: any) => {
+        if (content.type === 'video') {
+            setSelectedContent(content);
+        } else if (content.type === 'pdf' || content.type === 'note') {
+            setSelectedContent(content); // Store it to show title, etc.
+            setIsPdfOpen(true);
+        }
+    };
+    
     return (
-        <div className="col-span-1 md:col-span-5">
-            <Tabs defaultValue="videos">
-                <TabsList className="grid w-full grid-cols-4">
-                    <TabsTrigger value="videos">Video Lectures</TabsTrigger>
-                    <TabsTrigger value="content">Content</TabsTrigger>
-                    <TabsTrigger value="tests">Tests</TabsTrigger>
-                    <TabsTrigger value="doubts">Your Doubts</TabsTrigger>
-                </TabsList>
-                <TabsContent value="videos">
-                     <VideoLecturesTab courseId={courseId} onContentClick={onContentClick} />
-                </TabsContent>
-                <TabsContent value="content">
-                    <CourseContentTab courseId={courseId} onContentClick={onContentClick}/>
-                </TabsContent>
-                <TabsContent value="tests">
-                    <TestsTab course={course} courseId={courseId} />
-                </TabsContent>
-                <TabsContent value="doubts">
-                    <DoubtsTab courseId={courseId} />
-                </TabsContent>
-            </Tabs>
+        <div className="flex flex-col lg:flex-row gap-8">
+            {isPdfOpen && selectedContent && (
+                 <PDFViewer 
+                    pdfUrl={selectedContent.url}
+                    title={selectedContent.title}
+                    onOpenChange={(isOpen) => !isOpen && setIsPdfOpen(null)}
+                />
+            )}
+            <div className="lg:w-[65%] w-full flex-shrink-0">
+                <div className="sticky top-4">
+                     {selectedContent?.type === 'video' ? (
+                        <VideoPlayer videoUrl={selectedContent.url} />
+                    ) : (
+                        <div className="w-full aspect-video bg-muted rounded-lg flex items-center justify-center">
+                            <p className="text-muted-foreground">Select a video to play</p>
+                        </div>
+                    )}
+                    <h1 className="text-2xl font-bold mt-4">{selectedContent?.title || course.title}</h1>
+                     {selectedContent && (
+                         <div className="mt-4">
+                             <Tabs defaultValue="doubts">
+                                <TabsList className="grid w-full grid-cols-2">
+                                    <TabsTrigger value="doubts">Doubts</TabsTrigger>
+                                    <TabsTrigger value="notes">Notes</TabsTrigger>
+                                </TabsList>
+                                <TabsContent value="doubts">
+                                    <DoubtsTab courseId={courseId} />
+                                </TabsContent>
+                                <TabsContent value="notes">
+                                    <NotesSection contentId={selectedContent.id} />
+                                </TabsContent>
+                            </Tabs>
+                         </div>
+                     )}
+                </div>
+            </div>
+            <div className="lg:w-[35%] w-full">
+                <Tabs defaultValue="videos">
+                    <TabsList className="grid w-full grid-cols-3">
+                        <TabsTrigger value="videos">Videos</TabsTrigger>
+                        <TabsTrigger value="content">Content</TabsTrigger>
+                        <TabsTrigger value="tests">Tests</TabsTrigger>
+                    </TabsList>
+                    <TabsContent value="videos">
+                        <VideoLecturesTab courseId={courseId} onContentClick={handleContentClick} activeContentId={selectedContent?.id} />
+                    </TabsContent>
+                    <TabsContent value="content">
+                        <CourseContentTab courseId={courseId} onContentClick={handleContentClick} />
+                    </TabsContent>
+                    <TabsContent value="tests">
+                        <TestsTab course={course} courseId={courseId} />
+                    </TabsContent>
+                </Tabs>
+            </div>
         </div>
     )
 }
+
 
 function CourseDetailPageContent() {
   const { user, loading: authLoading } = useAuth();
   const params = useParams();
   const courseId = params.courseId as string;
-  const router = useRouter();
-
-  const [selectedContent, setSelectedContent] = useState<{ type: string, url: string, title: string } | null>(null);
   
   const [courseDoc, courseLoading, courseError] = useDocument(doc(firestore, 'courses', courseId));
 
@@ -482,15 +612,10 @@ function CourseDetailPageContent() {
   const [enrollmentDocs, enrollmentLoading] = useCollection(enrollmentsQuery);
 
   const isEnrolled = !!enrollmentDocs && !enrollmentDocs.empty;
-
-  const handleContentClick = (content: { type: string, url: string, title: string }) => {
-    setSelectedContent(content);
-  };
-
-
+  
   if (courseLoading || authLoading || enrollmentLoading) {
     return (
-      <div className="max-w-4xl mx-auto p-4 md:p-8 space-y-6">
+      <div className="max-w-6xl mx-auto p-4 md:p-8 space-y-6">
         <Skeleton className="h-12 w-3/4" />
         <Skeleton className="h-6 w-1/2" />
         <div className="grid md:grid-cols-3 gap-8">
@@ -522,22 +647,16 @@ function CourseDetailPageContent() {
   const course = courseDoc.data();
   const isFreeCourse = course.isFree === true;
 
+  if (isEnrolled || isFreeCourse) {
+      return (
+        <div className="max-w-7xl mx-auto p-4 md:p-8">
+            <EnrolledCourseView course={course} courseId={courseId} />
+        </div>
+      )
+  }
+
   return (
     <div className="max-w-5xl mx-auto p-4 md:p-8">
-       {selectedContent?.type === 'video' && (
-            <VideoPlayer 
-                videoUrl={selectedContent.url}
-                title={selectedContent.title}
-                onOpenChange={(isOpen) => !isOpen && setSelectedContent(null)}
-            />
-        )}
-         {(selectedContent?.type === 'pdf' || selectedContent?.type === 'note') && (
-            <PDFViewer 
-                pdfUrl={selectedContent.url}
-                title={selectedContent.title}
-                onOpenChange={(isOpen) => !isOpen && setSelectedContent(null)}
-            />
-        )}
       <div className="grid md:grid-cols-5 gap-8">
         <div className="md:col-span-3 space-y-6">
           <div>
@@ -545,65 +664,42 @@ function CourseDetailPageContent() {
             <h1 className="text-4xl font-bold font-headline">{course.title}</h1>
           </div>
           
-            {!isEnrolled && (
-            <>
-                <div className="relative h-80 w-full rounded-lg overflow-hidden shadow-lg">
-                    <Image src={course.imageUrl || `https://picsum.photos/seed/${courseId}/800/600`} alt={course.title} fill style={{objectFit:"cover"}} data-ai-hint="online learning" />
-                </div>
-                <Card>
-                    <CardHeader>
-                    <CardTitle>About this course</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                    <p className="text-muted-foreground whitespace-pre-wrap">{course.description}</p>
-                    </CardContent>
-                </Card>
-            </>
-            )}
+            <div className="relative h-80 w-full rounded-lg overflow-hidden shadow-lg">
+                <Image src={course.imageUrl || `https://picsum.photos/seed/${courseId}/800/600`} alt={course.title} fill style={{objectFit:"cover"}} data-ai-hint="online learning" />
+            </div>
+            <Card>
+                <CardHeader>
+                <CardTitle>About this course</CardTitle>
+                </CardHeader>
+                <CardContent>
+                <p className="text-muted-foreground whitespace-pre-wrap">{course.description}</p>
+                </CardContent>
+            </Card>
         </div>
 
         <div className="md:col-span-2">
           <Card className="sticky top-8 shadow-xl">
             <CardHeader>
               <CardTitle className="text-3xl flex items-center">
-                {isFreeCourse ? 'Free' : (
-                    <>
-                        <IndianRupee className="h-7 w-7 mr-1" />
-                        {course.price ? course.price.toLocaleString() : 'N/A'}
-                    </>
-                )}
+                <IndianRupee className="h-7 w-7 mr-1" />
+                {course.price ? course.price.toLocaleString() : 'N/A'}
               </CardTitle>
-              <CardDescription>{isFreeCourse ? 'Enroll for free' : 'One-time payment'}</CardDescription>
+              <CardDescription>One-time payment</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              {isEnrolled ? (
-                <Button size="lg" className="w-full text-lg" disabled>Enrolled</Button>
-              ) : (
                 <Button asChild size="lg" className="w-full text-lg">
-                   <Link href={isFreeCourse ? `/dashboard/courses/free` : `/dashboard/payment-verification?courseId=${courseId}`}>
-                        {isFreeCourse ? 'Enroll for Free' : 'Enroll Now'}
+                   <Link href={`/dashboard/payment-verification?courseId=${courseId}`}>
+                        Enroll Now
                    </Link>
                 </Button>
-              )}
               <div className="space-y-3 pt-4 text-sm text-muted-foreground">
-                <div className="flex items-center gap-3">
-                  <BookOpen className="h-5 w-5 text-primary" />
-                  <span>Full course access</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <Clock className="h-5 w-5 text-primary" />
-                  <span>Lifetime access</span>
-                </div>
-                 <div className="flex items-center gap-3">
-                  <Users className="h-5 w-5 text-primary" />
-                  <span>Community access</span>
-                </div>
+                <div className="flex items-center gap-3"><BookOpen className="h-5 w-5 text-primary" /><span>Full course access</span></div>
+                <div className="flex items-center gap-3"><Clock className="h-5 w-5 text-primary" /><span>Lifetime access</span></div>
+                 <div className="flex items-center gap-3"><Users className="h-5 w-5 text-primary" /><span>Community access</span></div>
               </div>
             </CardContent>
           </Card>
         </div>
-
-        {isEnrolled && <CourseTabs courseId={courseId} course={course} onContentClick={handleContentClick} />}
       </div>
     </div>
   );
@@ -617,3 +713,4 @@ export default function CourseDetailPage() {
         </Suspense>
     )
 }
+
