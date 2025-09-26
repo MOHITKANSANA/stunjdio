@@ -7,7 +7,7 @@ import { ApplyForm } from "./_components/apply-form";
 import { OnlineTest } from "./_components/online-test";
 import { ViewResult } from "./_components/view-result";
 import { ScrutinyForm } from "./_components/scrutiny-form";
-import { Award, FileText, PenSquare, Eye, Search, AlertTriangle, Clock } from "lucide-react";
+import { Award, FileText, PenSquare, Eye, Search, AlertTriangle } from "lucide-react";
 import { cn } from '@/lib/utils';
 import { doc, getDoc } from 'firebase/firestore';
 import { firestore } from '@/lib/firebase';
@@ -24,30 +24,34 @@ const tabItems: { id: ActiveTab; label: string; icon: React.ElementType, gradien
 ];
 
 const CountdownTimer = ({ targetDate, onEnd }: { targetDate: Date; onEnd?: () => void }) => {
-    const calculateTimeLeft = () => {
-        const difference = +targetDate - +new Date();
-        let timeLeft = { days: 0, hours: 0, minutes: 0, seconds: 0 };
-        if (difference > 0) {
-            timeLeft = {
-                days: Math.floor(difference / (1000 * 60 * 60 * 24)),
-                hours: Math.floor((difference / (1000 * 60 * 60)) % 24),
-                minutes: Math.floor((difference / 1000 / 60) % 60),
-                seconds: Math.floor((difference / 1000) % 60),
-            };
-        } else {
-           if (onEnd) onEnd();
-        }
-        return timeLeft;
-    };
-
-    const [timeLeft, setTimeLeft] = useState(calculateTimeLeft());
+    const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
 
     useEffect(() => {
-        const timer = setTimeout(() => {
+        const calculateTimeLeft = () => {
+            const difference = +targetDate - +new Date();
+            let newTimeLeft = { days: 0, hours: 0, minutes: 0, seconds: 0 };
+            if (difference > 0) {
+                newTimeLeft = {
+                    days: Math.floor(difference / (1000 * 60 * 60 * 24)),
+                    hours: Math.floor((difference / (1000 * 60 * 60)) % 24),
+                    minutes: Math.floor((difference / 1000 / 60) % 60),
+                    seconds: Math.floor((difference / 1000) % 60),
+                };
+            } else {
+               if (onEnd) onEnd();
+            }
+            return newTimeLeft;
+        };
+
+        setTimeLeft(calculateTimeLeft());
+
+        const timer = setInterval(() => {
             setTimeLeft(calculateTimeLeft());
         }, 1000);
+        
         return () => clearTimeout(timer);
-    });
+    }, [targetDate, onEnd]);
+
 
     return (
         <div className="flex justify-center gap-4 text-center">

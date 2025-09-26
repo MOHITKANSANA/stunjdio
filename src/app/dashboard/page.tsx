@@ -122,17 +122,6 @@ const MainDashboard = () => {
             unsubscribeReviews();
         };
     }, []);
-
-    const [currentStudentIndex, setCurrentStudentIndex] = useState(0);
-
-    useEffect(() => {
-        if (topStudents.length > 0) {
-            const interval = setInterval(() => {
-                setCurrentStudentIndex(prevIndex => (prevIndex + 1) % topStudents.length);
-            }, 3000); // Change student every 3 seconds
-            return () => clearInterval(interval);
-        }
-    }, [topStudents]);
     
     const handleReviewSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -154,8 +143,8 @@ const MainDashboard = () => {
     const topGridItems = [
       { label: "Free Courses", icon: BookCopy, href: "/dashboard/courses/free", color: "bg-blue-500" },
       { label: "Paid Courses", icon: Book, href: "/dashboard/courses", color: "bg-green-500" },
-      { label: "Live Classes", icon: Video, href: "/dashboard/live-class", color: "bg-orange-500" },
-      { label: "Video Lectures", icon: Youtube, href: "/dashboard/video-lectures", color: "bg-red-500" },
+      { label: "Live Classes", icon: Video, href: "/dashboard/classes-lectures", color: "bg-orange-500" },
+      { label: "Video Lectures", icon: Youtube, href: "/dashboard/classes-lectures", color: "bg-red-500" },
       { label: "Test Series", icon: FileText, href: "/dashboard/test-series", color: "bg-purple-500" },
       { label: "Scholarship", icon: Award, href: "/dashboard/scholarship", color: "bg-yellow-500" },
     ];

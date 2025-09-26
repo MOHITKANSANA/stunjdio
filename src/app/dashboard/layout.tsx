@@ -51,7 +51,7 @@ import { firestore } from '@/lib/firebase';
 
 const bottomNavItems = [
     { href: '/dashboard', icon: Home, label: 'Home' },
-    { href: '/dashboard/library', icon: Library, label: 'My Library' },
+    { href: '/dashboard/my-learning', icon: Library, label: 'My Learning' },
     { href: '/dashboard/tutor', icon: Bot, label: 'AI Tutor' },
     { href: '/dashboard/profile', icon: User, label: 'Profile' },
 ];
@@ -66,7 +66,7 @@ const kidsBottomNavItems = [
 
 const sidebarNavItems = [
     { href: '/dashboard', icon: Home, label: 'home' },
-    { href: '/dashboard/library', icon: Library, label: 'My Library' },
+    { href: '/dashboard/my-learning', icon: Library, label: 'My Learning' },
     { href: '/dashboard/profile', icon: User, label: 'profile' },
     { href: '/dashboard/courses', icon: Book, label: 'courses' },
     { href: '/dashboard/courses/free', icon: BookCopy, label: 'Free Courses' },
