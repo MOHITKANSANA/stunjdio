@@ -59,7 +59,7 @@ const BIG_EXAMS = ["UPSC", "SSC CGL", "NDA", "CDS", "Army", "NTPC", "PCS"];
 const MAX_FREE_TESTS = 15;
 
 
-function AiTestGenerator({ onTestGenerated, isCourseContext = false, subject: courseSubject = 'General', examType: courseExamType = 'General' }: { onTestGenerated: (data: GenerateAiTestOutput, formData: TestGenerationValues) => void; isCourseContext?: boolean; subject?: string; examType?: string; }) {
+export function AiTestGenerator({ onTestGenerated, isCourseContext = false, subject: courseSubject = 'General', examType: courseExamType = 'General' }: { onTestGenerated: (data: GenerateAiTestOutput, formData: TestGenerationValues) => void; isCourseContext?: boolean; subject?: string; examType?: string; }) {
     const [step, setStep] = useState(0);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -491,7 +491,5 @@ export default function AiTestPage() {
         </Suspense>
     )
 }
-
-    
 
     

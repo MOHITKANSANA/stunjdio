@@ -13,13 +13,13 @@ import { Button } from '@/components/ui/button';
 import { IndianRupee, BookOpen, Clock, Users, Video, PlayCircle, FileText, StickyNote, Send, HelpCircle, GraduationCap, ShieldQuestion, Bot, ThumbsUp, ThumbsDown, MessageSquare } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/use-auth';
-import { collection, query, where, orderBy, addDoc, serverTimestamp, arrayUnion, updateDoc, arrayRemove } from 'firebase/firestore';
+import { collection, query, where, orderBy, addDoc, serverTimestamp, arrayUnion, updateDoc, arrayRemove, getDocs } from 'firebase/firestore';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useToast } from '@/hooks/use-toast';
-import AiTestPage, { AiTestGenerator } from '@/app/dashboard/ai-test/page';
+import { AiTestGenerator } from '@/app/dashboard/ai-test/page';
 import { addDoubtReplyAction } from '@/app/actions/doubts';
 import type { GenerateAiTestOutput } from '@/ai/flows/generate-ai-test';
 import { Input } from '@/components/ui/input';
@@ -347,15 +347,32 @@ const TestsTab = ({ course, courseId }: { course: DocumentData, courseId: string
         query(collection(firestore, 'courses', courseId, 'content'), where('type', '==', 'test_series'), orderBy('createdAt', 'asc'))
     );
     const [isAiTestModalOpen, setIsAiTestModalOpen] = useState(false);
+    
+    // This state is to hold the list of test series that are NOT part of this course, to avoid duplication.
+    const [availableTestSeries, setAvailableTestSeries] = useState<any[]>([]);
+
+    useEffect(() => {
+        const fetchAvailableTestSeries = async () => {
+            if (tests) { // once we know which tests are IN the course
+                const courseTestSeriesIds = tests.docs.map(doc => doc.data().testSeriesId);
+                const allTestSeriesQuery = query(collection(firestore, 'testSeries'), orderBy('createdAt', 'desc'));
+                const allTestSeriesSnapshot = await getDocs(allTestSeriesQuery);
+                const available = allTestSeriesSnapshot.docs.filter(doc => !courseTestSeriesIds.includes(doc.id));
+                setAvailableTestSeries(available);
+            }
+        };
+        fetchAvailableTestSeries();
+    }, [tests]);
+
 
     return (
         <CardContent className="space-y-4">
             <Dialog open={isAiTestModalOpen} onOpenChange={setIsAiTestModalOpen}>
                 <DialogContent className="max-w-md p-0 bg-transparent border-none">
+                     <DialogHeader className="p-4 bg-blue-600 rounded-t-2xl"><DialogTitle className="text-white">AI Test Generator</DialogTitle></DialogHeader>
                     <AiTestGenerator 
                         onTestGenerated={(testData: GenerateAiTestOutput, formData: any) => { 
                             setIsAiTestModalOpen(false);
-                            // Potentially navigate to a test player page with the generated test data
                         }} 
                         isCourseContext={true} 
                         subject={course.title} 
