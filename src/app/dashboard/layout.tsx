@@ -71,8 +71,7 @@ const sidebarNavItems = [
     { href: '/dashboard/courses', icon: Book, label: 'courses' },
     { href: '/dashboard/courses/free', icon: BookCopy, label: 'Free Courses' },
     { href: '/dashboard/scholarship', icon: Award, label: 'scholarship' },
-    { href: '/dashboard/live-class', icon: Video, label: 'Free Live Classes' },
-    { href: '/dashboard/video-lectures', icon: Youtube, label: 'Video Lectures' },
+    { href: '/dashboard/classes-lectures', icon: Video, label: 'Classes & Lectures' },
     { href: '/dashboard/tutor', icon: Bot, label: 'AI Tutor' },
     { href: '/dashboard/ai-test', icon: ShieldQuestion, label: 'ai_tests' },
 ];

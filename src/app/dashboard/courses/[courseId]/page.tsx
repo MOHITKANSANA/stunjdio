@@ -19,7 +19,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useToast } from '@/hooks/use-toast';
-import AiTestGenerator from '@/app/dashboard/ai-test/page';
+import AiTestPage, { AiTestGenerator } from '@/app/dashboard/ai-test/page';
 import { addDoubtReplyAction } from '@/app/actions/doubts';
 import type { GenerateAiTestOutput } from '@/ai/flows/generate-ai-test';
 import { Input } from '@/components/ui/input';
@@ -352,9 +352,6 @@ const TestsTab = ({ course, courseId }: { course: DocumentData, courseId: string
         <CardContent className="space-y-4">
             <Dialog open={isAiTestModalOpen} onOpenChange={setIsAiTestModalOpen}>
                 <DialogContent className="max-w-md p-0 bg-transparent border-none">
-                    <DialogHeader>
-                        <DialogTitle className="sr-only">AI Test Generator</DialogTitle>
-                    </DialogHeader>
                     <AiTestGenerator 
                         onTestGenerated={(testData: GenerateAiTestOutput, formData: any) => { 
                             setIsAiTestModalOpen(false);
