@@ -6,7 +6,7 @@ import {
   Video,
   Award,
   BookCopy,
-  FileText,
+  Newspaper,
   Youtube,
 } from 'lucide-react';
 import Link from 'next/link';
@@ -143,8 +143,8 @@ const MainDashboard = () => {
     const topGridItems = [
       { label: "Free Courses", icon: BookCopy, href: "/dashboard/courses/free", color: "bg-blue-500" },
       { label: "Paid Courses", icon: Book, href: "/dashboard/courses", color: "bg-green-500" },
-      { label: "Classes & Lectures", icon: Video, href: "/dashboard/classes-lectures", color: "bg-orange-500" },
-      { label: "Test Series", icon: FileText, href: "/dashboard/test-series", color: "bg-purple-500" },
+      { label: "Free Live Classes", icon: Video, href: "/dashboard/free-live-classes", color: "bg-orange-500" },
+      { label: "Previous Papers", icon: Newspaper, href: "/dashboard/papers", color: "bg-purple-500" },
       { label: "Scholarship", icon: Award, href: "/dashboard/scholarship", color: "bg-yellow-500" },
     ];
     

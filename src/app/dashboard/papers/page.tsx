@@ -62,7 +62,7 @@ export default function PapersPage() {
         <p className="text-muted-foreground mt-2">Practice with papers from previous years to understand the exam pattern.</p>
       </div>
 
-      <Tabs defaultValue="download">
+       <Tabs defaultValue="download">
         <TabsList className="grid w-full grid-cols-2 max-w-md">
           <TabsTrigger value="download">Download PDFs</TabsTrigger>
           <TabsTrigger value="test">Take Online Test</TabsTrigger>
@@ -108,7 +108,11 @@ export default function PapersPage() {
             </div>
 
             {papersCollection?.docs.length === 0 && !loading && (
-                <p className="text-muted-foreground text-center">No previous year papers have been uploaded yet.</p>
+                 <div className="text-center py-12">
+                    <Newspaper className="mx-auto h-12 w-12 text-muted-foreground" />
+                    <h3 className="mt-4 text-lg font-semibold">No Papers Available</h3>
+                    <p className="mt-1 text-sm text-muted-foreground">Previous year papers will be added here soon.</p>
+                </div>
             )}
         </TabsContent>
         <TabsContent value="test" className="mt-6">
@@ -122,5 +126,3 @@ export default function PapersPage() {
     </div>
   );
 }
-
-    
