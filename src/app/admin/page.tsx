@@ -341,7 +341,6 @@ function AdminDashboard() {
   
   const courseForm = useForm<CourseFormValues>({ resolver: zodResolver(courseFormSchema), defaultValues: { title: '', category: '', description: '', price: 0, isFree: false, imageFile: undefined } });
   const couponForm = useForm<CouponFormValues>({ resolver: zodResolver(couponSchema), defaultValues: { code: '', discountType: 'percentage', discountValue: 10, courseId: '' } });
-  const liveClassForm = useForm<LiveClassFormValues>({ resolver: zodResolver(liveClassFormSchema), defaultValues: { title: '', youtubeUrl: '', startTime: '', thumbnailUrl: '' } });
   const qrCodeForm = useForm<QrCodeFormValues>({ resolver: zodResolver(qrCodeFormSchema), defaultValues: { imageFile: undefined } });
   const courseContentForm = useForm<CourseContentValues>({ resolver: zodResolver(courseContentSchema), defaultValues: { courseId: '', contentType: 'video', title: '', introduction: '', url: '', testSeriesId: '' } });
   const scholarshipSettingsForm = useForm<ScholarshipSettingsValues>({
@@ -411,35 +410,6 @@ function AdminDashboard() {
       toast({ variant: 'destructive', title: 'Error', description: 'Could not update course status.' });
     }
   };
-
-    const onLiveClassSubmit = async (data: LiveClassFormValues) => {
-        try {
-            let finalThumbnailUrl = data.thumbnailUrl;
-            if (data.thumbnailFile) {
-                finalThumbnailUrl = await fileToDataUrl(data.thumbnailFile);
-            }
-
-            if (!finalThumbnailUrl) {
-                finalThumbnailUrl = `https://picsum.photos/seed/live-${new Date().getTime()}/600/400`;
-            }
-
-            const liveClassData = {
-                title: data.title,
-                youtubeUrl: data.youtubeUrl,
-                startTime: new Date(data.startTime),
-                thumbnailUrl: finalThumbnailUrl,
-                createdAt: serverTimestamp()
-            };
-
-            await addDoc(collection(firestore, 'live_classes'), liveClassData);
-            toast({ title: 'Success', description: 'Live class added.' });
-            liveClassForm.reset();
-        } catch (error: any) {
-            console.error("Error adding live class:", error);
-            toast({ variant: 'destructive', title: 'Error', description: error.message || 'Could not add live class.' });
-        }
-    };
-
 
     const onCourseContentSubmit = async (data: CourseContentValues) => {
         try {
@@ -540,14 +510,6 @@ function AdminDashboard() {
     if (window.confirm('Are you sure you want to delete this carousel item?')) {
         await deleteDoc(doc(firestore, 'homepageCarousel', id));
         toast({ description: 'Carousel item deleted.' });
-    }
-  }
-
-
-  const deleteLiveClass = async (id: string) => {
-    if(window.confirm('Are you sure you want to delete this class?')) {
-        await deleteDoc(doc(firestore, 'live_classes', id));
-        toast({ description: 'Live class deleted.' });
     }
   }
   
@@ -933,33 +895,6 @@ function AdminDashboard() {
                      </div>
                   </CardContent>
                  </Card>
-
-                <Card>
-                    <CardHeader><CardTitle>Live Class Management</CardTitle><CardDescription>Add, view, and manage live classes.</CardDescription></CardHeader>
-                    <CardContent><Form {...liveClassForm}><form onSubmit={liveClassForm.handleSubmit(onLiveClassSubmit)} className="grid gap-4 mb-6">
-                        <FormField control={liveClassForm.control} name="title" render={({ field }) => (<FormItem><FormLabel>Class Title</FormLabel><FormControl><Input placeholder="e.g. Maths Special Session" {...field} /></FormControl><FormMessage /></FormItem>)}/>
-                        <FormField control={liveClassForm.control} name="youtubeUrl" render={({ field }) => (<FormItem><FormLabel>YouTube URL</FormLabel><FormControl><Input placeholder="https://www.youtube.com/watch?v=..." {...field} /></FormControl><FormMessage /></FormItem>)}/>
-                        <FormField control={liveClassForm.control} name="startTime" render={({ field }) => (<FormItem><FormLabel>Start Time</FormLabel><FormControl><Input type="datetime-local" {...field} /></FormControl><FormMessage /></FormItem>)}/>
-                        <FormField control={liveClassForm.control} name="thumbnailFile" render={({ field: { onChange, value, ...rest } }) => (<FormItem><FormLabel>Upload Thumbnail</FormLabel><FormControl><Input type="file" accept="image/*" onChange={(e) => onChange(e.target.files?.[0])} {...rest} /></FormControl><FormMessage /></FormItem>)} />
-                        <div className="text-center text-xs text-muted-foreground">OR</div>
-                        <FormField control={liveClassForm.control} name="thumbnailUrl" render={({ field }) => (<FormItem><FormLabel>Thumbnail URL</FormLabel><FormControl><Input placeholder="https://example.com/image.png" {...field} /></FormControl><FormMessage /></FormItem>)}/>
-                        <Button type="submit" disabled={liveClassForm.formState.isSubmitting}>{liveClassForm.formState.isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin"/>Adding...</> : "Add Live Class"}</Button>
-                    </form></Form>
-                    <h4 className="font-semibold mb-2">Scheduled Classes</h4>
-                    <div className="max-h-60 overflow-y-auto pr-2"><Table><TableBody>
-                        {liveClassesLoading && <TableRow><TableCell><Skeleton className="h-9 w-full" /></TableCell></TableRow>}
-                        {liveClassesCollection?.docs.map(doc => {
-                            const liveClass = doc.data();
-                            const startTime = liveClass.startTime?.toDate();
-                            return (<TableRow key={doc.id}><TableCell>
-                                <p className="font-medium">{liveClass.title}</p>
-                                <p className="text-sm text-muted-foreground">{startTime ? startTime.toLocaleString() : 'Invalid Date'}</p>
-                            </TableCell><TableCell className="text-right">
-                                <Button variant="ghost" size="icon" onClick={() => deleteLiveClass(doc.id)}><Trash2 className="h-4 w-4 text-destructive"/></Button>
-                            </TableCell></TableRow>)
-                        })}
-                    </TableBody></Table></div></CardContent>
-                </Card>
 
                  <Card>
                     <CardHeader><CardTitle>Previous Year Papers</CardTitle><CardDescription>Add and manage previous year papers.</CardDescription></CardHeader>
@@ -1432,4 +1367,5 @@ function AdminDashboard() {
     </div>
   );
 }
+
 

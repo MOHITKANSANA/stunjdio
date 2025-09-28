@@ -90,7 +90,6 @@ const ChatSection = ({ contentId }: { contentId: string }) => {
     const [doubtText, setDoubtText] = useState('');
     const chatEndRef = useRef<HTMLDivElement | null>(null);
 
-    // Use contentId to create a unique collection path for each video's chat
     const chatsCollectionRef = collection(firestore, 'videoChats', contentId, 'messages');
     const [chatsCollection, chatsLoading, chatsError] = useCollection(
         query(chatsCollectionRef, orderBy('createdAt', 'asc'))
@@ -119,7 +118,7 @@ const ChatSection = ({ contentId }: { contentId: string }) => {
 
     return (
         <div className="flex flex-col h-full bg-background p-4">
-            <div className="flex-grow overflow-y-auto space-y-4 mb-4">
+            <div className="flex-grow overflow-y-auto space-y-4 mb-4 h-64">
                 {chatsLoading && <Skeleton className="h-20 w-full" />}
                 {chatsError && <p className="text-destructive">Could not load chats.</p>}
                 {chatsCollection?.docs.map(doc => {
@@ -171,18 +170,23 @@ const NotesSection = ({ contentId }: { contentId: string }) => {
     const { toast } = useToast();
     const [notes, setNotes] = useState('');
     const [isSaving, setIsSaving] = useState(false);
+    const [lastSaved, setLastSaved] = useState<Date | null>(null);
+    const debounceTimeout = useRef<NodeJS.Timeout | null>(null);
 
     useEffect(() => {
         if (user) {
             const q = query(
                 collection(firestore, 'liveClassNotes'),
-                where('classId', '==', contentId), // Using classId as a generic content ID
-                where('userId', '==', user.uid),
+                where('classId', '==', contentId),
+                where('userId', '==', user.uid)
             );
             const unsubscribe = onSnapshot(q, (querySnapshot) => {
                 if (!querySnapshot.empty) {
                     const doc = querySnapshot.docs[0];
                     setNotes(doc.data().content);
+                    if (doc.data().updatedAt) {
+                       setLastSaved(doc.data().updatedAt.toDate());
+                    }
                 } else {
                     setNotes('');
                 }
@@ -191,29 +195,41 @@ const NotesSection = ({ contentId }: { contentId: string }) => {
         }
     }, [contentId, user]);
 
-    const handleSave = async () => {
+    const handleSave = async (content: string) => {
         if (!user) return;
         setIsSaving(true);
-        const result = await saveNoteAction(contentId, user.uid, notes);
+        const result = await saveNoteAction(contentId, user.uid, content);
         if (result.success) {
-            toast({ description: 'Notes saved successfully.' });
+            setLastSaved(new Date());
         } else {
             toast({ variant: 'destructive', description: 'Failed to save notes.' });
         }
         setIsSaving(false);
     };
+    
+    const handleNotesChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+        const newNotes = e.target.value;
+        setNotes(newNotes);
+        if (debounceTimeout.current) {
+            clearTimeout(debounceTimeout.current);
+        }
+        debounceTimeout.current = setTimeout(() => {
+            handleSave(newNotes);
+        }, 1500); // Auto-save after 1.5 seconds of inactivity
+    };
+
 
     return (
         <div className="p-4 flex flex-col h-full">
             <Textarea
                 value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                placeholder="Write your personal notes here... they are only visible to you."
+                onChange={handleNotesChange}
+                placeholder="Write your personal notes here... they are only visible to you and will be saved automatically."
                 className="flex-1 min-h-[200px]"
             />
-            <Button onClick={handleSave} disabled={isSaving} className="mt-4">
-                {isSaving ? 'Saving...' : 'Save Notes'}
-            </Button>
+            <div className="text-xs text-muted-foreground mt-2 text-right h-4">
+                 {isSaving ? 'Saving...' : lastSaved ? `Last saved: ${lastSaved.toLocaleTimeString()}` : ''}
+            </div>
         </div>
     );
 };
@@ -227,7 +243,13 @@ export default function VideoPlaybackPage() {
     const [contentDoc, loading, error] = useDocument(doc(firestore, 'courses', courseId, 'content', contentId));
 
     if (loading) {
-        return <div className="p-0"><Skeleton className="w-full aspect-video" /></div>
+        return (
+            <div className="h-screen w-screen flex flex-col">
+                 <Skeleton className="w-full aspect-video" />
+                 <div className="p-4"><Skeleton className="h-8 w-3/4" /></div>
+                 <div className="flex-1 p-4"><Skeleton className="w-full h-full" /></div>
+            </div>
+        )
     }
 
     if (error || !contentDoc?.exists() || contentDoc.data()?.type !== 'video') {
@@ -237,31 +259,30 @@ export default function VideoPlaybackPage() {
     const content = contentDoc.data();
 
     return (
-        <div className="flex flex-col md:flex-row h-full max-h-[calc(100vh-4rem)] bg-background overflow-hidden">
-             <div className="flex-grow flex flex-col md:w-[calc(100%-350px)]">
-                <div className="sticky top-0 z-10 w-full shrink-0">
-                    <VideoPlayer videoUrl={content.url} />
-                </div>
-                 <div className="p-4 border-b">
-                     <h1 className="text-xl font-bold">{content.title}</h1>
-                     {content.introduction && <p className="text-muted-foreground text-sm mt-1">{content.introduction}</p>}
-                </div>
-                <div className="flex-grow min-h-0">
-                    <Tabs defaultValue="chat" className="w-full h-full flex flex-col">
-                        <TabsList className="grid w-full grid-cols-2 shrink-0">
-                            <TabsTrigger value="chat"><MessageSquare className="mr-2"/>Chat</TabsTrigger>
-                            <TabsTrigger value="notes"><BookText className="mr-2"/>My Notes</TabsTrigger>
-                        </TabsList>
-                        <TabsContent value="chat" className="flex-grow min-h-0">
-                            <ChatSection contentId={contentId} />
-                        </TabsContent>
-                        <TabsContent value="notes" className="flex-grow min-h-0">
-                            <NotesSection contentId={contentId} />
-                        </TabsContent>
-                    </Tabs>
-                </div>
+        <div className="flex flex-col h-screen bg-background overflow-hidden">
+             <div className="w-full">
+                <VideoPlayer videoUrl={content.url} />
+            </div>
+            <div className="p-4 border-b">
+                 <h1 className="text-xl font-bold">{content.title}</h1>
+                 {content.introduction && <p className="text-muted-foreground text-sm mt-1">{content.introduction}</p>}
+            </div>
+            <div className="flex-grow min-h-0">
+                <Tabs defaultValue="chat" className="w-full h-full flex flex-col">
+                    <TabsList className="grid w-full grid-cols-2 shrink-0">
+                        <TabsTrigger value="chat"><MessageSquare className="mr-2"/>Chat</TabsTrigger>
+                        <TabsTrigger value="notes"><BookText className="mr-2"/>My Notes</TabsTrigger>
+                    </TabsList>
+                    <TabsContent value="chat" className="flex-grow min-h-0">
+                        <ChatSection contentId={contentId} />
+                    </TabsContent>
+                    <TabsContent value="notes" className="flex-grow min-h-0">
+                        <NotesSection contentId={contentId} />
+                    </TabsContent>
+                </Tabs>
             </div>
         </div>
     );
 }
+
 

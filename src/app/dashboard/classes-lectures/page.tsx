@@ -48,6 +48,9 @@ const ClassGrid = ({ classes, loading, error, type }: { classes: any[] | undefin
                                     style={{ objectFit: 'cover' }}
                                     className="group-hover:scale-105 transition-transform duration-300"
                                 />
+                                {type === 'live' && (
+                                     <div className="absolute top-2 left-2 bg-red-600 text-white text-xs font-bold px-2 py-1 rounded-md animate-pulse">LIVE</div>
+                                )}
                             </div>
                             <CardHeader>
                                 <CardTitle className="line-clamp-2">{liveClass.title}</CardTitle>

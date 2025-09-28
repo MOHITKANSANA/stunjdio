@@ -2,7 +2,7 @@
 
 'use client';
 
-import { BookOpenCheck, Trophy, Library, BookMarked, BellDot, Newspaper, Trash2 } from "lucide-react";
+import { BookOpenCheck, Trophy, Library, BookMarked, BellDot, Newspaper, Trash2, Eye } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from '@/hooks/use-auth';
@@ -43,16 +43,20 @@ const PDFViewer = ({ pdfUrl, title, onOpenChange }: { pdfUrl: string, title: str
 const CourseCard = ({ course, courseId, enrollmentId, onUnenroll }: { course: any, courseId: string, enrollmentId: string, onUnenroll: (id: string, title: string) => void }) => {
     return (
         <Card className="flex flex-col overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300">
-            <Link href={`/dashboard/courses/${courseId}`}>
-                <div className="relative h-48 w-full">
-                    <Image src={course.imageUrl || `https://picsum.photos/seed/${courseId}/600/400`} alt={course.title} fill style={{objectFit: "cover"}} data-ai-hint="online course" />
-                </div>
-                <CardHeader>
-                    <CardTitle className="text-xl">{course.title}</CardTitle>
-                    <CardDescription>{course.category}</CardDescription>
-                </CardHeader>
-            </Link>
-            <CardFooter>
+            <div className="relative h-48 w-full">
+                <Image src={course.imageUrl || `https://picsum.photos/seed/${courseId}/600/400`} alt={course.title} fill style={{objectFit: "cover"}} data-ai-hint="online course" />
+            </div>
+            <CardHeader>
+                <CardTitle className="text-xl">{course.title}</CardTitle>
+                <CardDescription>{course.category}</CardDescription>
+            </CardHeader>
+            <CardContent className="flex-grow" />
+            <CardFooter className="flex flex-col sm:flex-row gap-2">
+                 <Button asChild className="w-full">
+                    <Link href={`/dashboard/courses/${courseId}`}>
+                       <Eye className="mr-2 h-4 w-4" /> View Course
+                    </Link>
+                </Button>
                 <Button variant="destructive" className="w-full" onClick={() => onUnenroll(enrollmentId, course.title)}>
                     <Trash2 className="mr-2 h-4 w-4" /> Un-enroll
                 </Button>
@@ -282,4 +286,5 @@ export default function MyLearningPage() {
         </div>
     );
 }
+
 
