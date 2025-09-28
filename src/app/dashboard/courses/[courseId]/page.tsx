@@ -6,19 +6,17 @@ import { useState, Suspense, useEffect } from 'react';
 import { doc, DocumentData } from 'firebase/firestore';
 import { useDocument, useCollection } from 'react-firebase-hooks/firestore';
 import { firestore } from '@/lib/firebase';
-import { notFound, useParams } from 'next/navigation';
+import { notFound, useParams, useRouter } from 'next/navigation';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
-import { IndianRupee, BookOpen, Clock, Users, Video, PlayCircle, FileText, StickyNote, Send, HelpCircle, GraduationCap, ShieldQuestion, Bot, ThumbsUp, ThumbsDown, MessageSquare } from 'lucide-react';
+import { IndianRupee, BookOpen, Clock, Users, Video, PlayCircle, FileText, StickyNote, ShieldQuestion, Bot, ThumbsUp, ThumbsDown, MessageSquare } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/use-auth';
-import { collection, query, where, orderBy, addDoc, serverTimestamp, arrayUnion, updateDoc, arrayRemove, getDocs, limit, onSnapshot } from 'firebase/firestore';
+import { collection, query, where, orderBy, getDocs, limit, onSnapshot, addDoc, serverTimestamp, arrayUnion, updateDoc, arrayRemove } from 'firebase/firestore';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Textarea } from '@/components/ui/textarea';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useToast } from '@/hooks/use-toast';
 import { AiTestGenerator } from '@/app/dashboard/ai-test/page';
 import { addDoubtReplyAction } from '@/app/actions/doubts';
@@ -26,68 +24,9 @@ import type { GenerateAiTestOutput } from '@/ai/flows/generate-ai-test';
 import { Input } from '@/components/ui/input';
 import { saveNoteAction } from '@/app/actions/live-class';
 import { cn } from '@/lib/utils';
-
-const ContentIcon = ({ type }: { type: string }) => {
-    switch (type) {
-        case 'video': return <Video className="h-5 w-5 text-primary"/>;
-        case 'pdf': return <FileText className="h-5 w-5 text-primary"/>;
-        case 'note': return <StickyNote className="h-5 w-5 text-primary"/>;
-        case 'test_series': return <FileText className="h-5 w-5 text-primary" />;
-        case 'ai_test': return <ShieldQuestion className="h-5 w-5 text-primary" />;
-        default: return <BookOpen className="h-5 w-5 text-primary"/>;
-    }
-}
-
-const getYoutubeVideoId = (url: string): string | null => {
-    if (!url) return null;
-    let videoId: string | null = null;
-    try {
-        const patterns = [
-            /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/|v\/|live\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/,
-            /youtube\.com\/shorts\/([a-zA-Z0-9_-]{11})/,
-        ];
-
-        for (const pattern of patterns) {
-            const match = url.match(pattern);
-            if (match && match[1]) {
-                videoId = match[1];
-                break;
-            }
-        }
-    } catch (e) {
-        console.error("Error parsing YouTube URL", e);
-        return null;
-    }
-    return videoId;
-}
-
-const VideoPlayer = ({ videoUrl }: { videoUrl: string }) => {
-    const youtubeVideoId = getYoutubeVideoId(videoUrl);
-
-    if (!youtubeVideoId) {
-        return (
-            <div className="w-full aspect-video bg-black text-white flex items-center justify-center rounded-lg">
-                <p>Unsupported video URL.</p>
-            </div>
-        )
-    }
-
-    return (
-        <div className="w-full aspect-video">
-            <iframe
-                width="100%"
-                height="100%"
-                src={`https://www.youtube.com/embed/${youtubeVideoId}?autoplay=1&rel=0`}
-                title="Course Video Player"
-                frameBorder="0"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                allowFullScreen
-                className="rounded-lg"
-            ></iframe>
-        </div>
-    );
-};
-
+import { Textarea } from '@/components/ui/textarea';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Send } from 'lucide-react';
 
 const PDFViewer = ({ pdfUrl, title, onOpenChange }: { pdfUrl: string, title: string, onOpenChange: (open: boolean) => void }) => {
     const googleDocsUrl = `https://docs.google.com/gview?url=${encodeURIComponent(pdfUrl)}&embedded=true`;
@@ -111,78 +50,24 @@ const PDFViewer = ({ pdfUrl, title, onOpenChange }: { pdfUrl: string, title: str
     );
 };
 
-const NotesSection = ({ contentId }: { contentId: string }) => {
-    const { user } = useAuth();
-    const { toast } = useToast();
-    const [notes, setNotes] = useState('');
-    const [isSaving, setIsSaving] = useState(false);
-
-    useEffect(() => {
-        if (user) {
-            const q = query(
-                collection(firestore, 'liveClassNotes'),
-                where('classId', '==', contentId), // Using classId as a generic content ID
-                where('userId', '==', user.uid),
-                limit(1)
-            );
-            const unsubscribe = onSnapshot(q, (querySnapshot) => {
-                if (!querySnapshot.empty) {
-                    const doc = querySnapshot.docs[0];
-                    setNotes(doc.data().content);
-                } else {
-                    setNotes('');
-                }
-            });
-            return () => unsubscribe();
-        }
-    }, [contentId, user]);
-
-    const handleSave = async () => {
-        if (!user) return;
-        setIsSaving(true);
-        const result = await saveNoteAction(contentId, user.uid, notes);
-        if (result.success) {
-            toast({ description: 'Notes saved successfully.' });
-        } else {
-            toast({ variant: 'destructive', description: 'Failed to save notes.' });
-        }
-        setIsSaving(false);
-    };
-
-    return (
-        <div className="p-4 flex flex-col h-full">
-            <Textarea
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                placeholder="Write your personal notes here... they are only visible to you."
-                className="flex-1 min-h-[200px]"
-            />
-            <Button onClick={handleSave} disabled={isSaving} className="mt-4">
-                {isSaving ? 'Saving...' : 'Save Notes'}
-            </Button>
-        </div>
-    );
-};
-
-const hashCode = (str: string) => {
-    let hash = 0;
-    for (let i = 0; i < str.length; i++) {
-       hash = str.charCodeAt(i) + ((hash << 5) - hash);
+const ContentIcon = ({ type }: { type: string }) => {
+    switch (type) {
+        case 'video': return <Video className="h-5 w-5 text-primary"/>;
+        case 'pdf': return <FileText className="h-5 w-5 text-primary"/>;
+        case 'note': return <StickyNote className="h-5 w-5 text-primary"/>;
+        case 'test_series': return <FileText className="h-5 w-5 text-primary" />;
+        case 'ai_test': return <ShieldQuestion className="h-5 w-5 text-primary" />;
+        default: return <BookOpen className="h-5 w-5 text-primary"/>;
     }
-    return hash;
 }
 
-const intToRGB = (i: number) => {
-    const c = (i & 0x00FFFFFF)
-        .toString(16)
-        .toUpperCase();
-    return "00000".substring(0, 6 - c.length) + c;
-}
 
-const ContentTab = ({ courseId, onContentClick }: { courseId: string, onContentClick: (content: any) => void }) => {
+const ContentTab = ({ courseId }: { courseId: string }) => {
     const [courseContentCollection, courseContentLoading, courseContentError] = useCollection(
         query(collection(firestore, 'courses', courseId, 'content'))
     );
+    const [isPdfOpen, setIsPdfOpen] = useState(false);
+    const [selectedPdf, setSelectedPdf] = useState<{ url: string, title: string } | null>(null);
 
     const sortedContent = courseContentCollection?.docs
         .filter(doc => ['pdf', 'note'].includes(doc.data().type))
@@ -192,195 +77,51 @@ const ContentTab = ({ courseId, onContentClick }: { courseId: string, onContentC
             if (dateA < dateB) return -1; if (dateA > dateB) return 1; return 0;
         });
 
+    const handleContentClick = (content: any) => {
+        setSelectedPdf({ url: content.url, title: content.title });
+        setIsPdfOpen(true);
+    };
+
     return (
-        <CardContent>
-          {courseContentError && <p className="text-destructive">Could not load course content: {courseContentError.message}</p>}
-          {courseContentLoading && <Skeleton className="w-full h-24" />}
-          {sortedContent && sortedContent.length > 0 ? (
-            <div className="space-y-4">
-              {sortedContent.map(doc => {
-                const content = doc.data();
-                return (
-                  <div key={doc.id} onClick={() => onContentClick({ id: doc.id, ...content })} className="flex items-center justify-between p-3 rounded-lg border bg-muted/50 cursor-pointer hover:bg-muted transition-colors">
-                    <div className="flex items-center gap-3">
-                       <ContentIcon type={content.type} />
-                       <p className="font-semibold">{content.title}</p>
-                    </div>
-                     <Button variant="ghost" size="icon">
-                        <PlayCircle className="h-6 w-6" />
-                    </Button>
-                  </div>
-                )
-              })}
-            </div>
-          ) : !courseContentLoading && (
-            <p className="text-muted-foreground text-center py-8">No PDF or note content has been added to this course yet.</p>
-          )}
-        </CardContent>
+        <>
+            {isPdfOpen && selectedPdf && (
+                 <PDFViewer 
+                    pdfUrl={selectedPdf.url}
+                    title={selectedPdf.title}
+                    onOpenChange={(isOpen) => !isOpen && setIsPdfOpen(false)}
+                />
+            )}
+            <CardContent>
+              {courseContentError && <p className="text-destructive">Could not load course content: {courseContentError.message}</p>}
+              {courseContentLoading && <Skeleton className="w-full h-24" />}
+              {sortedContent && sortedContent.length > 0 ? (
+                <div className="space-y-4">
+                  {sortedContent.map(doc => {
+                    const content = doc.data();
+                    return (
+                      <div key={doc.id} onClick={() => handleContentClick(content)} className="flex items-center justify-between p-3 rounded-lg border bg-muted/50 cursor-pointer hover:bg-muted transition-colors">
+                        <div className="flex items-center gap-3">
+                           <ContentIcon type={content.type} />
+                           <p className="font-semibold">{content.title}</p>
+                        </div>
+                         <Button variant="ghost" size="icon">
+                            <PlayCircle className="h-6 w-6" />
+                        </Button>
+                      </div>
+                    )
+                  })}
+                </div>
+              ) : !courseContentLoading && (
+                <p className="text-muted-foreground text-center py-8">No PDF or note content has been added to this course yet.</p>
+              )}
+            </CardContent>
+        </>
     )
 }
 
-const DoubtsTab = ({ courseId }: { courseId: string }) => {
-    const { user } = useAuth();
-    const { toast } = useToast();
-    const [doubtText, setDoubtText] = useState('');
-    const [replyText, setReplyText] = useState<Record<string, string>>({});
 
-    const [doubtsCollection, doubtsLoading, doubtsError] = useCollection(
-        query(collection(firestore, 'courses', courseId, 'doubts'), orderBy('createdAt', 'desc'))
-    );
-    
-    const handleDoubtSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!user || !doubtText.trim()) return;
-        try {
-            await addDoc(collection(firestore, 'courses', courseId, 'doubts'), {
-                text: doubtText,
-                userId: user.uid,
-                userName: user.displayName,
-                userPhoto: user.photoURL,
-                createdAt: serverTimestamp(),
-                likes: [],
-                dislikes: [],
-                replies: [],
-            });
-            setDoubtText('');
-            toast({ description: "Your doubt has been submitted." });
-        } catch (error: any) {
-            toast({ variant: 'destructive', description: `Could not submit your doubt: ${error.message}` });
-        }
-    };
-    
-    const handleReplySubmit = async (doubtId: string, doubtAuthorId: string) => {
-        const text = replyText[doubtId];
-        if (!user || !text || !text.trim()) return;
-
-        const result = await addDoubtReplyAction({
-            courseId,
-            doubtId,
-            doubtAuthorId,
-            reply: {
-                id: doc(collection(firestore, 'dummy')).id, // Unique ID for reply
-                userId: user.uid,
-                userName: user.displayName || 'Anonymous',
-                userPhoto: user.photoURL || null,
-                text: text,
-                createdAt: new Date().toISOString(),
-            }
-        });
-
-        if (result.success) {
-            setReplyText(prev => ({ ...prev, [doubtId]: '' }));
-        } else {
-            toast({ variant: 'destructive', description: result.error });
-        }
-    }
-    
-    const handleLikeToggle = async (doubtId: string, likes: string[]) => {
-        if (!user) return;
-        const currentLikes = likes || [];
-        const doubtRef = doc(firestore, 'courses', courseId, 'doubts', doubtId);
-        if (currentLikes.includes(user.uid)) {
-            await updateDoc(doubtRef, { likes: arrayRemove(user.uid) });
-        } else {
-            await updateDoc(doubtRef, { likes: arrayUnion(user.uid), dislikes: arrayRemove(user.uid) });
-        }
-    }
-    
-    const handleDislikeToggle = async (doubtId: string, dislikes: string[]) => {
-        if (!user) return;
-        const currentDislikes = dislikes || [];
-        const doubtRef = doc(firestore, 'courses', courseId, 'doubts', doubtId);
-        if (currentDislikes.includes(user.uid)) {
-            await updateDoc(doubtRef, { dislikes: arrayRemove(user.uid) });
-        } else {
-            await updateDoc(doubtRef, { dislikes: arrayUnion(user.uid), likes: arrayRemove(user.uid) });
-        }
-    }
-
-    return (
-        <CardContent className="space-y-6">
-            <form onSubmit={handleDoubtSubmit} className="flex items-start gap-3">
-                <Avatar className="h-9 w-9">
-                    <AvatarImage src={user?.photoURL || undefined} />
-                    <AvatarFallback style={{ backgroundColor: `#${intToRGB(hashCode(user?.displayName || 'U'))}` }}>{user?.displayName?.charAt(0) || 'A'}</AvatarFallback>
-                </Avatar>
-                <Textarea 
-                    value={doubtText} 
-                    onChange={(e) => setDoubtText(e.target.value)} 
-                    placeholder="Ask your doubt here..." 
-                />
-                <Button type="submit"><Send /></Button>
-            </form>
-
-            <div className="space-y-4">
-                {doubtsLoading && <Skeleton className="h-20 w-full" />}
-                {doubtsError && <p className="text-destructive">Could not load doubts: {doubtsError.message}</p>}
-                {doubtsCollection?.docs.map(doubtDoc => {
-                    const doubt = doubtDoc.data();
-                    const doubtId = doubtDoc.id;
-                    const isLiked = user && (doubt.likes || []).includes(user.uid);
-                    const isDisliked = user && (doubt.dislikes || []).includes(user.uid);
-                    return (
-                        <div key={doubtId} className="p-4 border rounded-lg">
-                            <div className="flex items-start gap-3">
-                                <Avatar className="h-8 w-8">
-                                    <AvatarImage src={doubt.userPhoto || undefined} />
-                                    <AvatarFallback style={{ backgroundColor: `#${intToRGB(hashCode(doubt.userName || 'U'))}` }}>{doubt.userName?.charAt(0) || 'A'}</AvatarFallback>
-                                </Avatar>
-                                <div className="flex-1">
-                                    <p className="font-semibold text-sm">{doubt.userName}</p>
-                                    <p>{doubt.text}</p>
-                                     <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
-                                        <Button variant="ghost" size="sm" className={`h-auto p-1 ${isLiked ? 'text-primary' : ''}`} onClick={() => handleLikeToggle(doubtId, doubt.likes)}>
-                                            <ThumbsUp size={14} className="mr-1.5"/> {doubt.likes?.length || 0}
-                                        </Button>
-                                         <Button variant="ghost" size="sm" className={`h-auto p-1 ${isDisliked ? 'text-destructive' : ''}`} onClick={() => handleDislikeToggle(doubtId, doubt.dislikes)}>
-                                            <ThumbsDown size={14} className="mr-1.5"/> {doubt.dislikes?.length || 0}
-                                        </Button>
-                                         <Button variant="ghost" size="sm" className="h-auto p-1">
-                                            <MessageSquare size={14} className="mr-1.5"/> Reply
-                                        </Button>
-                                    </div>
-                                </div>
-                            </div>
-                            {doubt.replies && doubt.replies.length > 0 && (
-                                <div className="mt-3 ml-11 pl-4 border-l space-y-3">
-                                    {doubt.replies.map((reply: any) => (
-                                        <div key={reply.id} className="flex items-start gap-3">
-                                            <Avatar className="h-8 w-8">
-                                                <AvatarImage src={reply.userPhoto || undefined} />
-                                                <AvatarFallback style={{ backgroundColor: `#${intToRGB(hashCode(reply.userName || 'U'))}` }}>{reply.userName?.charAt(0) || 'A'}</AvatarFallback>
-                                            </Avatar>
-                                            <div>
-                                                <p className="font-semibold text-sm">{reply.userName}</p>
-                                                <p className="text-sm">{reply.text}</p>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                             <form onSubmit={(e) => { e.preventDefault(); handleReplySubmit(doubtId, doubt.userId); }} className="mt-3 ml-11 pl-4 border-l flex gap-2">
-                                <Input 
-                                    value={replyText[doubtId] || ''}
-                                    onChange={(e) => setReplyText(prev => ({...prev, [doubtId]: e.target.value}))}
-                                    placeholder="Add a reply..."
-                                    className="h-9"
-                                />
-                                <Button size="sm" type="submit">Reply</Button>
-                            </form>
-                        </div>
-                    )
-                })}
-                 {!doubtsLoading && doubtsCollection?.empty && (
-                    <p className="text-muted-foreground text-center py-8">No doubts have been asked yet.</p>
-                )}
-            </div>
-        </CardContent>
-    );
-};
-
-const VideoLecturesTab = ({ courseId, onContentClick, activeContentId }: { courseId: string; onContentClick: (content: any) => void; activeContentId: string | null }) => {
+const VideoLecturesTab = ({ courseId }: { courseId: string; }) => {
+    const router = useRouter();
     const [videosCollection, loading, error] = useCollection(
         query(collection(firestore, 'courses', courseId, 'content'))
     );
@@ -392,6 +133,10 @@ const VideoLecturesTab = ({ courseId, onContentClick, activeContentId }: { cours
             const dateB = b.data().createdAt?.toDate() || 0;
             if (dateA < dateB) return -1; if (dateA > dateB) return 1; return 0;
         });
+        
+    const handleVideoClick = (contentId: string) => {
+        router.push(`/dashboard/courses/${courseId}/video/${contentId}`);
+    }
 
     return (
         <CardContent>
@@ -402,7 +147,7 @@ const VideoLecturesTab = ({ courseId, onContentClick, activeContentId }: { cours
                     {sortedVideos.map(doc => {
                         const content = { id: doc.id, ...doc.data() };
                         return (
-                            <div key={doc.id} className={cn("flex items-center justify-between p-3 rounded-lg border cursor-pointer transition-colors", activeContentId === doc.id ? 'bg-primary/10 border-primary' : 'bg-muted/50 hover:bg-muted')} onClick={() => onContentClick(content)}>
+                            <div key={doc.id} className={cn("flex items-center justify-between p-3 rounded-lg border cursor-pointer transition-colors", 'bg-muted/50 hover:bg-muted')} onClick={() => handleVideoClick(content.id)}>
                                 <div className="flex items-center gap-3">
                                     <ContentIcon type={content.type} />
                                     <p className="font-semibold">{content.title}</p>
@@ -506,91 +251,24 @@ const TestsTab = ({ course, courseId }: { course: DocumentData, courseId: string
 };
 
 const EnrolledCourseView = ({ course, courseId }: { course: DocumentData, courseId: string }) => {
-    const [selectedContent, setSelectedContent] = useState<any>(null);
-    const [isPdfOpen, setIsPdfOpen] = useState(false);
-
-    // Fetch initial video to display
-    useEffect(() => {
-        const fetchFirstVideo = async () => {
-            const q = query(
-                collection(firestore, 'courses', courseId, 'content'), 
-                where('type', '==', 'video'),
-                orderBy('createdAt', 'asc'),
-                limit(1)
-            );
-            const querySnapshot = await getDocs(q);
-            if (!querySnapshot.empty) {
-                const firstVideo = querySnapshot.docs[0];
-                setSelectedContent({ id: firstVideo.id, ...firstVideo.data() });
-            }
-        };
-        fetchFirstVideo();
-    }, [courseId]);
-
-    const handleContentClick = (content: any) => {
-        if (content.type === 'video') {
-            setSelectedContent(content);
-        } else if (content.type === 'pdf' || content.type === 'note') {
-            setSelectedContent(content); // Store it to show title, etc.
-            setIsPdfOpen(true);
-        }
-    };
-    
     return (
-        <div className="flex flex-col lg:flex-row gap-8">
-            {isPdfOpen && selectedContent && (
-                 <PDFViewer 
-                    pdfUrl={selectedContent.url}
-                    title={selectedContent.title}
-                    onOpenChange={(isOpen) => !isOpen && setIsPdfOpen(false)}
-                />
-            )}
-            <div className="lg:w-[65%] w-full flex-shrink-0">
-                <div className="sticky top-4">
-                     {selectedContent?.type === 'video' ? (
-                        <VideoPlayer videoUrl={selectedContent.url} />
-                    ) : (
-                        <div className="w-full aspect-video bg-muted rounded-lg flex items-center justify-center">
-                            <p className="text-muted-foreground">Select a video to play</p>
-                        </div>
-                    )}
-                    <h1 className="text-2xl font-bold mt-4">{selectedContent?.title || course.title}</h1>
-                     {selectedContent && (
-                         <div className="mt-4">
-                             <Tabs defaultValue="doubts">
-                                <TabsList className="grid w-full grid-cols-2">
-                                    <TabsTrigger value="doubts">Doubts</TabsTrigger>
-                                    <TabsTrigger value="notes">Notes</TabsTrigger>
-                                </TabsList>
-                                <TabsContent value="doubts">
-                                    <DoubtsTab courseId={courseId} />
-                                </TabsContent>
-                                <TabsContent value="notes">
-                                    <NotesSection contentId={selectedContent.id} />
-                                </TabsContent>
-                            </Tabs>
-                         </div>
-                     )}
-                </div>
-            </div>
-            <div className="lg:w-[35%] w-full">
-                <Tabs defaultValue="videos">
-                    <TabsList className="grid w-full grid-cols-3">
-                        <TabsTrigger value="videos">Videos</TabsTrigger>
-                        <TabsTrigger value="content">Content</TabsTrigger>
-                        <TabsTrigger value="tests">Tests</TabsTrigger>
-                    </TabsList>
-                    <TabsContent value="videos">
-                        <VideoLecturesTab courseId={courseId} onContentClick={handleContentClick} activeContentId={selectedContent?.id} />
-                    </TabsContent>
-                    <TabsContent value="content">
-                        <ContentTab courseId={courseId} onContentClick={handleContentClick} />
-                    </TabsContent>
-                    <TabsContent value="tests">
-                        <TestsTab course={course} courseId={courseId} />
-                    </TabsContent>
-                </Tabs>
-            </div>
+        <div className="w-full">
+            <Tabs defaultValue="videos" className="w-full">
+                <TabsList className="grid w-full grid-cols-3">
+                    <TabsTrigger value="videos">Videos</TabsTrigger>
+                    <TabsTrigger value="content">Content</TabsTrigger>
+                    <TabsTrigger value="tests">Tests</TabsTrigger>
+                </TabsList>
+                <TabsContent value="videos">
+                    <VideoLecturesTab courseId={courseId} />
+                </TabsContent>
+                <TabsContent value="content">
+                    <ContentTab courseId={courseId} />
+                </TabsContent>
+                <TabsContent value="tests">
+                    <TestsTab course={course} courseId={courseId} />
+                </TabsContent>
+            </Tabs>
         </div>
     )
 }
@@ -652,7 +330,7 @@ function CourseDetailPageContent() {
 
   if (isEnrolled || isFreeCourse) {
       return (
-        <div className="max-w-7xl mx-auto p-4 md:p-8">
+        <div className="max-w-4xl mx-auto p-4 md:p-8">
             <EnrolledCourseView course={course} courseId={courseId} />
         </div>
       )
