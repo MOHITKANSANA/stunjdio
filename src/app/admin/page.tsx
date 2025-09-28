@@ -17,7 +17,7 @@ import { collection, query, orderBy, doc, updateDoc, addDoc, deleteDoc, serverTi
 import { firestore } from '@/lib/firebase';
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Trash2, Check, X, Upload, Video, FileText, StickyNote, PlusCircle, Save, Download, ThumbsUp, ThumbsDown, Clock, CircleAlert, CheckCircle2, XCircle, KeyRound, Newspaper, Image as ImageIcon, MinusCircle, BookMarked, Award, Gift, ShieldQuestion, Percent } from 'lucide-react';
+import { Loader2, Trash2, Check, X, Upload, Video, FileText, StickyNote, PlusCircle, Save, Download, ThumbsUp, ThumbsDown, Clock, CircleAlert, CheckCircle2, XCircle, KeyRound, Newspaper, Image as ImageIcon, MinusCircle, BookMarked, Award, Gift, ShieldQuestion, Percent, IndianRupee } from 'lucide-react';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -42,7 +42,8 @@ type CourseFormValues = z.infer<typeof courseFormSchema>;
 
 const couponSchema = z.object({
     code: z.string().min(3, 'Coupon code must be at least 3 characters long.').toUpperCase(),
-    discount: z.coerce.number().min(1, 'Discount must be at least 1.').max(100, 'Discount cannot exceed 100.'),
+    discountType: z.enum(['percentage', 'fixed']),
+    discountValue: z.coerce.number().min(1, 'Discount value must be at least 1.'),
     courseId: z.string().min(1, 'Please select a course for this coupon.'),
 });
 type CouponFormValues = z.infer<typeof couponSchema>;
@@ -312,8 +313,8 @@ function AdminDashboard() {
 
 
   useEffect(() => {
-    const fetchScores = async () => {
-        if (scholarshipApplicants?.docs) {
+    if (scholarshipApplicants?.docs) {
+        const fetchScores = async () => {
             const scores: Record<string, string> = {};
             for (const appDoc of scholarshipApplicants.docs) {
                 const app = appDoc.data();
@@ -332,14 +333,14 @@ function AdminDashboard() {
                 }
             }
             setApplicantTestScores(scores);
-        }
-    };
-    fetchScores();
-  }, [scholarshipApplicants?.docs]);
+        };
+        fetchScores();
+    }
+}, [scholarshipApplicants]);
 
   
   const courseForm = useForm<CourseFormValues>({ resolver: zodResolver(courseFormSchema), defaultValues: { title: '', category: '', description: '', price: 0, isFree: false, imageFile: undefined } });
-  const couponForm = useForm<CouponFormValues>({ resolver: zodResolver(couponSchema), defaultValues: { code: '', discount: 10, courseId: '' } });
+  const couponForm = useForm<CouponFormValues>({ resolver: zodResolver(couponSchema), defaultValues: { code: '', discountType: 'percentage', discountValue: 10, courseId: '' } });
   const liveClassForm = useForm<LiveClassFormValues>({ resolver: zodResolver(liveClassFormSchema), defaultValues: { title: '', youtubeUrl: '', startTime: '', thumbnailUrl: '' } });
   const qrCodeForm = useForm<QrCodeFormValues>({ resolver: zodResolver(qrCodeFormSchema), defaultValues: { imageFile: undefined } });
   const courseContentForm = useForm<CourseContentValues>({ resolver: zodResolver(courseContentSchema), defaultValues: { courseId: '', contentType: 'video', title: '', introduction: '', url: '', testSeriesId: '' } });
@@ -905,40 +906,7 @@ function AdminDashboard() {
                         </form></Form>
                     </CardContent>
                 </Card>
-                 <Card>
-                    <CardHeader><CardTitle>Manage Coupons</CardTitle><CardDescription>Create discount coupons for specific courses.</CardDescription></CardHeader>
-                    <CardContent>
-                         <Form {...couponForm}><form onSubmit={couponForm.handleSubmit(onCouponSubmit)} className="grid gap-4 mb-6">
-                            <FormField control={couponForm.control} name="courseId" render={({ field }) => (<FormItem><FormLabel>Select Course</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}>
-                                <FormControl><SelectTrigger><SelectValue placeholder="Choose a course" /></SelectTrigger></FormControl>
-                                <SelectContent>{coursesCollection?.docs.filter(c => !c.data().isFree).map(doc => (<SelectItem key={doc.id} value={doc.id}>{doc.data().title}</SelectItem>))}</SelectContent>
-                            </Select><FormMessage /></FormItem>)}/>
-                             <FormField control={couponForm.control} name="code" render={({ field }) => (<FormItem><FormLabel>Coupon Code</FormLabel><FormControl><Input placeholder="e.g. SAVE20" {...field} /></FormControl><FormMessage /></FormItem>)}/>
-                             <FormField control={couponForm.control} name="discount" render={({ field }) => (<FormItem><FormLabel>Discount (%)</FormLabel><FormControl><Input type="number" placeholder="e.g. 20" {...field} /></FormControl><FormMessage /></FormItem>)}/>
-                             <Button type="submit" disabled={couponForm.formState.isSubmitting}>{couponForm.formState.isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin"/>Creating...</> : <><Percent className="mr-2"/>Create Coupon</>}</Button>
-                         </form></Form>
-                         <h4 className="font-semibold mb-2">Existing Coupons</h4>
-                         <div className="max-h-60 overflow-y-auto pr-2 space-y-2">
-                            {couponsLoading && <Skeleton className="h-12 w-full" />}
-                            {couponsCollection?.docs.map((doc) => {
-                                const coupon = doc.data();
-                                const course = coursesCollection?.docs.find(c => c.id === coupon.courseId)?.data();
-                                return (
-                                <div key={doc.id} className="flex items-center justify-between p-2 border rounded-lg">
-                                    <div>
-                                        <p className="font-mono font-bold">{coupon.code}</p>
-                                        <p className="text-sm text-muted-foreground">{coupon.discount}% off on {course?.title || 'a course'}</p>
-                                    </div>
-                                    <Button variant="ghost" size="icon" onClick={() => deleteDoc(doc.ref)}>
-                                    <Trash2 className="h-4 w-4 text-destructive" />
-                                    </Button>
-                                </div>
-                                )
-                            })}
-                        </div>
-                    </CardContent>
-                </Card>
-                
+
                  <Card>
                   <CardHeader><CardTitle>E-Books Management</CardTitle><CardDescription>Add, view, and manage E-books.</CardDescription></CardHeader>
                   <CardContent>
@@ -1403,9 +1371,47 @@ function AdminDashboard() {
                                 </div>
                             ))}
                         </div>
-
                   </CardContent>
               </Card>
+
+              <Card>
+                <CardHeader>
+                    <CardTitle>Manage Coupons</CardTitle>
+                    <CardDescription>Create and manage discount coupons for your courses.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <Form {...couponForm}>
+                        <form onSubmit={couponForm.handleSubmit(onCouponSubmit)} className="space-y-4 mb-6">
+                            <FormField control={couponForm.control} name="courseId" render={({ field }) => (<FormItem><FormLabel>Select Course</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Choose a course" /></SelectTrigger></FormControl><SelectContent>{coursesCollection?.docs.filter(c => !c.data().isFree).map(doc => (<SelectItem key={doc.id} value={doc.id}>{doc.data().title}</SelectItem>))}</SelectContent></Select><FormMessage /></FormItem>)} />
+                            <FormField control={couponForm.control} name="code" render={({ field }) => (<FormItem><FormLabel>Coupon Code</FormLabel><FormControl><Input placeholder="E.g., SAVE20" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                            <FormField control={couponForm.control} name="discountType" render={({ field }) => (<FormItem><FormLabel>Discount Type</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Choose a discount type" /></SelectTrigger></FormControl><SelectContent><SelectItem value="percentage">Percentage (%)</SelectItem><SelectItem value="fixed">Fixed Amount (₹)</SelectItem></SelectContent></Select><FormMessage /></FormItem>)} />
+                            <FormField control={couponForm.control} name="discountValue" render={({ field }) => (<FormItem><FormLabel>Discount Value</FormLabel><FormControl><div className="relative"><div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3"><span className="text-muted-foreground sm:text-sm">{couponForm.watch('discountType') === 'percentage' ? <Percent size={16} /> : <IndianRupee size={16} />}</span></div><Input type="number" placeholder="e.g., 20 or 100" className="pl-10" {...field} /></div></FormControl><FormMessage /></FormItem>)} />
+                            <Button type="submit" className="w-full" disabled={couponForm.formState.isSubmitting}>{couponForm.formState.isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Creating...</> : <>Create Coupon</>}</Button>
+                        </form>
+                    </Form>
+                    <Separator />
+                    <h4 className="font-semibold my-4">Existing Coupons</h4>
+                    <div className="max-h-60 overflow-y-auto pr-2 space-y-2">
+                        {couponsLoading && <Skeleton className="h-12 w-full" />}
+                        {couponsCollection?.docs.map((doc) => {
+                            const coupon = doc.data();
+                            const course = coursesCollection?.docs.find(c => c.id === coupon.courseId)?.data();
+                            return (
+                                <div key={doc.id} className="flex items-center justify-between p-2 border rounded-lg">
+                                    <div>
+                                        <p className="font-mono font-bold">{coupon.code}</p>
+                                        <p className="text-sm text-muted-foreground">{coupon.discountType === 'percentage' ? `${coupon.discountValue}%` : `₹${coupon.discountValue}`} off on {course?.title || 'a course'}</p>
+                                    </div>
+                                    <Button variant="ghost" size="icon" onClick={() => deleteDoc(doc.ref)}>
+                                        <Trash2 className="h-4 w-4 text-destructive" />
+                                    </Button>
+                                </div>
+                            )
+                        })}
+                    </div>
+                </CardContent>
+            </Card>
+
           </div>
         </TabsContent>
       </Tabs>
@@ -1426,3 +1432,4 @@ function AdminDashboard() {
     </div>
   );
 }
+

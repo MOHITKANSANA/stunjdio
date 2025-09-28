@@ -1,12 +1,13 @@
 
+
 'use client';
 
-import { BookOpenCheck, Trophy, Library, BookMarked, BellDot, Newspaper } from "lucide-react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { BookOpenCheck, Trophy, Library, BookMarked, BellDot, Newspaper, Trash2 } from "lucide-react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from '@/hooks/use-auth';
 import { useCollection } from 'react-firebase-hooks/firestore';
-import { collection, query, where, orderBy, updateDoc, doc, getDocs } from 'firebase/firestore';
+import { collection, query, where, orderBy, updateDoc, doc, getDocs, deleteDoc } from 'firebase/firestore';
 import { firestore } from '@/lib/firebase';
 import { Skeleton } from "@/components/ui/skeleton";
 import Image from 'next/image';
@@ -15,6 +16,7 @@ import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
 
 const PDFViewer = ({ pdfUrl, title, onOpenChange }: { pdfUrl: string, title: string, onOpenChange: (open: boolean) => void }) => {
     return (
@@ -38,7 +40,7 @@ const PDFViewer = ({ pdfUrl, title, onOpenChange }: { pdfUrl: string, title: str
 };
 
 
-const CourseCard = ({ course, courseId }: { course: any, courseId: string }) => {
+const CourseCard = ({ course, courseId, enrollmentId, onUnenroll }: { course: any, courseId: string, enrollmentId: string, onUnenroll: (id: string, title: string) => void }) => {
     return (
         <Card className="flex flex-col overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300">
             <Link href={`/dashboard/courses/${courseId}`}>
@@ -50,6 +52,11 @@ const CourseCard = ({ course, courseId }: { course: any, courseId: string }) => 
                     <CardDescription>{course.category}</CardDescription>
                 </CardHeader>
             </Link>
+            <CardFooter>
+                <Button variant="destructive" className="w-full" onClick={() => onUnenroll(enrollmentId, course.title)}>
+                    <Trash2 className="mr-2 h-4 w-4" /> Un-enroll
+                </Button>
+            </CardFooter>
         </Card>
     );
 };
@@ -71,6 +78,7 @@ const EBookCard = ({ ebook, onClick }: { ebook: any, onClick: () => void }) => {
 export default function MyLearningPage() {
     const { user, loading: authLoading } = useAuth();
     const [selectedPdf, setSelectedPdf] = useState<{ url: string, title: string } | null>(null);
+    const { toast } = useToast();
     
     const enrollmentsQuery = user 
         ? query(
@@ -79,7 +87,7 @@ export default function MyLearningPage() {
             where('status', '==', 'approved')
         )
         : null;
-    const [enrollments, enrollmentsLoading] = useCollection(enrollmentsQuery);
+    const [enrollments, enrollmentsLoading, enrollmentsError] = useCollection(enrollmentsQuery);
 
     const enrolledCourseIds = enrollments?.docs.map(doc => doc.data().courseId).filter(Boolean) || [];
 
@@ -88,7 +96,7 @@ export default function MyLearningPage() {
             collection(firestore, 'courses'),
             where('__name__', 'in', enrolledCourseIds)
         ) : null;
-    const [myCourses, myCoursesLoading] = useCollection(coursesQuery);
+    const [myCourses, myCoursesLoading, myCoursesError] = useCollection(coursesQuery);
     
     const [ebooks, ebooksLoading, ebooksError] = useCollection(
         query(collection(firestore, 'ebooks'), orderBy('createdAt', 'desc'))
@@ -113,6 +121,32 @@ export default function MyLearningPage() {
             await updateDoc(doc(firestore, 'users', user.uid, 'notifications', docSnapshot.id), { read: true });
         });
     }
+
+    const handleUnenroll = async (enrollmentId: string, courseTitle: string) => {
+        if (window.confirm(`Are you sure you want to un-enroll from "${courseTitle}"?`)) {
+            try {
+                await deleteDoc(doc(firestore, 'enrollments', enrollmentId));
+                toast({
+                    title: "Un-enrolled successfully",
+                    description: `You have been removed from ${courseTitle}.`,
+                });
+            } catch (error) {
+                 toast({
+                    variant: "destructive",
+                    title: "Un-enrollment failed",
+                    description: "Could not remove you from the course. Please try again.",
+                });
+            }
+        }
+    };
+
+    const courseIdToEnrollmentIdMap = enrollments?.docs.reduce((acc, doc) => {
+        const data = doc.data();
+        if (data.courseId) {
+            acc[data.courseId] = doc.id;
+        }
+        return acc;
+    }, {} as Record<string, string>);
     
     return (
         <div className="space-y-8 p-4 md:p-8">
@@ -151,8 +185,9 @@ export default function MyLearningPage() {
                             {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-80 w-full" />)}
                         </div>
                     )}
+                     {(enrollmentsError || myCoursesError) && <p className="text-destructive text-center">Could not load your courses.</p>}
                     
-                    {!(myCoursesLoading || authLoading) && (!myCourses || myCourses.empty) && (
+                    {!(myCoursesLoading || authLoading || enrollmentsLoading) && (!myCourses || myCourses.empty) && (
                          <div className="text-center py-12">
                             <BookOpenCheck className="mx-auto h-12 w-12 text-muted-foreground" />
                             <h3 className="mt-4 text-lg font-semibold">No Courses Here</h3>
@@ -161,9 +196,13 @@ export default function MyLearningPage() {
                     )}
                     
                     <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                        {myCourses?.docs.map(doc => (
-                            <CourseCard key={doc.id} course={doc.data()} courseId={doc.id} />
-                        ))}
+                        {myCourses?.docs.map(doc => {
+                             const enrollmentId = courseIdToEnrollmentIdMap?.[doc.id];
+                             if (!enrollmentId) return null;
+                            return (
+                                <CourseCard key={doc.id} course={doc.data()} courseId={doc.id} enrollmentId={enrollmentId} onUnenroll={handleUnenroll}/>
+                            )
+                        })}
                     </div>
                 </TabsContent>
                 <TabsContent value="ebooks" className="mt-6">
@@ -243,3 +282,4 @@ export default function MyLearningPage() {
         </div>
     );
 }
+

@@ -1,10 +1,11 @@
 
+
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/hooks/use-auth';
 import { firestore } from '@/lib/firebase';
-import { doc, collection, query, orderBy, onSnapshot, where, getDoc, limit, addDoc, serverTimestamp, arrayUnion, updateDoc } from 'firebase/firestore';
+import { doc, collection, query, orderBy, onSnapshot, where, getDoc, addDoc, serverTimestamp } from 'firebase/firestore';
 import { useDocument, useCollection } from 'react-firebase-hooks/firestore';
 import { notFound, useParams } from 'next/navigation';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -14,7 +15,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { Send, MessageSquare, BookText } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { addDoubtReplyAction } from '@/app/actions/doubts';
 import { saveNoteAction } from '@/app/actions/live-class';
 import { Input } from '@/components/ui/input';
 
@@ -84,62 +84,63 @@ const intToRGB = (i: number) => {
     return "00000".substring(0, 6 - c.length) + c;
 }
 
-const ChatSection = ({ courseId }: { courseId: string }) => {
+const ChatSection = ({ contentId }: { contentId: string }) => {
     const { user } = useAuth();
     const { toast } = useToast();
     const [doubtText, setDoubtText] = useState('');
     const chatEndRef = useRef<HTMLDivElement | null>(null);
 
-    const [doubtsCollection, doubtsLoading, doubtsError] = useCollection(
-        query(collection(firestore, 'courses', courseId, 'doubts'), orderBy('createdAt', 'asc'))
+    // Use contentId to create a unique collection path for each video's chat
+    const chatsCollectionRef = collection(firestore, 'videoChats', contentId, 'messages');
+    const [chatsCollection, chatsLoading, chatsError] = useCollection(
+        query(chatsCollectionRef, orderBy('createdAt', 'asc'))
     );
     
     useEffect(() => {
         chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    }, [doubtsCollection]);
+    }, [chatsCollection]);
 
     const handleDoubtSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!user || !doubtText.trim()) return;
         try {
-            await addDoc(collection(firestore, 'courses', courseId, 'doubts'), {
+            await addDoc(chatsCollectionRef, {
                 text: doubtText,
                 userId: user.uid,
                 userName: user.displayName,
                 userPhoto: user.photoURL,
                 createdAt: serverTimestamp(),
-                replies: [],
             });
             setDoubtText('');
         } catch (error: any) {
-            toast({ variant: 'destructive', description: `Could not submit your doubt: ${error.message}` });
+            toast({ variant: 'destructive', description: `Could not submit your message: ${error.message}` });
         }
     };
 
     return (
         <div className="flex flex-col h-full bg-background p-4">
             <div className="flex-grow overflow-y-auto space-y-4 mb-4">
-                {doubtsLoading && <Skeleton className="h-20 w-full" />}
-                {doubtsError && <p className="text-destructive">Could not load chats.</p>}
-                {doubtsCollection?.docs.map(doc => {
-                    const doubt = doc.data();
-                    const isCurrentUser = user?.uid === doubt.userId;
+                {chatsLoading && <Skeleton className="h-20 w-full" />}
+                {chatsError && <p className="text-destructive">Could not load chats.</p>}
+                {chatsCollection?.docs.map(doc => {
+                    const chat = doc.data();
+                    const isCurrentUser = user?.uid === chat.userId;
                     return (
                         <div key={doc.id} className={`flex items-start gap-3 ${isCurrentUser ? 'justify-end' : ''}`}>
                              {!isCurrentUser && (
                                 <Avatar className="h-8 w-8">
-                                    <AvatarImage src={doubt.userPhoto || undefined} />
-                                    <AvatarFallback style={{ backgroundColor: `#${intToRGB(hashCode(doubt.userName || 'U'))}` }}>{doubt.userName?.charAt(0) || 'A'}</AvatarFallback>
+                                    <AvatarImage src={chat.userPhoto || undefined} />
+                                    <AvatarFallback style={{ backgroundColor: `#${intToRGB(hashCode(chat.userName || 'U'))}` }}>{chat.userName?.charAt(0) || 'A'}</AvatarFallback>
                                 </Avatar>
                              )}
                             <div className={`p-3 rounded-lg max-w-xs break-words ${isCurrentUser ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
-                                {!isCurrentUser && <p className="font-semibold text-sm">{doubt.userName}</p>}
-                                <p>{doubt.text}</p>
+                                {!isCurrentUser && <p className="font-semibold text-sm">{chat.userName}</p>}
+                                <p>{chat.text}</p>
                             </div>
                               {isCurrentUser && (
                                 <Avatar className="h-8 w-8">
-                                    <AvatarImage src={doubt.userPhoto || undefined} />
-                                    <AvatarFallback style={{ backgroundColor: `#${intToRGB(hashCode(doubt.userName || 'U'))}` }}>{doubt.userName?.charAt(0) || 'A'}</AvatarFallback>
+                                    <AvatarImage src={chat.userPhoto || undefined} />
+                                    <AvatarFallback style={{ backgroundColor: `#${intToRGB(hashCode(chat.userName || 'U'))}` }}>{chat.userName?.charAt(0) || 'A'}</AvatarFallback>
                                 </Avatar>
                              )}
                         </div>
@@ -177,7 +178,6 @@ const NotesSection = ({ contentId }: { contentId: string }) => {
                 collection(firestore, 'liveClassNotes'),
                 where('classId', '==', contentId), // Using classId as a generic content ID
                 where('userId', '==', user.uid),
-                limit(1)
             );
             const unsubscribe = onSnapshot(q, (querySnapshot) => {
                 if (!querySnapshot.empty) {
@@ -253,7 +253,7 @@ export default function VideoPlaybackPage() {
                             <TabsTrigger value="notes"><BookText className="mr-2"/>My Notes</TabsTrigger>
                         </TabsList>
                         <TabsContent value="chat" className="flex-grow min-h-0">
-                            <ChatSection courseId={courseId} />
+                            <ChatSection contentId={contentId} />
                         </TabsContent>
                         <TabsContent value="notes" className="flex-grow min-h-0">
                             <NotesSection contentId={contentId} />
@@ -264,3 +264,4 @@ export default function VideoPlaybackPage() {
         </div>
     );
 }
+
