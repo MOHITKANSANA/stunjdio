@@ -365,7 +365,7 @@ function AdminDashboard() {
 
   const jsonTestSeriesForm = useForm<JsonTestSeriesValues>({ resolver: zodResolver(jsonTestSeriesSchema), defaultValues: { jsonInput: '' } });
   const carouselItemForm = useForm<CarouselItemValues>({ resolver: zodResolver(carouselItemSchema), defaultValues: { internalLink: '', externalLink: '', imageFile: undefined } });
-  const kidsTubeVideoForm = useForm<KidsTubeVideoValues>({ resolver: zodResolver(kidsTubeVideoForm), defaultValues: { title: '', description: '', videoUrl: '', thumbnailUrl: '' } });
+  const kidsTubeVideoForm = useForm<KidsTubeVideoValues>({ resolver: zodResolver(kidsTubeVideoSchema), defaultValues: { title: '', description: '', videoUrl: '', thumbnailUrl: '' } });
   const eBookForm = useForm<EBookValues>({ resolver: zodResolver(eBookSchema) });
 
   const handleEnrollmentAction = async (id: string, newStatus: 'approved' | 'rejected') => {
