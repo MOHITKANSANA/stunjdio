@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, Suspense, useEffect } from 'react';
@@ -180,14 +181,16 @@ const intToRGB = (i: number) => {
 
 const ContentTab = ({ courseId, onContentClick }: { courseId: string, onContentClick: (content: any) => void }) => {
     const [courseContentCollection, courseContentLoading, courseContentError] = useCollection(
-        query(collection(firestore, 'courses', courseId, 'content'), where('type', 'in', ['pdf', 'note']))
+        query(collection(firestore, 'courses', courseId, 'content'))
     );
 
-    const sortedContent = courseContentCollection?.docs.sort((a, b) => {
-        const dateA = a.data().createdAt?.toDate() || 0;
-        const dateB = b.data().createdAt?.toDate() || 0;
-        if (dateA < dateB) return -1; if (dateA > dateB) return 1; return 0;
-    });
+    const sortedContent = courseContentCollection?.docs
+        .filter(doc => ['pdf', 'note'].includes(doc.data().type))
+        .sort((a, b) => {
+            const dateA = a.data().createdAt?.toDate() || 0;
+            const dateB = b.data().createdAt?.toDate() || 0;
+            if (dateA < dateB) return -1; if (dateA > dateB) return 1; return 0;
+        });
 
     return (
         <CardContent>
@@ -379,16 +382,16 @@ const DoubtsTab = ({ courseId }: { courseId: string }) => {
 
 const VideoLecturesTab = ({ courseId, onContentClick, activeContentId }: { courseId: string; onContentClick: (content: any) => void; activeContentId: string | null }) => {
     const [videosCollection, loading, error] = useCollection(
-        query(collection(firestore, 'courses', courseId, 'content'), where('type', '==', 'video'))
+        query(collection(firestore, 'courses', courseId, 'content'))
     );
 
-    const sortedVideos = videosCollection?.docs.sort((a, b) => {
-        const dateA = a.data().createdAt?.toDate() || 0;
-        const dateB = b.data().createdAt?.toDate() || 0;
-        if (dateA < dateB) return -1;
-        if (dateA > dateB) return 1;
-        return 0;
-    });
+    const sortedVideos = videosCollection?.docs
+        .filter(doc => doc.data().type === 'video')
+        .sort((a, b) => {
+            const dateA = a.data().createdAt?.toDate() || 0;
+            const dateB = b.data().createdAt?.toDate() || 0;
+            if (dateA < dateB) return -1; if (dateA > dateB) return 1; return 0;
+        });
 
     return (
         <CardContent>
@@ -423,17 +426,17 @@ const VideoLecturesTab = ({ courseId, onContentClick, activeContentId }: { cours
 
 const TestsTab = ({ course, courseId }: { course: DocumentData, courseId: string }) => {
     const [testsCollection, loading, error] = useCollection(
-        query(collection(firestore, 'courses', courseId, 'content'), where('type', '==', 'test_series'))
+        query(collection(firestore, 'courses', courseId, 'content'))
     );
     const [isAiTestModalOpen, setIsAiTestModalOpen] = useState(false);
 
-    const tests = testsCollection?.docs.sort((a, b) => {
-        const dateA = a.data().createdAt?.toDate() || 0;
-        const dateB = b.data().createdAt?.toDate() || 0;
-        if (dateA < dateB) return -1;
-        if (dateA > dateB) return 1;
-        return 0;
-    });
+    const tests = testsCollection?.docs
+        .filter(doc => doc.data().type === 'test_series')
+        .sort((a, b) => {
+            const dateA = a.data().createdAt?.toDate() || 0;
+            const dateB = b.data().createdAt?.toDate() || 0;
+            if (dateA < dateB) return -1; if (dateA > dateB) return 1; return 0;
+        });
     
     return (
         <CardContent className="space-y-4">
