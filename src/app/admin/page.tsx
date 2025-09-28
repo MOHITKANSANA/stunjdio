@@ -313,7 +313,7 @@ function AdminDashboard() {
 
   useEffect(() => {
     const fetchScores = async () => {
-        if (scholarshipApplicants) {
+        if (scholarshipApplicants?.docs) {
             const scores: Record<string, string> = {};
             for (const appDoc of scholarshipApplicants.docs) {
                 const app = appDoc.data();
@@ -335,7 +335,7 @@ function AdminDashboard() {
         }
     };
     fetchScores();
-  }, [scholarshipApplicants]);
+  }, [scholarshipApplicants?.docs]);
 
   
   const courseForm = useForm<CourseFormValues>({ resolver: zodResolver(courseFormSchema), defaultValues: { title: '', category: '', description: '', price: 0, isFree: false, imageFile: undefined } });
