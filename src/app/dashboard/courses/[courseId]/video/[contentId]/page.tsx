@@ -17,6 +17,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { saveNoteAction } from '@/app/actions/live-class';
 import { Input } from '@/components/ui/input';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 
 const getYoutubeVideoId = (url: string): string | null => {
@@ -118,35 +119,37 @@ const ChatSection = ({ contentId }: { contentId: string }) => {
 
     return (
         <div className="flex flex-col h-full bg-background p-4">
-            <div className="flex-grow overflow-y-auto space-y-4 mb-4 h-64">
-                {chatsLoading && <Skeleton className="h-20 w-full" />}
-                {chatsError && <p className="text-destructive">Could not load chats.</p>}
-                {chatsCollection?.docs.map(doc => {
-                    const chat = doc.data();
-                    const isCurrentUser = user?.uid === chat.userId;
-                    return (
-                        <div key={doc.id} className={`flex items-start gap-3 ${isCurrentUser ? 'justify-end' : ''}`}>
-                             {!isCurrentUser && (
-                                <Avatar className="h-8 w-8">
-                                    <AvatarImage src={chat.userPhoto || undefined} />
-                                    <AvatarFallback style={{ backgroundColor: `#${intToRGB(hashCode(chat.userName || 'U'))}` }}>{chat.userName?.charAt(0) || 'A'}</AvatarFallback>
-                                </Avatar>
-                             )}
-                            <div className={`p-3 rounded-lg max-w-xs break-words ${isCurrentUser ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
-                                {!isCurrentUser && <p className="font-semibold text-sm">{chat.userName}</p>}
-                                <p>{chat.text}</p>
+            <ScrollArea className="h-64 flex-grow mb-4">
+                <div className="space-y-4 pr-4">
+                    {chatsLoading && <Skeleton className="h-20 w-full" />}
+                    {chatsError && <p className="text-destructive">Could not load chats.</p>}
+                    {chatsCollection?.docs.map(doc => {
+                        const chat = doc.data();
+                        const isCurrentUser = user?.uid === chat.userId;
+                        return (
+                            <div key={doc.id} className={`flex items-start gap-3 ${isCurrentUser ? 'justify-end' : ''}`}>
+                                 {!isCurrentUser && (
+                                    <Avatar className="h-8 w-8">
+                                        <AvatarImage src={chat.userPhoto || undefined} />
+                                        <AvatarFallback style={{ backgroundColor: `#${intToRGB(hashCode(chat.userName || 'U'))}` }}>{chat.userName?.charAt(0) || 'A'}</AvatarFallback>
+                                    </Avatar>
+                                 )}
+                                <div className={`p-3 rounded-lg max-w-xs break-words ${isCurrentUser ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
+                                    {!isCurrentUser && <p className="font-semibold text-sm">{chat.userName}</p>}
+                                    <p>{chat.text}</p>
+                                </div>
+                                  {isCurrentUser && (
+                                    <Avatar className="h-8 w-8">
+                                        <AvatarImage src={chat.userPhoto || undefined} />
+                                        <AvatarFallback style={{ backgroundColor: `#${intToRGB(hashCode(chat.userName || 'U'))}` }}>{chat.userName?.charAt(0) || 'A'}</AvatarFallback>
+                                    </Avatar>
+                                 )}
                             </div>
-                              {isCurrentUser && (
-                                <Avatar className="h-8 w-8">
-                                    <AvatarImage src={chat.userPhoto || undefined} />
-                                    <AvatarFallback style={{ backgroundColor: `#${intToRGB(hashCode(chat.userName || 'U'))}` }}>{chat.userName?.charAt(0) || 'A'}</AvatarFallback>
-                                </Avatar>
-                             )}
-                        </div>
-                    )
-                })}
-                <div ref={chatEndRef} />
-            </div>
+                        )
+                    })}
+                    <div ref={chatEndRef} />
+                </div>
+            </ScrollArea>
             {user && (
                 <form onSubmit={handleDoubtSubmit} className="flex items-center gap-2 bg-background shrink-0">
                     <Input 
@@ -284,5 +287,6 @@ export default function VideoPlaybackPage() {
         </div>
     );
 }
+
 
 

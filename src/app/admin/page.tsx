@@ -45,6 +45,7 @@ const couponSchema = z.object({
     discountType: z.enum(['percentage', 'fixed']),
     discountValue: z.coerce.number().min(1, 'Discount value must be at least 1.'),
     courseId: z.string().min(1, 'Please select a course for this coupon.'),
+    expiryDate: z.string().refine((val) => !isNaN(Date.parse(val)), { message: 'Invalid date' }),
 });
 type CouponFormValues = z.infer<typeof couponSchema>;
 
@@ -145,7 +146,7 @@ type TestSeriesValues = z.infer<typeof testSeriesSchema>;
 const jsonTestSeriesSchema = z.object({
     jsonInput: z.string().refine((val) => {
         try {
-            const parsed = JSON.parse(val);
+            const parsed = JSON.parse(data.jsonInput);
             // This is a simplified check. Zod's .success check is more reliable.
             return testSeriesSchema.safeParse(parsed).success;
         } catch (e) {
@@ -316,7 +317,7 @@ function AdminDashboard() {
     if (scholarshipApplicants?.docs) {
         const fetchScores = async () => {
             const scores: Record<string, string> = {};
-            for (const appDoc of scholarshipApplicants.docs) {
+            const scorePromises = scholarshipApplicants.docs.map(async (appDoc) => {
                 const app = appDoc.data();
                 if (app.status === 'test_taken') {
                     const q = query(
@@ -326,12 +327,16 @@ function AdminDashboard() {
                     const resultsSnapshot = await getDocs(q);
                     if (!resultsSnapshot.empty) {
                         const resultData = resultsSnapshot.docs[0].data();
-                        scores[appDoc.id] = `${resultData.score}/${resultData.totalQuestions}`;
-                    } else {
-                        scores[appDoc.id] = 'N/A';
+                        return { id: appDoc.id, score: `${resultData.score}/${resultData.totalQuestions}` };
                     }
                 }
-            }
+                return { id: appDoc.id, score: 'N/A' };
+            });
+
+            const results = await Promise.all(scorePromises);
+            results.forEach(result => {
+                scores[result.id] = result.score;
+            });
             setApplicantTestScores(scores);
         };
         fetchScores();
@@ -340,7 +345,7 @@ function AdminDashboard() {
 
   
   const courseForm = useForm<CourseFormValues>({ resolver: zodResolver(courseFormSchema), defaultValues: { title: '', category: '', description: '', price: 0, isFree: false, imageFile: undefined } });
-  const couponForm = useForm<CouponFormValues>({ resolver: zodResolver(couponSchema), defaultValues: { code: '', discountType: 'percentage', discountValue: 10, courseId: '' } });
+  const couponForm = useForm<CouponFormValues>({ resolver: zodResolver(couponSchema), defaultValues: { code: '', discountType: 'percentage', discountValue: 10, courseId: '', expiryDate: '' } });
   const qrCodeForm = useForm<QrCodeFormValues>({ resolver: zodResolver(qrCodeFormSchema), defaultValues: { imageFile: undefined } });
   const courseContentForm = useForm<CourseContentValues>({ resolver: zodResolver(courseContentSchema), defaultValues: { courseId: '', contentType: 'video', title: '', introduction: '', url: '', testSeriesId: '' } });
   const scholarshipSettingsForm = useForm<ScholarshipSettingsValues>({
@@ -477,6 +482,7 @@ function AdminDashboard() {
     try {
         const couponData = {
             ...data,
+            expiryDate: new Date(data.expiryDate),
             isActive: true,
             createdAt: serverTimestamp()
         };
@@ -1321,6 +1327,7 @@ function AdminDashboard() {
                             <FormField control={couponForm.control} name="code" render={({ field }) => (<FormItem><FormLabel>Coupon Code</FormLabel><FormControl><Input placeholder="E.g., SAVE20" {...field} /></FormControl><FormMessage /></FormItem>)} />
                             <FormField control={couponForm.control} name="discountType" render={({ field }) => (<FormItem><FormLabel>Discount Type</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Choose a discount type" /></SelectTrigger></FormControl><SelectContent><SelectItem value="percentage">Percentage (%)</SelectItem><SelectItem value="fixed">Fixed Amount (₹)</SelectItem></SelectContent></Select><FormMessage /></FormItem>)} />
                             <FormField control={couponForm.control} name="discountValue" render={({ field }) => (<FormItem><FormLabel>Discount Value</FormLabel><FormControl><div className="relative"><div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3"><span className="text-muted-foreground sm:text-sm">{couponForm.watch('discountType') === 'percentage' ? <Percent size={16} /> : <IndianRupee size={16} />}</span></div><Input type="number" placeholder="e.g., 20 or 100" className="pl-10" {...field} /></div></FormControl><FormMessage /></FormItem>)} />
+                            <FormField control={couponForm.control} name="expiryDate" render={({ field }) => (<FormItem><FormLabel>Expiry Date</FormLabel><FormControl><Input type="datetime-local" {...field} /></FormControl><FormMessage /></FormItem>)}/>
                             <Button type="submit" className="w-full" disabled={couponForm.formState.isSubmitting}>{couponForm.formState.isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Creating...</> : <>Create Coupon</>}</Button>
                         </form>
                     </Form>
@@ -1336,6 +1343,7 @@ function AdminDashboard() {
                                     <div>
                                         <p className="font-mono font-bold">{coupon.code}</p>
                                         <p className="text-sm text-muted-foreground">{coupon.discountType === 'percentage' ? `${coupon.discountValue}%` : `₹${coupon.discountValue}`} off on {course?.title || 'a course'}</p>
+                                        <p className="text-xs text-muted-foreground">Expires: {coupon.expiryDate?.toDate()?.toLocaleDateString()}</p>
                                     </div>
                                     <Button variant="ghost" size="icon" onClick={() => deleteDoc(doc.ref)}>
                                         <Trash2 className="h-4 w-4 text-destructive" />
@@ -1367,5 +1375,6 @@ function AdminDashboard() {
     </div>
   );
 }
+
 
 

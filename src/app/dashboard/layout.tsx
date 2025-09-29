@@ -1,3 +1,4 @@
+
 "use client"
 import React, { useEffect, useState } from 'react';
 import {
@@ -254,6 +255,7 @@ export default function DashboardLayout({
   const [checkingProfile, setCheckingProfile] = useState(true);
   const [isScreenLocked, setIsScreenLocked] = useState(false);
   const [timeUsed, setTimeUsed] = useState(0); // in seconds
+  const isVideoPage = pathname.includes('/video/');
 
   useEffect(() => {
     let timer: NodeJS.Timeout;
@@ -340,17 +342,17 @@ export default function DashboardLayout({
       <SidebarProvider>
           <div className="flex h-screen w-full flex-col bg-gray-50 dark:bg-gray-950">
              {isScreenLocked && <ScreenTimeLock />}
-             <AppSidebar isKidsMode={isKidsMode} />
-             <div className="flex flex-col w-full h-full overflow-hidden">
-                <AppHeader />
+             {!isVideoPage && <AppSidebar isKidsMode={isKidsMode} />}
+             <div className={cn("flex flex-col w-full h-full overflow-hidden", !isVideoPage && "md:pl-[var(--sidebar-width-icon)] group-data-[state=expanded]:md:pl-[var(--sidebar-width)]")}>
+                {!isVideoPage && <AppHeader />}
                  <main className="flex-1 overflow-y-auto h-full">
                     <SidebarInset>
-                        <div className={cn(!pathname.includes('/live-class/') && !pathname.includes('/video/') && 'p-4 md:p-6')}>
+                        <div className={cn(!pathname.includes('/live-class/') && !isVideoPage && 'p-4 md:p-6')}>
                             {children}
                         </div>
                     </SidebarInset>
                 </main>
-                <AppBottomNav isKidsMode={isKidsMode} />
+                {!isVideoPage && <AppBottomNav isKidsMode={isKidsMode} />}
              </div>
           </div>
       </SidebarProvider>

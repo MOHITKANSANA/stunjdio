@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useRef, type ChangeEvent, useEffect, Suspense } from 'react';
@@ -32,16 +33,18 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Upload, Banknote, ShieldCheck } from 'lucide-react';
+import { Loader2, Upload, Banknote, ShieldCheck, Tag } from 'lucide-react';
 import Image from 'next/image';
 import { addDoc, collection, serverTimestamp, query, orderBy, getDocs, where, doc } from 'firebase/firestore';
 import { firestore } from '@/lib/firebase';
 import { useCollection } from 'react-firebase-hooks/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Input } from '@/components/ui/input';
 
 const verificationFormSchema = z.object({
   enrollmentType: z.string().min(1, 'Please select an enrollment type.'),
   courseId: z.string().optional(),
+  couponCode: z.string().optional(),
   screenshotFile: z.instanceof(File, { message: 'A screenshot is required.' }),
 }).refine(data => {
     if (data.enrollmentType === 'Course Enrollment' && !data.courseId) {
@@ -78,6 +81,7 @@ function PaymentVerificationPageContent() {
     defaultValues: {
       enrollmentType: preselectedCourseId ? 'Course Enrollment' : '',
       courseId: preselectedCourseId || '',
+      couponCode: '',
       screenshotFile: undefined,
     },
   });
@@ -143,6 +147,7 @@ function PaymentVerificationPageContent() {
           enrollmentType: data.enrollmentType,
           courseId: data.courseId || null,
           courseTitle: getEnrollmentTitle(data),
+          couponCode: data.couponCode || null,
           screenshotDataUrl,
           userId: user.uid,
           userEmail: user.email,
@@ -201,29 +206,45 @@ function PaymentVerificationPageContent() {
                 />
 
                 {enrollmentType === 'Course Enrollment' && (
-                  <FormField
-                    control={form.control}
-                    name="courseId"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Select Course</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select a course" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {coursesError && <p className='p-2 text-xs text-destructive'>Could not load courses.</p>}
-                            {coursesCollection?.docs.map(doc => (
-                                <SelectItem key={doc.id} value={doc.id}>{doc.data().title}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                  <>
+                    <FormField
+                      control={form.control}
+                      name="courseId"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Select Course</FormLabel>
+                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select a course" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {coursesError && <p className='p-2 text-xs text-destructive'>Could not load courses.</p>}
+                              {coursesCollection?.docs.map(doc => (
+                                  <SelectItem key={doc.id} value={doc.id}>{doc.data().title}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                     <FormField
+                      control={form.control}
+                      name="couponCode"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Coupon Code (Optional)</FormLabel>
+                           <div className="relative">
+                            <Tag className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Input placeholder="Enter coupon code" className="pl-10" {...field} />
+                          </div>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </>
                 )}
                 
                 <FormField
