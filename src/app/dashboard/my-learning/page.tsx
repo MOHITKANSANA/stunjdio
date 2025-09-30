@@ -176,11 +176,9 @@ export default function MyLearningPage() {
                 <p className="text-muted-foreground mt-2">All your learning materials in one place.</p>
             </div>
              <Tabs defaultValue="courses" className="w-full">
-                <TabsList className="grid w-full grid-cols-5 max-w-xl">
+                <TabsList className="grid w-full grid-cols-3 max-w-lg">
                     <TabsTrigger value="courses">My Courses</TabsTrigger>
                     <TabsTrigger value="ebooks">E-Books</TabsTrigger>
-                    <TabsTrigger value="papers">Previous Papers</TabsTrigger>
-                    <TabsTrigger value="scholarships">Scholarships</TabsTrigger>
                     <TabsTrigger value="notifications">Notifications</TabsTrigger>
                 </TabsList>
                 <TabsContent value="courses" className="mt-6">
@@ -225,25 +223,8 @@ export default function MyLearningPage() {
                     )}
                      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                         {ebooks?.docs.map(doc => (
-                            <EBookCard key={doc.id} ebook={doc.data()} onClick={() => handleEbookClick(doc.data())} />
+                            <EBookCard key={doc.id} ebook={{id: doc.id, ...doc.data()}} onClick={() => handleEbookClick(doc.data())} />
                         ))}
-                    </div>
-                </TabsContent>
-                 <TabsContent value="papers" className="mt-6">
-                    <Link href="/dashboard/papers">
-                        <Card className="hover:bg-muted">
-                            <CardHeader>
-                                <CardTitle className="flex items-center gap-3"><Newspaper/> View Previous Year Papers</CardTitle>
-                                <CardDescription>Access our full library of past exam papers to practice.</CardDescription>
-                            </CardHeader>
-                        </Card>
-                    </Link>
-                </TabsContent>
-                <TabsContent value="scholarships" className="mt-6">
-                    <div className="text-center py-12">
-                        <Trophy className="mx-auto h-12 w-12 text-muted-foreground" />
-                        <h3 className="mt-4 text-lg font-semibold">Scholarship History</h3>
-                        <p className="mt-1 text-sm text-muted-foreground">Your scholarship test history will be shown here.</p>
                     </div>
                 </TabsContent>
                 <TabsContent value="notifications" className="mt-6">
@@ -286,5 +267,6 @@ export default function MyLearningPage() {
         </div>
     );
 }
+
 
 

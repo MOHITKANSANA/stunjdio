@@ -1,5 +1,3 @@
-
-
 'use client';
 
 import { useState, useRef, useEffect, type ChangeEvent } from 'react';
@@ -17,7 +15,7 @@ import { collection, query, orderBy, doc, updateDoc, addDoc, deleteDoc, serverTi
 import { firestore } from '@/lib/firebase';
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Trash2, Check, X, Upload, Video, FileText, StickyNote, PlusCircle, Save, Download, ThumbsUp, ThumbsDown, Clock, CircleAlert, CheckCircle2, XCircle, KeyRound, Newspaper, Image as ImageIcon, MinusCircle, BookMarked, Award, Gift, ShieldQuestion, Percent, IndianRupee } from 'lucide-react';
+import { Loader2, Trash2, Check, X, Upload, Video, FileText, StickyNote, PlusCircle, Save, Download, ThumbsUp, ThumbsDown, Clock, CircleAlert, CheckCircle2, XCircle, KeyRound, Newspaper, Image as ImageIcon, MinusCircle, BookMarked, Award, Gift, ShieldQuestion, Percent, IndianRupee, CalendarDays } from 'lucide-react';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -35,6 +33,7 @@ const courseFormSchema = z.object({
   category: z.string().min(3, 'Category must be at least 3 characters'),
   description: z.string().min(10, 'Description must be at least 10 characters'),
   price: z.coerce.number().min(0, 'Price cannot be negative'),
+  validity: z.coerce.number().min(0, 'Validity must be a positive number of days.'),
   imageFile: z.instanceof(File).optional(),
   isFree: z.boolean().default(false),
 });
@@ -283,7 +282,6 @@ function AdminAccessGate({ setHasAccess }: { setHasAccess: (hasAccess: boolean) 
 
 function AdminDashboard() {
   const [enrollmentsCollection, enrollmentsLoading] = useCollection(query(collection(firestore, 'enrollments'), orderBy('createdAt', 'desc')));
-  const [liveClassesCollection, liveClassesLoading] = useCollection(query(collection(firestore, 'live_classes'), orderBy('startTime', 'desc')));
   const [coursesCollection, coursesLoading] = useCollection(query(collection(firestore, 'courses'), orderBy('title', 'asc')));
   const [couponsCollection, couponsLoading] = useCollection(query(collection(firestore, 'coupons'), orderBy('createdAt', 'desc')));
   const [qrCodeDoc] = useCollection(collection(firestore, 'settings'));
@@ -344,7 +342,7 @@ function AdminDashboard() {
 }, [scholarshipApplicants]);
 
   
-  const courseForm = useForm<CourseFormValues>({ resolver: zodResolver(courseFormSchema), defaultValues: { title: '', category: '', description: '', price: 0, isFree: false, imageFile: undefined } });
+  const courseForm = useForm<CourseFormValues>({ resolver: zodResolver(courseFormSchema), defaultValues: { title: '', category: '', description: '', price: 0, validity: 365, isFree: false, imageFile: undefined } });
   const couponForm = useForm<CouponFormValues>({ resolver: zodResolver(couponSchema), defaultValues: { code: '', discountType: 'percentage', discountValue: 10, courseId: '', expiryDate: '' } });
   const qrCodeForm = useForm<QrCodeFormValues>({ resolver: zodResolver(qrCodeFormSchema), defaultValues: { imageFile: undefined } });
   const courseContentForm = useForm<CourseContentValues>({ resolver: zodResolver(courseContentSchema), defaultValues: { courseId: '', contentType: 'video', title: '', introduction: '', url: '', testSeriesId: '' } });
@@ -394,6 +392,7 @@ function AdminDashboard() {
         category: data.category,
         description: data.description,
         price: data.price,
+        validity: data.validity,
         isFree: data.isFree,
         imageUrl,
         createdAt: serverTimestamp(),
@@ -806,6 +805,7 @@ function AdminDashboard() {
                     <FormField control={courseForm.control} name="title" render={({ field }) => (<FormItem><FormLabel>Course Title</FormLabel><FormControl><Input placeholder="e.g. Algebra Fundamentals" {...field} /></FormControl><FormMessage /></FormItem>)}/>
                     <FormField control={courseForm.control} name="category" render={({ field }) => (<FormItem><FormLabel>Category</FormLabel><FormControl><Input placeholder="e.g. Maths" {...field} /></FormControl><FormMessage /></FormItem>)}/>
                     <FormField control={courseForm.control} name="price" render={({ field }) => (<FormItem><FormLabel>Price (INR)</FormLabel><FormControl><Input type="number" placeholder="e.g. 499" {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                    <FormField control={courseForm.control} name="validity" render={({ field }) => (<FormItem><FormLabel>Validity (in days)</FormLabel><FormControl><Input type="number" placeholder="e.g. 365" {...field} /></FormControl><FormMessage /></FormItem>)}/>
                     <FormField control={courseForm.control} name="imageFile" render={({ field: { onChange, value, ...rest } }) => (
                       <FormItem>
                         <FormLabel>Cover Image</FormLabel>
@@ -1375,6 +1375,7 @@ function AdminDashboard() {
     </div>
   );
 }
+
 
 
 

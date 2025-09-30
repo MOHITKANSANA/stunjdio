@@ -33,13 +33,14 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Upload, Banknote, ShieldCheck, Tag } from 'lucide-react';
+import { Loader2, Upload, Banknote, ShieldCheck, Tag, Ticket, CheckCircle } from 'lucide-react';
 import Image from 'next/image';
-import { addDoc, collection, serverTimestamp, query, orderBy, getDocs, where, doc } from 'firebase/firestore';
+import { addDoc, collection, serverTimestamp, query, orderBy, getDocs, where, doc, getDoc } from 'firebase/firestore';
 import { firestore } from '@/lib/firebase';
-import { useCollection } from 'react-firebase-hooks/firestore';
+import { useCollection, useDocumentData } from 'react-firebase-hooks/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 const verificationFormSchema = z.object({
   enrollmentType: z.string().min(1, 'Please select an enrollment type.'),
@@ -68,9 +69,11 @@ function PaymentVerificationPageContent() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [couponStatus, setCouponStatus] = useState<'idle' | 'loading' | 'valid' | 'invalid'>('idle');
+  const [discountInfo, setDiscountInfo] = useState<{ originalPrice: number, discount: number, newPrice: number } | null>(null);
   
   const [coursesCollection, coursesLoading, coursesError] = useCollection(
-    query(collection(firestore, 'courses'), orderBy('title', 'asc'))
+    query(collection(firestore, 'courses'), where('isFree', '==', false), orderBy('title', 'asc'))
   );
   const [qrCodeDoc] = useCollection(collection(firestore, 'settings'));
   const qrCodeUrl = qrCodeDoc?.docs.find(d => d.id === 'paymentQrCode')?.data().url;
@@ -87,6 +90,12 @@ function PaymentVerificationPageContent() {
   });
 
   const enrollmentType = form.watch('enrollmentType');
+  const selectedCourseId = form.watch('courseId');
+  const enteredCouponCode = form.watch('couponCode');
+  
+  const courseDocRef = selectedCourseId ? doc(firestore, 'courses', selectedCourseId) : null;
+  const [courseData, courseDataLoading] = useDocumentData(courseDocRef);
+
 
   useEffect(() => {
     if (preselectedCourseId) {
@@ -95,6 +104,50 @@ function PaymentVerificationPageContent() {
     }
   }, [preselectedCourseId, form]);
 
+  const handleApplyCoupon = async () => {
+    if (!enteredCouponCode || !selectedCourseId || !courseData) return;
+    setCouponStatus('loading');
+    setDiscountInfo(null);
+    try {
+        const q = query(
+            collection(firestore, 'coupons'),
+            where('code', '==', enteredCouponCode.toUpperCase()),
+            where('courseId', '==', selectedCourseId),
+            where('isActive', '==', true)
+        );
+        const couponSnapshot = await getDocs(q);
+        if (couponSnapshot.empty) {
+            toast({ variant: 'destructive', title: 'Invalid Coupon' });
+            setCouponStatus('invalid');
+            return;
+        }
+
+        const coupon = couponSnapshot.docs[0].data();
+        if (new Date(coupon.expiryDate.toDate()) < new Date()) {
+            toast({ variant: 'destructive', title: 'Coupon Expired' });
+            setCouponStatus('invalid');
+            return;
+        }
+        
+        const originalPrice = courseData.price;
+        let discount = 0;
+
+        if (coupon.discountType === 'percentage') {
+            discount = (originalPrice * coupon.discountValue) / 100;
+        } else {
+            discount = coupon.discountValue;
+        }
+
+        const newPrice = Math.max(0, originalPrice - discount);
+        setDiscountInfo({ originalPrice, discount, newPrice });
+        setCouponStatus('valid');
+        toast({ title: 'Coupon Applied!', description: `You saved ₹${discount.toFixed(2)}` });
+
+    } catch (e) {
+        toast({ variant: 'destructive', title: 'Error applying coupon' });
+        setCouponStatus('invalid');
+    }
+  };
 
   if (authLoading || coursesLoading) {
     return (
@@ -230,20 +283,54 @@ function PaymentVerificationPageContent() {
                         </FormItem>
                       )}
                     />
-                     <FormField
-                      control={form.control}
-                      name="couponCode"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Coupon Code (Optional)</FormLabel>
-                           <div className="relative">
-                            <Tag className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                            <Input placeholder="Enter coupon code" className="pl-10" {...field} />
-                          </div>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                    {courseData && (
+                        <Card className='bg-muted/50'>
+                            <CardContent className='p-4 space-y-3'>
+                                <div className="flex justify-between items-center">
+                                    <h4 className="font-semibold">Price Details</h4>
+                                    <p className="font-bold text-xl">₹{discountInfo ? discountInfo.newPrice.toFixed(2) : courseData.price.toFixed(2)}</p>
+                                </div>
+                                {discountInfo && (
+                                    <>
+                                        <div className="flex justify-between items-center text-sm text-muted-foreground">
+                                            <span>Original Price</span>
+                                            <span className='line-through'>₹{discountInfo.originalPrice.toFixed(2)}</span>
+                                        </div>
+                                         <div className="flex justify-between items-center text-sm text-green-600 font-medium">
+                                            <span>Discount</span>
+                                            <span>- ₹{discountInfo.discount.toFixed(2)}</span>
+                                        </div>
+                                    </>
+                                )}
+                                 <div className="flex gap-2">
+                                    <FormField
+                                        control={form.control}
+                                        name="couponCode"
+                                        render={({ field }) => (
+                                            <FormItem className='flex-grow'>
+                                                <FormControl>
+                                                    <div className="relative">
+                                                        <Ticket className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                                        <Input placeholder="Enter coupon code" className="pl-10" {...field} />
+                                                    </div>
+                                                </FormControl>
+                                            </FormItem>
+                                        )}
+                                    />
+                                    <Button type="button" onClick={handleApplyCoupon} disabled={!enteredCouponCode || couponStatus === 'loading'}>
+                                        {couponStatus === 'loading' ? <Loader2 className="h-4 w-4 animate-spin"/> : 'Apply'}
+                                    </Button>
+                                </div>
+                                {couponStatus === 'valid' && (
+                                    <Alert variant="default" className="border-green-500 text-green-700 [&>svg]:text-green-700">
+                                        <CheckCircle className="h-4 w-4" />
+                                        <AlertTitle>Coupon Applied!</AlertTitle>
+                                        <AlertDescription>Your discount has been applied to the total price.</AlertDescription>
+                                    </Alert>
+                                )}
+                            </CardContent>
+                        </Card>
+                    )}
                   </>
                 )}
                 
@@ -315,3 +402,4 @@ export default function PaymentVerificationPage() {
 }
 
     
+

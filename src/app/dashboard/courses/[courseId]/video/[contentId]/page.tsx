@@ -119,7 +119,7 @@ const ChatSection = ({ contentId }: { contentId: string }) => {
 
     return (
         <div className="flex flex-col h-full bg-background p-4">
-            <ScrollArea className="h-64 flex-grow mb-4">
+            <ScrollArea className="flex-grow mb-4 h-64">
                 <div className="space-y-4 pr-4">
                     {chatsLoading && <Skeleton className="h-20 w-full" />}
                     {chatsError && <p className="text-destructive">Could not load chats.</p>}
@@ -129,17 +129,17 @@ const ChatSection = ({ contentId }: { contentId: string }) => {
                         return (
                             <div key={doc.id} className={`flex items-start gap-3 ${isCurrentUser ? 'justify-end' : ''}`}>
                                  {!isCurrentUser && (
-                                    <Avatar className="h-8 w-8">
+                                    <Avatar className="h-8 w-8 shrink-0">
                                         <AvatarImage src={chat.userPhoto || undefined} />
                                         <AvatarFallback style={{ backgroundColor: `#${intToRGB(hashCode(chat.userName || 'U'))}` }}>{chat.userName?.charAt(0) || 'A'}</AvatarFallback>
                                     </Avatar>
                                  )}
                                 <div className={`p-3 rounded-lg max-w-xs break-words ${isCurrentUser ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
                                     {!isCurrentUser && <p className="font-semibold text-sm">{chat.userName}</p>}
-                                    <p>{chat.text}</p>
+                                    <p className="whitespace-pre-wrap">{chat.text}</p>
                                 </div>
                                   {isCurrentUser && (
-                                    <Avatar className="h-8 w-8">
+                                    <Avatar className="h-8 w-8 shrink-0">
                                         <AvatarImage src={chat.userPhoto || undefined} />
                                         <AvatarFallback style={{ backgroundColor: `#${intToRGB(hashCode(chat.userName || 'U'))}` }}>{chat.userName?.charAt(0) || 'A'}</AvatarFallback>
                                     </Avatar>
@@ -287,6 +287,7 @@ export default function VideoPlaybackPage() {
         </div>
     );
 }
+
 
 
 

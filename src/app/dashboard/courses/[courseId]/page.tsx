@@ -11,7 +11,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
-import { IndianRupee, BookOpen, Clock, Users, Video, PlayCircle, FileText, StickyNote, ShieldQuestion, Bot, ThumbsUp, ThumbsDown, MessageSquare } from 'lucide-react';
+import { IndianRupee, BookOpen, Clock, Users, Video, PlayCircle, FileText, StickyNote, ShieldQuestion, Bot, ThumbsUp, ThumbsDown, MessageSquare, CalendarDays } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/use-auth';
 import { collection, query, where, orderBy, getDocs, limit, onSnapshot, addDoc, serverTimestamp, arrayUnion, updateDoc, arrayRemove } from 'firebase/firestore';
@@ -148,11 +148,11 @@ const VideoLecturesTab = ({ courseId }: { courseId: string; }) => {
                         const content = { id: doc.id, ...doc.data() };
                         return (
                             <div key={doc.id} className={cn("flex items-center justify-between p-3 rounded-lg border cursor-pointer transition-colors", 'bg-muted/50 hover:bg-muted')} onClick={() => handleVideoClick(content.id)}>
-                                <div className="flex items-center gap-3">
+                                <div className="flex items-center gap-3 overflow-hidden">
                                     <ContentIcon type={content.type} />
-                                    <p className="font-semibold">{content.title}</p>
+                                    <p className="font-semibold truncate">{content.title}</p>
                                 </div>
-                                <Button variant="ghost" size="icon">
+                                <Button variant="ghost" size="icon" className="shrink-0">
                                     <PlayCircle className="h-6 w-6" />
                                 </Button>
                             </div>
@@ -376,6 +376,7 @@ function CourseDetailPageContent() {
               <div className="space-y-3 pt-4 text-sm text-muted-foreground">
                 <div className="flex items-center gap-3"><BookOpen className="h-5 w-5 text-primary" /><span>Full course access</span></div>
                 <div className="flex items-center gap-3"><Clock className="h-5 w-5 text-primary" /><span>Lifetime access</span></div>
+                <div className="flex items-center gap-3"><CalendarDays className="h-5 w-5 text-primary" /><span>{course.validity || 'Unlimited'} days validity</span></div>
                  <div className="flex items-center gap-3"><Users className="h-5 w-5 text-primary" /><span>Community access</span></div>
               </div>
             </CardContent>
