@@ -6,12 +6,12 @@ import { useState, Suspense, useEffect } from 'react';
 import { doc, DocumentData } from 'firebase/firestore';
 import { useDocument, useCollection } from 'react-firebase-hooks/firestore';
 import { firestore } from '@/lib/firebase';
-import { notFound, useParams, useRouter } from 'next/navigation';
+import { notFound, useParams, useRouter, useSearchParams } from 'next/navigation';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
-import { IndianRupee, BookOpen, Clock, Users, Video, PlayCircle, FileText, StickyNote, ShieldQuestion, Bot, ThumbsUp, ThumbsDown, MessageSquare, CalendarDays } from 'lucide-react';
+import { IndianRupee, BookOpen, Clock, Users, Video, PlayCircle, FileText, StickyNote, ShieldQuestion, Bot, ThumbsUp, ThumbsDown, MessageSquare, CalendarDays, Send, HelpCircle } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/use-auth';
 import { collection, query, where, orderBy, getDocs, limit, onSnapshot, addDoc, serverTimestamp, arrayUnion, updateDoc, arrayRemove } from 'firebase/firestore';
@@ -26,7 +26,7 @@ import { saveNoteAction } from '@/app/actions/live-class';
 import { cn } from '@/lib/utils';
 import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Send } from 'lucide-react';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 const PDFViewer = ({ pdfUrl, title, onOpenChange }: { pdfUrl: string, title: string, onOpenChange: (open: boolean) => void }) => {
     const googleDocsUrl = `https://docs.google.com/gview?url=${encodeURIComponent(pdfUrl)}&embedded=true`;
@@ -250,14 +250,171 @@ const TestsTab = ({ course, courseId }: { course: DocumentData, courseId: string
     );
 };
 
+
+const DoubtsTab = ({ courseId }: { courseId: string }) => {
+    const { user } = useAuth();
+    const [doubts, setDoubts] = useState<any[]>([]);
+    const [newDoubtText, setNewDoubtText] = useState("");
+    const [replyingTo, setReplyingTo] = useState<string | null>(null);
+    const [replyText, setReplyText] = useState("");
+    const { toast } = useToast();
+
+    useEffect(() => {
+        const q = query(collection(firestore, 'courses', courseId, 'doubts'), orderBy('createdAt', 'desc'));
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+            const fetchedDoubts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            setDoubts(fetchedDoubts);
+        });
+        return () => unsubscribe();
+    }, [courseId]);
+
+    const handleDoubtSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!user || !newDoubtText.trim()) return;
+        try {
+            await addDoc(collection(firestore, 'courses', courseId, 'doubts'), {
+                text: newDoubtText,
+                userId: user.uid,
+                userName: user.displayName,
+                userPhoto: user.photoURL,
+                createdAt: serverTimestamp(),
+                replies: [],
+            });
+            setNewDoubtText("");
+            toast({ description: "Your doubt has been posted." });
+        } catch (error) {
+            toast({ variant: 'destructive', description: "Failed to post doubt." });
+        }
+    };
+
+    const handleReplySubmit = async (doubtId: string, doubtAuthorId: string) => {
+        if (!user || !replyText.trim()) return;
+
+        const newReply = {
+            id: doc(collection(firestore, 'dummy')).id, // Firestore client-side ID
+            userId: user.uid,
+            userName: user.displayName || "Anonymous",
+            userPhoto: user.photoURL || null,
+            text: replyText,
+            createdAt: new Date().toISOString(),
+        };
+
+        const result = await addDoubtReplyAction({
+            courseId,
+            doubtId,
+            doubtAuthorId,
+            reply: newReply
+        });
+
+        if (result.success) {
+            setReplyText("");
+            setReplyingTo(null);
+            toast({ description: "Reply posted successfully." });
+        } else {
+            toast({ variant: 'destructive', description: result.error || "Failed to post reply." });
+        }
+    };
+
+
+    return (
+        <CardContent>
+            {user && (
+                <form onSubmit={handleDoubtSubmit} className="flex items-start gap-3 mb-6 p-4 border rounded-lg">
+                    <Avatar>
+                        <AvatarImage src={user.photoURL || ''} />
+                        <AvatarFallback>{user.displayName?.charAt(0) || 'U'}</AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 space-y-2">
+                        <Textarea
+                            value={newDoubtText}
+                            onChange={(e) => setNewDoubtText(e.target.value)}
+                            placeholder="Have a question? Ask the community..."
+                            className="w-full"
+                        />
+                        <Button type="submit">Post Doubt</Button>
+                    </div>
+                </form>
+            )}
+
+            <div className="space-y-6">
+                {doubts.length === 0 && (
+                    <div className="text-center py-8 text-muted-foreground">
+                        <HelpCircle className="mx-auto h-12 w-12" />
+                        <p className="mt-4">No doubts asked yet. Be the first one!</p>
+                    </div>
+                )}
+                {doubts.map((doubt) => (
+                    <div key={doubt.id} className="p-4 border rounded-lg">
+                        <div className="flex items-start gap-3">
+                            <Avatar>
+                                <AvatarImage src={doubt.userPhoto || ''} />
+                                <AvatarFallback>{doubt.userName?.charAt(0) || 'A'}</AvatarFallback>
+                            </Avatar>
+                            <div>
+                                <p className="font-semibold">{doubt.userName}</p>
+                                <p className="text-sm text-muted-foreground">{new Date(doubt.createdAt?.toDate()).toLocaleString()}</p>
+                            </div>
+                        </div>
+                        <p className="my-3">{doubt.text}</p>
+                        
+                        <Button variant="link" size="sm" onClick={() => setReplyingTo(replyingTo === doubt.id ? null : doubt.id)}>
+                            {doubt.replies?.length || 0} Replies
+                        </Button>
+
+                        {replyingTo === doubt.id && (
+                             <div className="mt-4 space-y-4">
+                                {doubt.replies?.map((reply: any) => (
+                                    <div key={reply.id} className="flex items-start gap-3 ml-6">
+                                        <Avatar className="h-8 w-8">
+                                            <AvatarImage src={reply.userPhoto || ''} />
+                                            <AvatarFallback>{reply.userName?.charAt(0) || 'A'}</AvatarFallback>
+                                        </Avatar>
+                                        <div>
+                                            <p className="font-semibold text-sm">{reply.userName}</p>
+                                            <p className="text-sm">{reply.text}</p>
+                                        </div>
+                                    </div>
+                                ))}
+                                {user && (
+                                     <div className="flex items-start gap-3 ml-6">
+                                        <Avatar className="h-8 w-8">
+                                            <AvatarImage src={user.photoURL || ''} />
+                                            <AvatarFallback>{user.displayName?.charAt(0) || 'U'}</AvatarFallback>
+                                        </Avatar>
+                                        <div className="flex-1 space-y-2">
+                                            <Textarea value={replyText} onChange={e => setReplyText(e.target.value)} placeholder="Write a reply..." />
+                                            <Button size="sm" onClick={() => handleReplySubmit(doubt.id, doubt.userId)}>Post Reply</Button>
+                                        </div>
+                                    </div>
+                                )}
+                             </div>
+                        )}
+
+                    </div>
+                ))}
+            </div>
+        </CardContent>
+    );
+};
+
+
 const EnrolledCourseView = ({ course, courseId }: { course: DocumentData, courseId: string }) => {
+    const searchParams = useSearchParams();
+    const router = useRouter();
+    const defaultTab = searchParams.get('tab') || 'videos';
+
+    const onTabChange = (value: string) => {
+        router.push(`/dashboard/courses/${courseId}?tab=${value}`, { scroll: false });
+    };
+
     return (
         <div className="w-full">
-            <Tabs defaultValue="videos" className="w-full">
-                <TabsList className="grid w-full grid-cols-3">
+            <Tabs defaultValue={defaultTab} onValueChange={onTabChange} className="w-full">
+                <TabsList className="grid w-full grid-cols-4">
                     <TabsTrigger value="videos">Videos</TabsTrigger>
                     <TabsTrigger value="content">Content</TabsTrigger>
                     <TabsTrigger value="tests">Tests</TabsTrigger>
+                    <TabsTrigger value="doubts">Doubts</TabsTrigger>
                 </TabsList>
                 <TabsContent value="videos">
                     <VideoLecturesTab courseId={courseId} />
@@ -267,6 +424,9 @@ const EnrolledCourseView = ({ course, courseId }: { course: DocumentData, course
                 </TabsContent>
                 <TabsContent value="tests">
                     <TestsTab course={course} courseId={courseId} />
+                </TabsContent>
+                 <TabsContent value="doubts">
+                    <DoubtsTab courseId={courseId} />
                 </TabsContent>
             </Tabs>
         </div>

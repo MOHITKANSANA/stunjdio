@@ -2,34 +2,73 @@
 
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/use-auth";
 import { BookOpenCheck } from "lucide-react";
-import { onSnapshot, doc } from "firebase/firestore";
+import { doc, getDoc } from "firebase/firestore";
 import { firestore } from "@/lib/firebase";
+import Image from "next/image";
+
+const LoadingSpinner = () => (
+    <div className="flex flex-col items-center gap-4">
+        <BookOpenCheck className="h-12 w-12 animate-pulse text-primary" />
+        <p className="text-muted-foreground">Loading your experience...</p>
+    </div>
+);
 
 export default function WelcomePage() {
-  const { user, loading } = useAuth();
-  const router = useRouter();
+    const { user, loading: authLoading } = useAuth();
+    const router = useRouter();
+    const [splashScreenUrl, setSplashScreenUrl] = useState<string | null>(null);
+    const [showSplash, setShowSplash] = useState(true);
 
-  useEffect(() => {
-    if (loading) return;
+    useEffect(() => {
+        const fetchSplashScreen = async () => {
+            try {
+                const settingsDoc = await getDoc(doc(firestore, 'settings', 'splashScreen'));
+                if (settingsDoc.exists()) {
+                    setSplashScreenUrl(settingsDoc.data().url);
+                }
+            } catch (error) {
+                console.error("Error fetching splash screen:", error);
+            }
+        };
+        fetchSplashScreen();
+    }, []);
 
-    if (user) {
-      router.replace('/dashboard');
-    } else {
-        router.replace('/login');
+    useEffect(() => {
+        if (!splashScreenUrl) return;
+
+        const splashTimer = setTimeout(() => {
+            setShowSplash(false);
+        }, 5000); // 5-second splash screen
+
+        return () => clearTimeout(splashTimer);
+    }, [splashScreenUrl]);
+
+
+    useEffect(() => {
+        if (showSplash || authLoading) return;
+
+        if (user) {
+            router.replace('/dashboard');
+        } else {
+            router.replace('/login');
+        }
+    }, [user, authLoading, router, showSplash]);
+
+    if (showSplash && splashScreenUrl) {
+        return (
+            <div className="flex min-h-screen w-full items-center justify-center bg-background">
+                <Image src={splashScreenUrl} alt="Loading..." fill style={{ objectFit: 'cover' }} />
+            </div>
+        );
     }
-  }, [user, loading, router]);
-
-
+    
     return (
-      <div className="flex min-h-screen w-full items-center justify-center bg-background">
-        <div className="flex flex-col items-center gap-4">
-            <BookOpenCheck className="h-12 w-12 animate-pulse text-primary" />
-            <p className="text-muted-foreground">Loading your experience...</p>
+        <div className="flex min-h-screen w-full items-center justify-center bg-background">
+            <LoadingSpinner />
         </div>
-      </div>
     );
 }

@@ -340,7 +340,10 @@ function AdminDashboard() {
         }
         setApplicantTestScores(scores);
     };
-    fetchScores();
+
+    if (scholarshipApplicants) {
+        fetchScores();
+    }
 }, [scholarshipApplicants]);
   
   const courseForm = useForm<CourseFormValues>({ resolver: zodResolver(courseFormSchema), defaultValues: { title: '', category: '', description: '', price: 0, validity: 365, isFree: false, imageFile: undefined } });
@@ -1250,34 +1253,14 @@ function AdminDashboard() {
         </TabsContent>
         <TabsContent value="settings">
           <div className="grid md:grid-cols-2 gap-6 items-start">
-              <Card>
-                <CardHeader><CardTitle>Payment QR Code</CardTitle><CardDescription>Upload or update the QR code for payments.</CardDescription></CardHeader>
-                <CardContent>
-                  <Form {...qrCodeForm}>
-                    <form onSubmit={qrCodeForm.handleSubmit(onQrCodeSubmit)} className="space-y-4">
-                       <FormField control={qrCodeForm.control} name="imageFile" render={({ field: { value, onChange, ...fieldProps } }) => (
-                          <FormItem><FormLabel>New QR Code Image</FormLabel><FormControl><Input type="file" accept="image/*" onChange={(e) => onChange(e.target.files?.[0])} {...fieldProps} /></FormControl><FormMessage /></FormItem>
-                        )}/>
-                      <Button type="submit" disabled={qrCodeForm.formState.isSubmitting}>
-                        {qrCodeForm.formState.isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin"/>Uploading...</> : <><Upload className="mr-2 h-4 w-4"/>Upload QR Code</>}
-                      </Button>
-                    </form>
-                  </Form>
-                  <div className="mt-6">
-                    <h4 className="font-semibold mb-2">Current QR Code</h4>
-                    {qrCodeUrl ? (
-                      <Image src={qrCodeUrl} alt="Payment QR Code" width={200} height={200} className="rounded-md border p-2" />
-                    ) : (
-                      <p className="text-muted-foreground">No QR code uploaded yet.</p>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                  <CardHeader><CardTitle>App Settings</CardTitle><CardDescription>Manage general application settings.</CardDescription></CardHeader>
-                  <CardContent className="space-y-6">
-                     <Form {...splashScreenForm}>
+            <Card>
+                <CardHeader>
+                    <CardTitle>Homepage Settings</CardTitle>
+                    <CardDescription>Manage general application settings.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                    {/* Splash Screen */}
+                    <Form {...splashScreenForm}>
                         <form onSubmit={splashScreenForm.handleSubmit(onSplashScreenSubmit)} className="space-y-4">
                            <FormField control={splashScreenForm.control} name="imageFile" render={({ field: { value, onChange, ...fieldProps } }) => (
                               <FormItem><FormLabel>Splash Screen Image</FormLabel><FormControl><Input type="file" accept="image/*" onChange={(e) => onChange(e.target.files?.[0])} {...fieldProps} /></FormControl><FormMessage /></FormItem>
@@ -1287,110 +1270,95 @@ function AdminDashboard() {
                           </Button>
                         </form>
                       </Form>
-                      <div className="mt-6">
-                        <h4 className="font-semibold mb-2">Current Splash Screen</h4>
-                        {splashScreenUrl ? (
-                          <Image src={splashScreenUrl} alt="Splash Screen" width={200} height={200} className="rounded-md border p-2" />
-                        ) : (
-                          <p className="text-muted-foreground">No splash screen uploaded.</p>
-                        )}
+                      <div className="mt-4">
+                        <h4 className="font-semibold mb-2 text-sm">Current Splash Screen</h4>
+                        {splashScreenUrl ? <Image src={splashScreenUrl} alt="Splash Screen" width={150} height={150} className="rounded-md border p-1" /> : <p className="text-xs text-muted-foreground">None uploaded.</p>}
                       </div>
-                      <Separator />
-                      <Card>
-                        <CardHeader>
-                            <CardTitle>Manage Coupons</CardTitle>
-                            <CardDescription>Create and manage discount coupons for your courses.</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <Form {...couponForm}>
-                                <form onSubmit={couponForm.handleSubmit(onCouponSubmit)} className="space-y-4 mb-6">
-                                    <FormField control={couponForm.control} name="courseId" render={({ field }) => (<FormItem><FormLabel>Select Course</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Choose a course" /></SelectTrigger></FormControl><SelectContent>{coursesCollection?.docs.filter(c => !c.data().isFree).map(doc => (<SelectItem key={doc.id} value={doc.id}>{doc.data().title}</SelectItem>))}</SelectContent></Select><FormMessage /></FormItem>)} />
-                                    <FormField control={couponForm.control} name="code" render={({ field }) => (<FormItem><FormLabel>Coupon Code</FormLabel><FormControl><Input placeholder="E.g., SAVE20" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                    <FormField control={couponForm.control} name="discountType" render={({ field }) => (<FormItem><FormLabel>Discount Type</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Choose a discount type" /></SelectTrigger></FormControl><SelectContent><SelectItem value="percentage">Percentage (%)</SelectItem><SelectItem value="fixed">Fixed Amount (₹)</SelectItem></SelectContent></Select><FormMessage /></FormItem>)} />
-                                    <FormField control={couponForm.control} name="discountValue" render={({ field }) => (<FormItem><FormLabel>Discount Value</FormLabel><FormControl><div className="relative"><div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3"><span className="text-muted-foreground sm:text-sm">{couponForm.watch('discountType') === 'percentage' ? <Percent size={16} /> : <IndianRupee size={16} />}</span></div><Input type="number" placeholder="e.g., 20 or 100" className="pl-10" {...field} /></div></FormControl><FormMessage /></FormItem>)} />
-                                    <FormField control={couponForm.control} name="expiryDate" render={({ field }) => (<FormItem><FormLabel>Expiry Date</FormLabel><FormControl><Input type="datetime-local" {...field} /></FormControl><FormMessage /></FormItem>)}/>
-                                    <Button type="submit" className="w-full" disabled={couponForm.formState.isSubmitting}>{couponForm.formState.isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Creating...</> : <>Create Coupon</>}</Button>
-                                </form>
-                            </Form>
-                            <Separator />
-                            <h4 className="font-semibold my-4">Existing Coupons</h4>
-                            <div className="max-h-60 overflow-y-auto pr-2 space-y-2">
+                    <Separator />
+                     {/* Homepage Carousel */}
+                      <Form {...carouselItemForm}>
+                          <form onSubmit={carouselItemForm.handleSubmit(onCarouselItemSubmit)} className="grid gap-4 pt-4">
+                              <FormField control={carouselItemForm.control} name="imageFile" render={({ field: { value, onChange, ...fieldProps } }) => (
+                                <FormItem><FormLabel>Carousel Image</FormLabel><FormControl><Input type="file" accept="image/*" onChange={(e) => onChange(e.target.files?.[0])} {...fieldProps} /></FormControl><FormMessage /></FormItem>
+                                )}/>
+                              <FormField control={carouselItemForm.control} name="internalLink" render={({ field }) => (
+                                <FormItem><FormLabel>Link to App Page</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select a page to link to" /></SelectTrigger></FormControl><SelectContent>{APP_PAGES.map(page => <SelectItem key={page.value} value={page.value}>{page.label}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>
+                                )}/>
+                                <div className="text-center text-xs text-muted-foreground">OR</div>
+                              <FormField control={carouselItemForm.control} name="externalLink" render={({ field }) => (
+                                <FormItem><FormLabel>External Link</FormLabel><FormControl><Input placeholder="https://example.com" {...field} /></FormControl><FormMessage /></FormItem>
+                                )}/>
+                              <Button type="submit" disabled={carouselItemForm.formState.isSubmitting}>{carouselItemForm.formState.isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin"/>Adding...</> : <><PlusCircle className="mr-2"/>Add Carousel Item</>}</Button>
+                          </form>
+                      </Form>
+                      <div className="mt-4">
+                        <h4 className="font-semibold my-4 text-sm">Current Carousel Items</h4>
+                        <div className="max-h-40 overflow-y-auto pr-2 space-y-2">
+                            {carouselItemsLoading && <Skeleton className="h-9 w-full" />}
+                            {carouselItemsCollection?.docs.map(doc => (
+                                <div key={doc.id} className="text-xs p-2 border rounded flex justify-between items-center gap-2">
+                                    <Image src={doc.data().imageUrl} alt="Carousel item" width={40} height={20} className="rounded" />
+                                    <span className="flex-1 truncate text-blue-500 hover:underline"><a href={doc.data().linkUrl} target="_blank" rel="noopener noreferrer">{doc.data().linkUrl}</a></span>
+                                    <Button variant="ghost" size="icon" onClick={() => deleteCarouselItem(doc.id)}><Trash2 className="h-4 w-4 text-destructive"/></Button>
+                                </div>
+                            ))}
+                        </div>
+                      </div>
+                </CardContent>
+            </Card>
+
+            <div className="space-y-6">
+                <Card>
+                    <CardHeader><CardTitle>Payment & Coupons</CardTitle><CardDescription>Manage QR code and discount coupons.</CardDescription></CardHeader>
+                    <CardContent>
+                        {/* QR Code */}
+                        <Form {...qrCodeForm}>
+                            <form onSubmit={qrCodeForm.handleSubmit(onQrCodeSubmit)} className="space-y-4">
+                            <FormField control={qrCodeForm.control} name="imageFile" render={({ field: { value, onChange, ...fieldProps } }) => (
+                                <FormItem><FormLabel>Payment QR Code</FormLabel><FormControl><Input type="file" accept="image/*" onChange={(e) => onChange(e.target.files?.[0])} {...fieldProps} /></FormControl><FormMessage /></FormItem>
+                                )}/>
+                            <Button type="submit" disabled={qrCodeForm.formState.isSubmitting}>{qrCodeForm.formState.isSubmitting ? <><Loader2 className="mr-2"/>Uploading...</> : <><Upload className="mr-2"/>Upload QR Code</>}</Button>
+                            </form>
+                        </Form>
+                         <div className="mt-4">
+                            <h4 className="font-semibold mb-2 text-sm">Current QR Code</h4>
+                            {qrCodeUrl ? <Image src={qrCodeUrl} alt="Payment QR Code" width={150} height={150} className="rounded-md border p-1" /> : <p className="text-xs text-muted-foreground">None uploaded.</p>}
+                        </div>
+                        <Separator className="my-6" />
+                        {/* Coupons */}
+                        <Form {...couponForm}>
+                            <form onSubmit={couponForm.handleSubmit(onCouponSubmit)} className="space-y-4">
+                                <FormField control={couponForm.control} name="courseId" render={({ field }) => (<FormItem><FormLabel>Select Course</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Choose a course" /></SelectTrigger></FormControl><SelectContent>{coursesCollection?.docs.filter(c => !c.data().isFree).map(doc => (<SelectItem key={doc.id} value={doc.id}>{doc.data().title}</SelectItem>))}</SelectContent></Select><FormMessage /></FormItem>)} />
+                                <FormField control={couponForm.control} name="code" render={({ field }) => (<FormItem><FormLabel>Coupon Code</FormLabel><FormControl><Input placeholder="E.g., SAVE20" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                <FormField control={couponForm.control} name="discountType" render={({ field }) => (<FormItem><FormLabel>Discount Type</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Choose a discount type" /></SelectTrigger></FormControl><SelectContent><SelectItem value="percentage">Percentage (%)</SelectItem><SelectItem value="fixed">Fixed Amount (₹)</SelectItem></SelectContent></Select><FormMessage /></FormItem>)} />
+                                <FormField control={couponForm.control} name="discountValue" render={({ field }) => (<FormItem><FormLabel>Discount Value</FormLabel><FormControl><div className="relative"><div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3"><span className="text-muted-foreground sm:text-sm">{couponForm.watch('discountType') === 'percentage' ? <Percent size={16} /> : <IndianRupee size={16} />}</span></div><Input type="number" placeholder="e.g., 20 or 100" className="pl-10" {...field} /></div></FormControl><FormMessage /></FormItem>)} />
+                                <FormField control={couponForm.control} name="expiryDate" render={({ field }) => (<FormItem><FormLabel>Expiry Date</FormLabel><FormControl><Input type="datetime-local" {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                                <Button type="submit" className="w-full" disabled={couponForm.formState.isSubmitting}>{couponForm.formState.isSubmitting ? <><Loader2 className="mr-2"/>Creating...</> : <>Create Coupon</>}</Button>
+                            </form>
+                        </Form>
+                        <div className="mt-4">
+                            <h4 className="font-semibold my-4 text-sm">Existing Coupons</h4>
+                            <div className="max-h-40 overflow-y-auto pr-2 space-y-2">
                                 {couponsLoading && <Skeleton className="h-12 w-full" />}
                                 {couponsCollection?.docs.map((doc) => {
                                     const coupon = doc.data();
                                     const course = coursesCollection?.docs.find(c => c.id === coupon.courseId)?.data();
                                     return (
-                                        <div key={doc.id} className="flex items-center justify-between p-2 border rounded-lg">
+                                        <div key={doc.id} className="flex items-center justify-between p-2 border rounded-lg text-xs">
                                             <div>
-                                                <p className="font-mono font-bold">{coupon.code}</p>
-                                                <p className="text-sm text-muted-foreground">{coupon.discountType === 'percentage' ? `${coupon.discountValue}%` : `₹${coupon.discountValue}`} off on {course?.title || 'a course'}</p>
-                                                <p className="text-xs text-muted-foreground">Expires: {coupon.expiryDate?.toDate()?.toLocaleDateString()}</p>
+                                                <p className="font-mono font-bold text-sm">{coupon.code}</p>
+                                                <p className="text-muted-foreground">{coupon.discountType === 'percentage' ? `${coupon.discountValue}%` : `₹${coupon.discountValue}`} off on {course?.title || 'a course'}</p>
+                                                <p className="text-muted-foreground">Expires: {coupon.expiryDate?.toDate()?.toLocaleDateString()}</p>
                                             </div>
-                                            <Button variant="ghost" size="icon" onClick={() => deleteDoc(doc.ref)}>
-                                                <Trash2 className="h-4 w-4 text-destructive" />
-                                            </Button>
+                                            <Button variant="ghost" size="icon" onClick={() => deleteDoc(doc.ref)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
                                         </div>
                                     )
                                 })}
                             </div>
-                        </CardContent>
-                    </Card>
-                  </CardContent>
-              </Card>
-
-              <Card>
-                  <CardHeader><CardTitle>Homepage Carousel</CardTitle><CardDescription>Manage the items in the homepage carousel.</CardDescription></CardHeader>
-                  <CardContent>
-                      <Form {...carouselItemForm}>
-                          <form onSubmit={carouselItemForm.handleSubmit(onCarouselItemSubmit)} className="grid gap-4 mb-6">
-                              <FormField control={carouselItemForm.control} name="imageFile" render={({ field: { value, onChange, ...fieldProps } }) => (
-                                <FormItem>
-                                    <FormLabel>Image</FormLabel>
-                                    <FormControl><Input type="file" accept="image/*" onChange={(e) => onChange(e.target.files?.[0])} {...fieldProps} /></FormControl>
-                                    <p className="text-xs text-muted-foreground">Recommended size: 800x400 pixels.</p>
-                                    <FormMessage />
-                                </FormItem>
-                                )}/>
-                              <FormField control={carouselItemForm.control} name="internalLink" render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Link to App Page</FormLabel>
-                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                        <FormControl><SelectTrigger><SelectValue placeholder="Select a page to link to" /></SelectTrigger></FormControl>
-                                        <SelectContent>
-                                            {APP_PAGES.map(page => <SelectItem key={page.value} value={page.value}>{page.label}</SelectItem>)}
-                                        </SelectContent>
-                                    </Select>
-                                    <FormMessage />
-                                </FormItem>
-                                )}/>
-                                <div className="text-center text-xs text-muted-foreground">OR</div>
-                              <FormField control={carouselItemForm.control} name="externalLink" render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>External Link (Optional)</FormLabel>
-                                    <FormControl><Input placeholder="https://example.com" {...field} /></FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                                )}/>
-                              <Button type="submit" disabled={carouselItemForm.formState.isSubmitting}>{carouselItemForm.formState.isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin"/>Adding...</> : <><PlusCircle className="mr-2"/>Add Item</>}</Button>
-                          </form>
-                      </Form>
-                      <Separator />
-                       <h4 className="font-semibold my-4">Current Carousel Items</h4>
-                        <div className="max-h-60 overflow-y-auto pr-2 space-y-2">
-                            {carouselItemsLoading && <Skeleton className="h-9 w-full" />}
-                            {carouselItemsCollection?.docs.map(doc => (
-                                <div key={doc.id} className="text-sm p-2 border rounded flex justify-between items-center gap-2">
-                                    <Image src={doc.data().imageUrl} alt="Carousel item" width={40} height={20} className="rounded" />
-                                    <span className="flex-1 truncate text-blue-500 hover:underline">
-                                        <a href={doc.data().linkUrl} target="_blank" rel="noopener noreferrer">{doc.data().linkUrl}</a>
-                                    </span>
-                                    <Button variant="ghost" size="icon" onClick={() => deleteCarouselItem(doc.id)}><Trash2 className="h-4 w-4 text-destructive"/></Button>
-                                </div>
-                            ))}
                         </div>
-                  </CardContent>
-              </Card>
-
+                    </CardContent>
+                </Card>
+            </div>
           </div>
         </TabsContent>
       </Tabs>
