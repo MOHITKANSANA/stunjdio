@@ -1,23 +1,29 @@
 
+
 "use client";
 
-import { useAuth } from "@/hooks/use-auth";
-import { useRouter } from "next/navigation";
 import { useEffect } from "react";
-import { SignupForm } from "@/components/signup-form";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/hooks/use-auth";
 import { BookOpenCheck } from "lucide-react";
+import { onSnapshot, doc } from "firebase/firestore";
+import { firestore } from "@/lib/firebase";
 
 export default function WelcomePage() {
   const { user, loading } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
+    if (loading) return;
+
     if (user) {
       router.replace('/dashboard');
+    } else {
+        router.replace('/login');
     }
-  }, [user, router]);
+  }, [user, loading, router]);
 
-  if (loading || user) {
+
     return (
       <div className="flex min-h-screen w-full items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-4">
@@ -26,8 +32,4 @@ export default function WelcomePage() {
         </div>
       </div>
     );
-  }
-
-  // If not loading and no user, show the signup form
-  return <SignupForm />;
 }

@@ -1,4 +1,5 @@
 
+
 "use client";
 import React, { useEffect, useState } from 'react';
 import {
@@ -8,11 +9,13 @@ import {
   BookCopy,
   Newspaper,
   Youtube,
+  Send,
+  MessageSquare,
 } from 'lucide-react';
 import Link from 'next/link';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/hooks/use-auth';
-import { doc, getDoc, collection, query, orderBy, limit, onSnapshot, addDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, collection, query, orderBy, limit, onSnapshot, addDoc, serverTimestamp, updateDoc, arrayUnion } from 'firebase/firestore';
 import { firestore } from '@/lib/firebase';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -23,11 +26,13 @@ import {
   Carousel,
   CarouselContent,
   CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
 } from "@/components/ui/carousel"
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { Send } from 'lucide-react';
+import { Input } from '@/components/ui/input';
 
 
 const CountdownTimer = ({ targetDate }: { targetDate: Date }) => {
@@ -71,6 +76,84 @@ const CountdownTimer = ({ targetDate }: { targetDate: Date }) => {
     );
 };
 
+const ReviewCard = ({ review }: { review: any }) => {
+    const { user } = useAuth();
+    const { toast } = useToast();
+    const [replyText, setReplyText] = useState("");
+    const [showReplies, setShowReplies] = useState(false);
+
+    const handleReplySubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!user || !replyText.trim()) return;
+
+        const replyData = {
+            id: doc(collection(firestore, 'dummy')).id,
+            text: replyText,
+            userName: user.displayName,
+            userPhoto: user.photoURL,
+            createdAt: new Date(),
+        };
+
+        try {
+            await updateDoc(doc(firestore, 'reviews', review.id), {
+                replies: arrayUnion(replyData)
+            });
+            setReplyText("");
+        } catch (error) {
+            toast({ variant: 'destructive', description: "Failed to post reply." });
+        }
+    };
+    
+    const getInitials = (name: string | null | undefined) => {
+        if (!name) return "S";
+        return name.charAt(0).toUpperCase();
+    }
+
+
+    return (
+        <Card className="bg-muted/50 animate-fade-in w-80 shrink-0">
+            <CardContent className="p-4 flex flex-col h-full">
+                <div className="flex items-start gap-3">
+                    <Avatar className="h-10 w-10">
+                        <AvatarImage src={review.userPhoto} />
+                        <AvatarFallback>{getInitials(review.userName)}</AvatarFallback>
+                    </Avatar>
+                    <div>
+                        <p className="font-semibold text-sm">{review.userName}</p>
+                        <p className="text-sm">{review.text}</p>
+                    </div>
+                </div>
+                <div className="flex-grow" />
+                <div className="mt-4 text-xs space-y-2">
+                    <button onClick={() => setShowReplies(!showReplies)} className="text-blue-500 hover:underline">
+                        {showReplies ? 'Hide' : `View replies (${review.replies?.length || 0})`}
+                    </button>
+                    {showReplies && (
+                        <div className="space-y-2 pt-2 border-t">
+                            {review.replies?.map((reply: any) => (
+                                <div key={reply.id} className="flex items-start gap-2">
+                                     <Avatar className="h-6 w-6">
+                                        <AvatarImage src={reply.userPhoto} />
+                                        <AvatarFallback>{getInitials(reply.userName)}</AvatarFallback>
+                                    </Avatar>
+                                    <div>
+                                        <p className="font-semibold text-xs">{reply.userName}</p>
+                                        <p className="text-xs">{reply.text}</p>
+                                    </div>
+                                </div>
+                            ))}
+                             <form onSubmit={handleReplySubmit} className="flex items-center gap-2 pt-2">
+                                <Input value={replyText} onChange={(e) => setReplyText(e.target.value)} placeholder="Reply..." className="h-8 text-xs" />
+                                <Button type="submit" size="sm" className="h-8">Reply</Button>
+                            </form>
+                        </div>
+                    )}
+                </div>
+            </CardContent>
+        </Card>
+    );
+};
+
 // Main App Dashboard Component
 const MainDashboard = () => {
     const { user } = useAuth();
@@ -110,9 +193,9 @@ const MainDashboard = () => {
             setLoadingStudents(false);
         });
 
-        const reviewsQuery = query(collection(firestore, 'reviews'), orderBy('createdAt', 'desc'), limit(10));
+        const reviewsQuery = query(collection(firestore, 'reviews'), orderBy('createdAt', 'desc'));
         const unsubscribeReviews = onSnapshot(reviewsQuery, (snapshot) => {
-            const fetchedReviews = snapshot.docs.map(doc => doc.data());
+            const fetchedReviews = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             setReviews(fetchedReviews);
             setLoadingReviews(false);
         });
@@ -132,6 +215,7 @@ const MainDashboard = () => {
                 userName: user.displayName,
                 userPhoto: user.photoURL,
                 createdAt: serverTimestamp(),
+                replies: [],
             });
             setNewReview("");
             toast({ description: "Your review has been submitted. Thank you!" });
@@ -141,22 +225,28 @@ const MainDashboard = () => {
     };
         
     const topGridItems = [
-      { label: "Free Courses", icon: BookCopy, href: "/dashboard/courses/free", color: "bg-blue-500" },
-      { label: "Paid Courses", icon: Book, href: "/dashboard/courses", color: "bg-green-500" },
-      { label: "Free Live Classes", icon: Video, href: "/dashboard/free-live-classes", color: "bg-orange-500" },
-      { label: "Previous Papers", icon: Newspaper, href: "/dashboard/papers", color: "bg-purple-500" },
-      { label: "Scholarship", icon: Award, href: "/dashboard/scholarship", color: "bg-yellow-500" },
+      { label: "My Learning", icon: BookCopy, href: "/dashboard/my-learning", color: "from-blue-500 to-blue-600" },
+      { label: "All Courses", icon: Book, href: "/dashboard/courses", color: "from-green-500 to-green-600" },
+      { label: "Classes & Lectures", icon: Video, href: "/dashboard/classes-lectures", color: "from-orange-500 to-orange-600" },
+      { label: "Previous Papers", icon: Newspaper, href: "/dashboard/papers", color: "from-purple-500 to-purple-600" },
+      { label: "Scholarship", icon: Award, href: "/dashboard/scholarship", color: "from-yellow-500 to-yellow-600" },
+      { label: "AI Tests", icon: Youtube, href: "/dashboard/ai-test", color: "from-red-500 to-red-600" },
     ];
+    
+    const getInitials = (name: string | null | undefined) => {
+        if (!name) return "S";
+        return name.charAt(0).toUpperCase();
+    }
     
     return (
         <div className="flex flex-col h-full bg-background space-y-6">
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-3 md:grid-cols-6 gap-3 md:gap-4">
                  {topGridItems.map((item) => (
                     <Link href={item.href} key={item.label}>
-                        <Card className={cn("transform-gpu text-white transition-transform duration-200 ease-in-out hover:-translate-y-1 hover:shadow-xl rounded-xl", item.color)}>
-                            <CardContent className="flex flex-col items-center justify-center gap-2 p-4 h-full aspect-square">
-                                <item.icon className="h-8 w-8" />
-                                <span className="text-sm font-semibold text-center">{item.label}</span>
+                        <Card className={cn("transform-gpu text-white transition-transform duration-200 ease-in-out hover:-translate-y-1 hover:shadow-xl rounded-xl bg-gradient-to-br", item.color)}>
+                            <CardContent className="flex flex-col items-center justify-center gap-2 p-2 md:p-4 h-full aspect-square">
+                                <item.icon className="h-6 w-6 md:h-8 md:w-8" />
+                                <span className="text-xs md:text-sm font-semibold text-center">{item.label}</span>
                             </CardContent>
                         </Card>
                     </Link>
@@ -168,22 +258,22 @@ const MainDashboard = () => {
                  <Carousel opts={{ align: "start", loop: true }} className="w-full">
                     <CarouselContent className="-ml-4">
                         {loadingStudents ? (
-                            [...Array(3)].map((_, i) => (
-                                <CarouselItem key={i} className="pl-4 basis-1/2 md:basis-1/3 lg:basis-1/4">
+                            [...Array(5)].map((_, i) => (
+                                <CarouselItem key={i} className="pl-4 basis-1/3 md:basis-1/4 lg:basis-1/5">
                                     <Skeleton className="h-32 w-full rounded-lg" />
                                 </CarouselItem>
                             ))
                         ) : (
-                             topStudents.map((student, index) => (
-                                <CarouselItem key={student.id} className="pl-4 basis-1/2 md:basis-1/3 lg:basis-1/4">
-                                    <Card className="bg-card border-border/60">
+                             topStudents.map((student) => (
+                                <CarouselItem key={student.id} className="pl-4 basis-1/3 md:basis-1/4 lg:basis-1/5">
+                                    <Card className="bg-card border-border/60 overflow-hidden text-center">
                                         <CardContent className="p-3 flex flex-col items-center justify-center gap-2">
-                                            <Avatar className="h-12 w-12">
+                                            <Avatar className="h-12 w-12 border-2 border-primary">
                                                 <AvatarImage src={student.photoURL} />
-                                                <AvatarFallback>{student.displayName?.charAt(0) || 'S'}</AvatarFallback>
+                                                <AvatarFallback>{getInitials(student.displayName)}</AvatarFallback>
                                             </Avatar>
-                                            <p className="font-semibold truncate w-full text-center">{student.displayName}</p>
-                                            <Badge variant="secondary" className="bg-yellow-400 text-black">Rank #{student.rank}</Badge>
+                                            <p className="font-semibold text-sm truncate w-full">{student.displayName}</p>
+                                            <Badge variant="secondary" className="bg-yellow-400 text-black text-xs">Rank #{student.rank}</Badge>
                                         </CardContent>
                                     </Card>
                                 </CarouselItem>
@@ -202,39 +292,34 @@ const MainDashboard = () => {
             
             <div>
                  <h2 className="text-xl font-bold mb-3">What Our Students Say</h2>
-                 <div className="space-y-4">
-                    {loadingReviews ? <Skeleton className="h-24 w-full" /> : reviews.map((review, index) => (
-                        <Card key={index} className="bg-muted/50 animate-fade-in">
-                            <CardContent className="p-4">
-                                <div className="flex items-start gap-3">
-                                    <Avatar className="h-8 w-8">
-                                        <AvatarImage src={review.userPhoto} />
-                                        <AvatarFallback>{review.userName?.charAt(0)}</AvatarFallback>
-                                    </Avatar>
-                                    <div>
-                                        <p className="font-semibold text-sm">{review.userName}</p>
-                                        <p className="text-sm">{review.text}</p>
-                                    </div>
-                                </div>
-                            </CardContent>
-                        </Card>
-                    ))}
-                    <Card>
-                        <CardContent className="p-4">
-                             <form onSubmit={handleReviewSubmit} className="flex items-start gap-3">
-                                <Avatar className="h-9 w-9">
-                                    <AvatarImage src={user?.photoURL || undefined} />
-                                    <AvatarFallback>{user?.displayName?.charAt(0) || 'A'}</AvatarFallback>
-                                </Avatar>
-                                <Textarea 
-                                    value={newReview} 
-                                    onChange={(e) => setNewReview(e.target.value)} 
-                                    placeholder="Write your review here..." 
-                                />
-                                <Button type="submit"><Send /></Button>
-                            </form>
-                        </CardContent>
-                    </Card>
+                 <div className="relative">
+                    <Carousel opts={{ align: "start" }}>
+                        <CarouselContent className="-ml-4">
+                            {loadingReviews ? <Skeleton className="h-48 w-full" /> : reviews.map((review, index) => (
+                                <CarouselItem key={index} className="pl-4 basis-4/5 sm:basis-1/2 md:basis-1/3">
+                                   <ReviewCard review={review} />
+                                </CarouselItem>
+                            ))}
+                             <CarouselItem className="pl-4 basis-4/5 sm:basis-1/2 md:basis-1/3">
+                                 <Card className="bg-muted/50 w-80 shrink-0 h-full">
+                                    <CardContent className="p-4 flex flex-col justify-center h-full">
+                                         <h3 className="font-semibold mb-2 text-center">Leave a review</h3>
+                                         <form onSubmit={handleReviewSubmit} className="flex flex-col items-start gap-3">
+                                            <Textarea 
+                                                value={newReview} 
+                                                onChange={(e) => setNewReview(e.target.value)} 
+                                                placeholder="Write your review here..."
+                                                className="h-24"
+                                            />
+                                            <Button type="submit" size="sm"><Send className="mr-2"/>Submit</Button>
+                                        </form>
+                                    </CardContent>
+                                </Card>
+                            </CarouselItem>
+                        </CarouselContent>
+                        <CarouselPrevious className="absolute left-0 top-1/2 -translate-y-1/2" />
+                        <CarouselNext className="absolute right-0 top-1/2 -translate-y-1/2"/>
+                    </Carousel>
                  </div>
             </div>
         </div>

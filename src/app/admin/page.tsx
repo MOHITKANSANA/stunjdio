@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useRef, useEffect, type ChangeEvent } from 'react';
@@ -16,7 +17,7 @@ import { collection, query, orderBy, doc, updateDoc, addDoc, deleteDoc, serverTi
 import { firestore } from '@/lib/firebase';
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Trash2, Check, X, Upload, Video, FileText, StickyNote, PlusCircle, Save, Download, ThumbsUp, ThumbsDown, Clock, CircleAlert, CheckCircle2, XCircle, KeyRound, Newspaper, Image as ImageIcon, MinusCircle, BookMarked, Award, Gift, ShieldQuestion, Percent, IndianRupee, CalendarDays } from 'lucide-react';
+import { Loader2, Trash2, Check, X, Upload, Video, FileText, StickyNote, PlusCircle, Save, Download, ThumbsUp, ThumbsDown, Clock, CircleAlert, CheckCircle2, XCircle, KeyRound, Newspaper, Image as ImageIcon, MinusCircle, BookMarked, Award, Gift, ShieldQuestion, Percent, IndianRupee, CalendarDays, MonitorPlay } from 'lucide-react';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -63,6 +64,11 @@ const qrCodeFormSchema = z.object({
     imageFile: z.instanceof(File, { message: 'Please upload an image file.' }).refine(file => file.size < 2 * 1024 * 1024, 'Image must be less than 2MB.'),
 });
 type QrCodeFormValues = z.infer<typeof qrCodeFormSchema>;
+
+const splashScreenFormSchema = z.object({
+    imageFile: z.instanceof(File, { message: 'Please upload an image file.' }).refine(file => file.size < 2 * 1024 * 1024, 'Image must be less than 2MB.'),
+});
+type SplashScreenFormValues = z.infer<typeof splashScreenFormSchema>;
 
 const courseContentSchema = z.object({
     courseId: z.string().min(1, "Please select a course."),
@@ -198,7 +204,7 @@ const APP_PAGES = [
     { label: 'Home / Dashboard', value: '/dashboard' },
     { label: 'All Courses', value: '/dashboard/courses' },
     { label: 'Free Courses', value: '/dashboard/courses/free' },
-    { label: 'Live Classes', value: '/dashboard/live-class' },
+    { label: 'Classes & Lectures', value: '/dashboard/classes-lectures' },
     { label: 'AI Tutor', value: '/dashboard/tutor' },
     { label: 'AI Tests', value: '/dashboard/ai-test' },
     { label: 'Test Series', value: '/dashboard/ai-test?tab=series' },
@@ -284,8 +290,7 @@ function AdminDashboard() {
   const [enrollmentsCollection, enrollmentsLoading] = useCollection(query(collection(firestore, 'enrollments'), orderBy('createdAt', 'desc')));
   const [coursesCollection, coursesLoading] = useCollection(query(collection(firestore, 'courses'), orderBy('title', 'asc')));
   const [couponsCollection, couponsLoading] = useCollection(query(collection(firestore, 'coupons'), orderBy('createdAt', 'desc')));
-  const [qrCodeDoc] = useCollection(collection(firestore, 'settings'));
-  const [scholarshipSettingsDoc, scholarshipSettingsLoading] = useCollection(collection(firestore, 'settings'));
+  const [settingsCollection] = useCollection(collection(firestore, 'settings'));
   const [scholarshipQuestionsCollection, scholarshipQuestionsLoading] = useCollection(query(collection(firestore, 'scholarshipTest'), orderBy('createdAt', 'asc')));
   const [scholarshipApplicants, scholarshipApplicantsLoading, scholarshipApplicantsError] = useCollection(query(collection(firestore, 'scholarshipApplications'), orderBy('appliedAt', 'desc')));
   const [carouselItemsCollection, carouselItemsLoading] = useCollection(query(collection(firestore, 'homepageCarousel'), orderBy('createdAt', 'asc')));
@@ -295,14 +300,13 @@ function AdminDashboard() {
   const [pointRequests, pointRequestsLoading] = useCollection(query(collection(firestore, 'pointRequests'), orderBy('requestedAt', 'desc')));
   const [testSeriesCollection, testSeriesLoading] = useCollection(query(collection(firestore, 'testSeries'), orderBy('createdAt', 'desc')));
 
-
-  const qrCodeUrl = qrCodeDoc?.docs.find(d => d.id === 'paymentQrCode')?.data().url;
-  const scholarshipSettings = scholarshipSettingsDoc?.docs.find(d => d.id === 'scholarship')?.data();
+  const qrCodeUrl = settingsCollection?.docs.find(d => d.id === 'paymentQrCode')?.data().url;
+  const splashScreenUrl = settingsCollection?.docs.find(d => d.id === 'splashScreen')?.data().url;
+  const scholarshipSettings = settingsCollection?.docs.find(d => d.id === 'scholarship')?.data();
   
   const [applicantTestScores, setApplicantTestScores] = useState<Record<string, string>>({});
   const [pointsToAward, setPointsToAward] = useState<Record<string, number>>({});
   
-  // State for image cropper
   const [imgSrc, setImgSrc] = useState('');
   const [crop, setCrop] = useState<Crop>();
   const [completedCrop, setCompletedCrop] = useState<Crop>();
@@ -312,39 +316,37 @@ function AdminDashboard() {
 
 
   useEffect(() => {
-    if (scholarshipApplicants?.docs) {
-        const fetchScores = async () => {
-            const scores: Record<string, string> = {};
-            const scorePromises = scholarshipApplicants.docs.map(async (appDoc) => {
-                const app = appDoc.data();
-                if (app.status === 'test_taken') {
-                    const q = query(
-                        collection(firestore, 'scholarshipTestResults'), 
-                        where('applicationNumber', '==', app.applicationNumber)
-                    );
-                    const resultsSnapshot = await getDocs(q);
-                    if (!resultsSnapshot.empty) {
-                        const resultData = resultsSnapshot.docs[0].data();
-                        return { id: appDoc.id, score: `${resultData.score}/${resultData.totalQuestions}` };
-                    }
+    const fetchScores = async () => {
+        if (!scholarshipApplicants?.docs) return;
+
+        const scores: Record<string, string> = {};
+        for (const appDoc of scholarshipApplicants.docs) {
+            const app = appDoc.data();
+            if (app.status === 'test_taken') {
+                const q = query(
+                    collection(firestore, 'scholarshipTestResults'),
+                    where('applicationNumber', '==', app.applicationNumber)
+                );
+                const resultsSnapshot = await getDocs(q);
+                if (!resultsSnapshot.empty) {
+                    const resultData = resultsSnapshot.docs[0].data();
+                    scores[appDoc.id] = `${resultData.score}/${resultData.totalQuestions}`;
+                } else {
+                    scores[appDoc.id] = 'N/A';
                 }
-                return { id: appDoc.id, score: 'N/A' };
-            });
-
-            const results = await Promise.all(scorePromises);
-            results.forEach(result => {
-                scores[result.id] = result.score;
-            });
-            setApplicantTestScores(scores);
-        };
-        fetchScores();
-    }
+            } else {
+                 scores[appDoc.id] = 'N/A';
+            }
+        }
+        setApplicantTestScores(scores);
+    };
+    fetchScores();
 }, [scholarshipApplicants]);
-
   
   const courseForm = useForm<CourseFormValues>({ resolver: zodResolver(courseFormSchema), defaultValues: { title: '', category: '', description: '', price: 0, validity: 365, isFree: false, imageFile: undefined } });
   const couponForm = useForm<CouponFormValues>({ resolver: zodResolver(couponSchema), defaultValues: { code: '', discountType: 'percentage', discountValue: 10, courseId: '', expiryDate: '' } });
   const qrCodeForm = useForm<QrCodeFormValues>({ resolver: zodResolver(qrCodeFormSchema), defaultValues: { imageFile: undefined } });
+  const splashScreenForm = useForm<SplashScreenFormValues>({ resolver: zodResolver(splashScreenFormSchema) });
   const courseContentForm = useForm<CourseContentValues>({ resolver: zodResolver(courseContentSchema), defaultValues: { courseId: '', contentType: 'video', title: '', introduction: '', url: '', testSeriesId: '' } });
   const scholarshipSettingsForm = useForm<ScholarshipSettingsValues>({
     resolver: zodResolver(scholarshipSettingsSchema),
@@ -427,8 +429,6 @@ function AdminDashboard() {
             if (data.contentType === 'test_series') {
                 contentData.testSeriesId = data.testSeriesId;
             } else if (data.contentType === 'ai_test') {
-                // For AI test, no extra data is needed initially besides title.
-                // The test is configured on the fly by the user.
             } else {
                 contentData.url = data.url;
             }
@@ -528,6 +528,18 @@ function AdminDashboard() {
       qrCodeForm.reset();
     } catch (error) {
        toast({ variant: 'destructive', title: 'Error', description: 'Could not update QR code.' });
+    }
+  };
+
+  const onSplashScreenSubmit = async (data: SplashScreenFormValues) => {
+    splashScreenForm.formState.isSubmitting;
+    try {
+      const dataUrl = await fileToDataUrl(data.imageFile);
+      await setDoc(doc(firestore, 'settings', 'splashScreen'), { url: dataUrl });
+      toast({ title: 'Success', description: 'Splash Screen updated.' });
+      splashScreenForm.reset();
+    } catch (error) {
+       toast({ variant: 'destructive', title: 'Error', description: 'Could not update splash screen.' });
     }
   };
 
@@ -937,7 +949,6 @@ function AdminDashboard() {
                                         <MinusCircle className="h-5 w-5 text-destructive" />
                                      </Button>
                                     <FormField control={testSeriesForm.control} name={`questions.${index}.text`} render={({ field }) => (<FormItem><FormLabel>Question Text</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                    {/* Options */}
                                     {[0, 1, 2, 3].map(optIndex => (
                                       <FormField key={optIndex} control={testSeriesForm.control} name={`questions.${index}.options.${optIndex}`} render={({ field }) => (<FormItem><FormLabel>Option {optIndex + 1}</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
                                     ))}
@@ -1264,7 +1275,71 @@ function AdminDashboard() {
               </Card>
 
               <Card>
-                  <CardHeader><CardTitle>Homepage Settings</CardTitle><CardDescription>Manage the items in the homepage carousel.</CardDescription></CardHeader>
+                  <CardHeader><CardTitle>App Settings</CardTitle><CardDescription>Manage general application settings.</CardDescription></CardHeader>
+                  <CardContent className="space-y-6">
+                     <Form {...splashScreenForm}>
+                        <form onSubmit={splashScreenForm.handleSubmit(onSplashScreenSubmit)} className="space-y-4">
+                           <FormField control={splashScreenForm.control} name="imageFile" render={({ field: { value, onChange, ...fieldProps } }) => (
+                              <FormItem><FormLabel>Splash Screen Image</FormLabel><FormControl><Input type="file" accept="image/*" onChange={(e) => onChange(e.target.files?.[0])} {...fieldProps} /></FormControl><FormMessage /></FormItem>
+                            )}/>
+                          <Button type="submit" disabled={splashScreenForm.formState.isSubmitting}>
+                            {splashScreenForm.formState.isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin"/>Uploading...</> : <><MonitorPlay className="mr-2 h-4 w-4"/>Update Splash Screen</>}
+                          </Button>
+                        </form>
+                      </Form>
+                      <div className="mt-6">
+                        <h4 className="font-semibold mb-2">Current Splash Screen</h4>
+                        {splashScreenUrl ? (
+                          <Image src={splashScreenUrl} alt="Splash Screen" width={200} height={200} className="rounded-md border p-2" />
+                        ) : (
+                          <p className="text-muted-foreground">No splash screen uploaded.</p>
+                        )}
+                      </div>
+                      <Separator />
+                      <Card>
+                        <CardHeader>
+                            <CardTitle>Manage Coupons</CardTitle>
+                            <CardDescription>Create and manage discount coupons for your courses.</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <Form {...couponForm}>
+                                <form onSubmit={couponForm.handleSubmit(onCouponSubmit)} className="space-y-4 mb-6">
+                                    <FormField control={couponForm.control} name="courseId" render={({ field }) => (<FormItem><FormLabel>Select Course</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Choose a course" /></SelectTrigger></FormControl><SelectContent>{coursesCollection?.docs.filter(c => !c.data().isFree).map(doc => (<SelectItem key={doc.id} value={doc.id}>{doc.data().title}</SelectItem>))}</SelectContent></Select><FormMessage /></FormItem>)} />
+                                    <FormField control={couponForm.control} name="code" render={({ field }) => (<FormItem><FormLabel>Coupon Code</FormLabel><FormControl><Input placeholder="E.g., SAVE20" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                    <FormField control={couponForm.control} name="discountType" render={({ field }) => (<FormItem><FormLabel>Discount Type</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Choose a discount type" /></SelectTrigger></FormControl><SelectContent><SelectItem value="percentage">Percentage (%)</SelectItem><SelectItem value="fixed">Fixed Amount (₹)</SelectItem></SelectContent></Select><FormMessage /></FormItem>)} />
+                                    <FormField control={couponForm.control} name="discountValue" render={({ field }) => (<FormItem><FormLabel>Discount Value</FormLabel><FormControl><div className="relative"><div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3"><span className="text-muted-foreground sm:text-sm">{couponForm.watch('discountType') === 'percentage' ? <Percent size={16} /> : <IndianRupee size={16} />}</span></div><Input type="number" placeholder="e.g., 20 or 100" className="pl-10" {...field} /></div></FormControl><FormMessage /></FormItem>)} />
+                                    <FormField control={couponForm.control} name="expiryDate" render={({ field }) => (<FormItem><FormLabel>Expiry Date</FormLabel><FormControl><Input type="datetime-local" {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                                    <Button type="submit" className="w-full" disabled={couponForm.formState.isSubmitting}>{couponForm.formState.isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Creating...</> : <>Create Coupon</>}</Button>
+                                </form>
+                            </Form>
+                            <Separator />
+                            <h4 className="font-semibold my-4">Existing Coupons</h4>
+                            <div className="max-h-60 overflow-y-auto pr-2 space-y-2">
+                                {couponsLoading && <Skeleton className="h-12 w-full" />}
+                                {couponsCollection?.docs.map((doc) => {
+                                    const coupon = doc.data();
+                                    const course = coursesCollection?.docs.find(c => c.id === coupon.courseId)?.data();
+                                    return (
+                                        <div key={doc.id} className="flex items-center justify-between p-2 border rounded-lg">
+                                            <div>
+                                                <p className="font-mono font-bold">{coupon.code}</p>
+                                                <p className="text-sm text-muted-foreground">{coupon.discountType === 'percentage' ? `${coupon.discountValue}%` : `₹${coupon.discountValue}`} off on {course?.title || 'a course'}</p>
+                                                <p className="text-xs text-muted-foreground">Expires: {coupon.expiryDate?.toDate()?.toLocaleDateString()}</p>
+                                            </div>
+                                            <Button variant="ghost" size="icon" onClick={() => deleteDoc(doc.ref)}>
+                                                <Trash2 className="h-4 w-4 text-destructive" />
+                                            </Button>
+                                        </div>
+                                    )
+                                })}
+                            </div>
+                        </CardContent>
+                    </Card>
+                  </CardContent>
+              </Card>
+
+              <Card>
+                  <CardHeader><CardTitle>Homepage Carousel</CardTitle><CardDescription>Manage the items in the homepage carousel.</CardDescription></CardHeader>
                   <CardContent>
                       <Form {...carouselItemForm}>
                           <form onSubmit={carouselItemForm.handleSubmit(onCarouselItemSubmit)} className="grid gap-4 mb-6">
@@ -1316,46 +1391,6 @@ function AdminDashboard() {
                   </CardContent>
               </Card>
 
-              <Card>
-                <CardHeader>
-                    <CardTitle>Manage Coupons</CardTitle>
-                    <CardDescription>Create and manage discount coupons for your courses.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <Form {...couponForm}>
-                        <form onSubmit={couponForm.handleSubmit(onCouponSubmit)} className="space-y-4 mb-6">
-                            <FormField control={couponForm.control} name="courseId" render={({ field }) => (<FormItem><FormLabel>Select Course</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Choose a course" /></SelectTrigger></FormControl><SelectContent>{coursesCollection?.docs.filter(c => !c.data().isFree).map(doc => (<SelectItem key={doc.id} value={doc.id}>{doc.data().title}</SelectItem>))}</SelectContent></Select><FormMessage /></FormItem>)} />
-                            <FormField control={couponForm.control} name="code" render={({ field }) => (<FormItem><FormLabel>Coupon Code</FormLabel><FormControl><Input placeholder="E.g., SAVE20" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                            <FormField control={couponForm.control} name="discountType" render={({ field }) => (<FormItem><FormLabel>Discount Type</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Choose a discount type" /></SelectTrigger></FormControl><SelectContent><SelectItem value="percentage">Percentage (%)</SelectItem><SelectItem value="fixed">Fixed Amount (₹)</SelectItem></SelectContent></Select><FormMessage /></FormItem>)} />
-                            <FormField control={couponForm.control} name="discountValue" render={({ field }) => (<FormItem><FormLabel>Discount Value</FormLabel><FormControl><div className="relative"><div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3"><span className="text-muted-foreground sm:text-sm">{couponForm.watch('discountType') === 'percentage' ? <Percent size={16} /> : <IndianRupee size={16} />}</span></div><Input type="number" placeholder="e.g., 20 or 100" className="pl-10" {...field} /></div></FormControl><FormMessage /></FormItem>)} />
-                            <FormField control={couponForm.control} name="expiryDate" render={({ field }) => (<FormItem><FormLabel>Expiry Date</FormLabel><FormControl><Input type="datetime-local" {...field} /></FormControl><FormMessage /></FormItem>)}/>
-                            <Button type="submit" className="w-full" disabled={couponForm.formState.isSubmitting}>{couponForm.formState.isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Creating...</> : <>Create Coupon</>}</Button>
-                        </form>
-                    </Form>
-                    <Separator />
-                    <h4 className="font-semibold my-4">Existing Coupons</h4>
-                    <div className="max-h-60 overflow-y-auto pr-2 space-y-2">
-                        {couponsLoading && <Skeleton className="h-12 w-full" />}
-                        {couponsCollection?.docs.map((doc) => {
-                            const coupon = doc.data();
-                            const course = coursesCollection?.docs.find(c => c.id === coupon.courseId)?.data();
-                            return (
-                                <div key={doc.id} className="flex items-center justify-between p-2 border rounded-lg">
-                                    <div>
-                                        <p className="font-mono font-bold">{coupon.code}</p>
-                                        <p className="text-sm text-muted-foreground">{coupon.discountType === 'percentage' ? `${coupon.discountValue}%` : `₹${coupon.discountValue}`} off on {course?.title || 'a course'}</p>
-                                        <p className="text-xs text-muted-foreground">Expires: {coupon.expiryDate?.toDate()?.toLocaleDateString()}</p>
-                                    </div>
-                                    <Button variant="ghost" size="icon" onClick={() => deleteDoc(doc.ref)}>
-                                        <Trash2 className="h-4 w-4 text-destructive" />
-                                    </Button>
-                                </div>
-                            )
-                        })}
-                    </div>
-                </CardContent>
-            </Card>
-
           </div>
         </TabsContent>
       </Tabs>
@@ -1376,8 +1411,3 @@ function AdminDashboard() {
     </div>
   );
 }
-
-
-
-
-
