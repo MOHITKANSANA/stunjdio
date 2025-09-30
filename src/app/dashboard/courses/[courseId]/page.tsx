@@ -150,7 +150,7 @@ const VideoLecturesTab = ({ courseId }: { courseId: string; }) => {
                             <div key={doc.id} className={cn("flex items-center justify-between p-3 rounded-lg border cursor-pointer transition-colors", 'bg-muted/50 hover:bg-muted')} onClick={() => handleVideoClick(content.id)}>
                                 <div className="flex items-center gap-3 overflow-hidden">
                                     <ContentIcon type={content.type} />
-                                    <p className="font-semibold truncate">{content.title}</p>
+                                    <p className="font-semibold break-words">{content.title}</p>
                                 </div>
                                 <Button variant="ghost" size="icon" className="shrink-0">
                                     <PlayCircle className="h-6 w-6" />

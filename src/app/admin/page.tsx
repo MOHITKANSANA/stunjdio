@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useRef, useEffect, type ChangeEvent } from 'react';
@@ -145,8 +146,7 @@ type TestSeriesValues = z.infer<typeof testSeriesSchema>;
 const jsonTestSeriesSchema = z.object({
     jsonInput: z.string().refine((val) => {
         try {
-            const parsed = JSON.parse(data.jsonInput);
-            // This is a simplified check. Zod's .success check is more reliable.
+            const parsed = JSON.parse(val);
             return testSeriesSchema.safeParse(parsed).success;
         } catch (e) {
             return false;
@@ -470,10 +470,11 @@ function AdminDashboard() {
     try {
         const testData = JSON.parse(data.jsonInput);
         await addDoc(collection(firestore, 'testSeries'), { ...testData, createdAt: serverTimestamp() });
-        toast({ title: 'Success', description: 'Test series added successfully.' });
+        toast({ title: 'Success', description: 'Test series added successfully from JSON.' });
         jsonTestSeriesForm.reset();
     } catch (error) {
-        toast({ variant: 'destructive', title: 'Error', description: 'Could not add test series.' });
+        console.error("JSON Test Series submit error:", error);
+        toast({ variant: 'destructive', title: 'Error', description: 'Could not add test series from JSON. Please check the format.' });
     }
   }
 
@@ -1375,6 +1376,7 @@ function AdminDashboard() {
     </div>
   );
 }
+
 
 
 

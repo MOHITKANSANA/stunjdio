@@ -12,7 +12,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Send, MessageSquare, BookText } from 'lucide-react';
+import { Send, MessageSquare, BookText, Save } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { saveNoteAction } from '@/app/actions/live-class';
@@ -173,8 +173,6 @@ const NotesSection = ({ contentId }: { contentId: string }) => {
     const { toast } = useToast();
     const [notes, setNotes] = useState('');
     const [isSaving, setIsSaving] = useState(false);
-    const [lastSaved, setLastSaved] = useState<Date | null>(null);
-    const debounceTimeout = useRef<NodeJS.Timeout | null>(null);
 
     useEffect(() => {
         if (user) {
@@ -187,9 +185,6 @@ const NotesSection = ({ contentId }: { contentId: string }) => {
                 if (!querySnapshot.empty) {
                     const doc = querySnapshot.docs[0];
                     setNotes(doc.data().content);
-                    if (doc.data().updatedAt) {
-                       setLastSaved(doc.data().updatedAt.toDate());
-                    }
                 } else {
                     setNotes('');
                 }
@@ -198,41 +193,30 @@ const NotesSection = ({ contentId }: { contentId: string }) => {
         }
     }, [contentId, user]);
 
-    const handleSave = async (content: string) => {
+    const handleSave = async () => {
         if (!user) return;
         setIsSaving(true);
-        const result = await saveNoteAction(contentId, user.uid, content);
+        const result = await saveNoteAction(contentId, user.uid, notes);
         if (result.success) {
-            setLastSaved(new Date());
+            toast({ description: 'Notes saved successfully.' });
         } else {
             toast({ variant: 'destructive', description: 'Failed to save notes.' });
         }
         setIsSaving(false);
     };
     
-    const handleNotesChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-        const newNotes = e.target.value;
-        setNotes(newNotes);
-        if (debounceTimeout.current) {
-            clearTimeout(debounceTimeout.current);
-        }
-        debounceTimeout.current = setTimeout(() => {
-            handleSave(newNotes);
-        }, 1500); // Auto-save after 1.5 seconds of inactivity
-    };
-
-
     return (
         <div className="p-4 flex flex-col h-full">
             <Textarea
                 value={notes}
-                onChange={handleNotesChange}
-                placeholder="Write your personal notes here... they are only visible to you and will be saved automatically."
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="Write your personal notes here... they are only visible to you. Click save to store them."
                 className="flex-1 min-h-[200px]"
             />
-            <div className="text-xs text-muted-foreground mt-2 text-right h-4">
-                 {isSaving ? 'Saving...' : lastSaved ? `Last saved: ${lastSaved.toLocaleTimeString()}` : ''}
-            </div>
+            <Button onClick={handleSave} disabled={isSaving} className="mt-4">
+                <Save className="mr-2" />
+                {isSaving ? 'Saving...' : 'Save Notes'}
+            </Button>
         </div>
     );
 };
@@ -287,6 +271,7 @@ export default function VideoPlaybackPage() {
         </div>
     );
 }
+
 
 
 
