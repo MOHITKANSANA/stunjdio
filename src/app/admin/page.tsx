@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useState, useRef, useEffect, type ChangeEvent } from 'react';
@@ -17,7 +16,7 @@ import { collection, query, orderBy, doc, updateDoc, addDoc, deleteDoc, serverTi
 import { firestore } from '@/lib/firebase';
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Trash2, Check, X, Upload, Video, FileText, StickyNote, PlusCircle, Save, Download, ThumbsUp, ThumbsDown, Clock, CircleAlert, CheckCircle2, XCircle, KeyRound, Newspaper, Image as ImageIcon, MinusCircle, BookMarked, Award, Gift, ShieldQuestion, Percent, IndianRupee, CalendarDays, MonitorPlay } from 'lucide-react';
+import { Loader2, Trash2, Check, X, Upload, Video, FileText, StickyNote, PlusCircle, Save, Download, ThumbsUp, ThumbsDown, Clock, CircleAlert, CheckCircle2, XCircle, KeyRound, Newspaper, Image as ImageIcon, MinusCircle, BookMarked, Award, Gift, ShieldQuestion, Percent, IndianRupee, CalendarDays, MonitorPlay, Clapperboard } from 'lucide-react';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -55,7 +54,6 @@ const liveClassFormSchema = z.object({
     youtubeUrl: z.string().url('Must be a valid YouTube URL'),
     startTime: z.string().refine((val) => !isNaN(Date.parse(val)), { message: 'Invalid date format' }),
     thumbnailFile: z.instanceof(File).optional(),
-    thumbnailUrl: z.string().url().optional(),
 });
 type LiveClassFormValues = z.infer<typeof liveClassFormSchema>;
 
@@ -188,6 +186,13 @@ const eBookSchema = z.object({
 });
 type EBookValues = z.infer<typeof eBookSchema>;
 
+const liveClassFormSchema = z.object({
+    title: z.string().min(1, 'Title is required'),
+    youtubeUrl: z.string().url('Must be a valid YouTube URL'),
+    startTime: z.string().refine((val) => !isNaN(Date.parse(val)), { message: 'Invalid date format' }),
+    thumbnailFile: z.instanceof(File).optional(),
+});
+type LiveClassFormValues = z.infer<typeof liveClassFormSchema>;
 
 const fileToDataUrl = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
@@ -299,6 +304,8 @@ function AdminDashboard() {
   const [rewardRedemptions, rewardRedemptionsLoading] = useCollection(query(collection(firestore, 'rewardRedemptions'), orderBy('redeemedAt', 'desc')));
   const [pointRequests, pointRequestsLoading] = useCollection(query(collection(firestore, 'pointRequests'), orderBy('requestedAt', 'desc')));
   const [testSeriesCollection, testSeriesLoading] = useCollection(query(collection(firestore, 'testSeries'), orderBy('createdAt', 'desc')));
+  const [liveClassesCollection, liveClassesLoading] = useCollection(query(collection(firestore, 'live_classes'), orderBy('startTime', 'desc')));
+
 
   const qrCodeUrl = settingsCollection?.docs.find(d => d.id === 'paymentQrCode')?.data().url;
   const splashScreenUrl = settingsCollection?.docs.find(d => d.id === 'splashScreen')?.data().url;
@@ -371,6 +378,8 @@ function AdminDashboard() {
   const scholarshipQuestionForm = useForm<ScholarshipQuestionValues>({ resolver: zodResolver(scholarshipQuestionSchema), defaultValues: { text: '', options: ['', '', '', ''], correctAnswer: '' } });
   const jsonQuestionsForm = useForm<JsonQuestionsValues>({ resolver: zodResolver(jsonQuestionsSchema), defaultValues: { jsonInput: '' } });
   const previousPaperForm = useForm<PreviousPaperValues>({ resolver: zodResolver(previousPaperSchema), defaultValues: { title: '', year: new Date().getFullYear(), fileUrl: '', file: undefined } });
+  const liveClassForm = useForm<LiveClassFormValues>({ resolver: zodResolver(liveClassFormSchema), defaultValues: { title: '', youtubeUrl: '', startTime: '' } });
+
   
   const testSeriesForm = useForm<TestSeriesValues>({
     resolver: zodResolver(testSeriesSchema),
@@ -760,14 +769,44 @@ function AdminDashboard() {
         setIsCropperOpen(false);
     };
 
+    const onLiveClassSubmit = async (data: LiveClassFormValues) => {
+        try {
+            let thumbnailUrl = `https://picsum.photos/seed/liveclass-${new Date().getTime()}/400/225`;
+            if (data.thumbnailFile) {
+                thumbnailUrl = await fileToDataUrl(data.thumbnailFile);
+            }
+
+            await addDoc(collection(firestore, 'live_classes'), {
+                title: data.title,
+                youtubeUrl: data.youtubeUrl,
+                thumbnailUrl,
+                startTime: new Date(data.startTime),
+                createdAt: serverTimestamp(),
+            });
+            toast({ title: 'Success!', description: 'Live class created successfully.' });
+            liveClassForm.reset();
+        } catch (error) {
+            console.error("Live Class submit error:", error);
+            toast({ variant: 'destructive', title: 'Error', description: 'Could not create live class.' });
+        }
+    };
+
+    const deleteLiveClass = async (id: string) => {
+        if (window.confirm("Are you sure you want to delete this live class?")) {
+            await deleteDoc(doc(firestore, 'live_classes', id));
+            toast({ description: 'Live class deleted.' });
+        }
+    };
+
 
   return (
     <div className="mx-auto grid w-full max-w-7xl gap-6">
       <h1 className="text-3xl font-semibold font-headline">Administration</h1>
       <Tabs defaultValue="enrollments">
-        <TabsList className="grid w-full grid-cols-6">
+        <TabsList className="grid w-full grid-cols-7">
           <TabsTrigger value="enrollments">Enrollments</TabsTrigger>
           <TabsTrigger value="main_content">Main App Content</TabsTrigger>
+          <TabsTrigger value="live_classes">Live Classes</TabsTrigger>
           <TabsTrigger value="kids_content">Kids Tube Content</TabsTrigger>
           <TabsTrigger value="scholarship">Scholarship</TabsTrigger>
           <TabsTrigger value="rewards">Rewards</TabsTrigger>
@@ -994,6 +1033,60 @@ function AdminDashboard() {
             </div>
            
           </div>
+        </TabsContent>
+        <TabsContent value="live_classes">
+            <div className="grid md:grid-cols-2 gap-6 items-start">
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Create Live Class</CardTitle>
+                        <CardDescription>Schedule a new live class for your students.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <Form {...liveClassForm}>
+                            <form onSubmit={liveClassForm.handleSubmit(onLiveClassSubmit)} className="space-y-4">
+                                <FormField control={liveClassForm.control} name="title" render={({ field }) => (
+                                    <FormItem><FormLabel>Class Title</FormLabel><FormControl><Input {...field} placeholder="e.g., Live Doubt Clearing Session" /></FormControl><FormMessage /></FormItem>
+                                )} />
+                                <FormField control={liveClassForm.control} name="youtubeUrl" render={({ field }) => (
+                                    <FormItem><FormLabel>YouTube Live URL</FormLabel><FormControl><Input {...field} placeholder="https://www.youtube.com/live/..." /></FormControl><FormMessage /></FormItem>
+                                )} />
+                                <FormField control={liveClassForm.control} name="startTime" render={({ field }) => (
+                                    <FormItem><FormLabel>Start Time</FormLabel><FormControl><Input type="datetime-local" {...field} /></FormControl><FormMessage /></FormItem>
+                                )} />
+                                <FormField control={liveClassForm.control} name="thumbnailFile" render={({ field: { onChange, ...fieldProps} }) => (
+                                     <FormItem><FormLabel>Thumbnail (Optional)</FormLabel><FormControl><Input type="file" accept="image/*" onChange={(e) => onChange(e.target.files?.[0])} {...fieldProps} /></FormControl><FormMessage /></FormItem>
+                                )} />
+                                <Button type="submit" disabled={liveClassForm.formState.isSubmitting}>
+                                    {liveClassForm.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                    Schedule Class
+                                </Button>
+                            </form>
+                        </Form>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Scheduled Classes</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="max-h-[600px] overflow-y-auto pr-2 space-y-2">
+                           {liveClassesLoading && <Skeleton className="h-12 w-full" />}
+                           {liveClassesCollection?.docs.map((doc) => (
+                             <div key={doc.id} className="flex items-center justify-between p-2 border rounded-lg">
+                               <div className="flex-1">
+                                 <p className="font-medium">{doc.data().title}</p>
+                                 <p className="text-sm text-muted-foreground">{doc.data().startTime?.toDate()?.toLocaleString()}</p>
+                               </div>
+                               <Button variant="ghost" size="icon" onClick={() => deleteLiveClass(doc.id)}>
+                                 <Trash2 className="h-4 w-4 text-destructive" />
+                               </Button>
+                             </div>
+                           ))}
+                           {!liveClassesLoading && liveClassesCollection?.empty && <p className="text-muted-foreground text-center">No classes scheduled.</p>}
+                        </div>
+                    </CardContent>
+                </Card>
+            </div>
         </TabsContent>
         <TabsContent value="kids_content">
            <div className="grid md:grid-cols-2 gap-6 items-start">
@@ -1315,7 +1408,7 @@ function AdminDashboard() {
 
             <div className="space-y-6">
                 <Card>
-                    <CardHeader><CardTitle>Payment & Coupons</CardTitle><CardDescription>Manage QR code and discount coupons.</CardDescription></CardHeader>
+                    <CardHeader><CardTitle>Payment &amp; Coupons</CardTitle><CardDescription>Manage QR code and discount coupons.</CardDescription></CardHeader>
                     <CardContent>
                         {/* QR Code */}
                         <Form {...qrCodeForm}>

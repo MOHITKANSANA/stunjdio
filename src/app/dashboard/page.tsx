@@ -1,5 +1,4 @@
 
-
 "use client";
 import React, { useEffect, useState } from 'react';
 import {
@@ -12,6 +11,7 @@ import {
   Send,
   MessageSquare,
   Library,
+  Clapperboard,
 } from 'lucide-react';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -238,10 +238,10 @@ const MainDashboard = () => {
     const topGridItems = [
       { label: "My Learning", icon: Library, href: "/dashboard/my-learning", color: "from-blue-500 to-indigo-600" },
       { label: "All Courses", icon: Book, href: "/dashboard/courses", color: "from-green-500 to-emerald-600" },
-      { label: "Free Courses", icon: BookCopy, href: "/dashboard/courses/free", color: "from-orange-500 to-amber-600" },
+      { label: "Live Classes", icon: Clapperboard, href: "/dashboard/classes-lectures", color: "from-red-500 to-rose-600" },
       { label: "Previous Papers", icon: Newspaper, href: "/dashboard/papers", color: "from-purple-500 to-violet-600" },
       { label: "Scholarship", icon: Award, href: "/dashboard/scholarship", color: "from-yellow-500 to-golden-600" },
-      { label: "AI Tests", icon: Youtube, href: "/dashboard/ai-test", color: "from-red-500 to-rose-600" },
+      { label: "AI Tests", icon: Youtube, href: "/dashboard/ai-test", color: "from-orange-500 to-amber-600" },
     ];
     
     const getInitials = (name: string | null | undefined) => {
@@ -251,6 +251,7 @@ const MainDashboard = () => {
     
     return (
         <div className="flex flex-col h-full bg-background space-y-6">
+            <h1 className="text-2xl font-bold">Hello, {user?.displayName || 'Student'}!</h1>
 
              <Carousel opts={{ loop: true }} className="w-full">
                 <CarouselContent>
@@ -394,5 +395,3 @@ export default function DashboardPage() {
 
     return isKidsMode ? <KidsTubeDashboard /> : <MainDashboard />;
 }
-
-    
