@@ -5,10 +5,11 @@
 // The new enrollment flow uses the /dashboard/payment-verification page.
 
 import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useParams } from 'next/navigation';
 
-export default function DeprecatedEnrollPage({ params }: { params: { courseId: string } }) {
+export default function DeprecatedEnrollPage() {
   const router = useRouter();
+  const params = useParams() as { courseId: string };
   const courseId = params.courseId;
 
   useEffect(() => {

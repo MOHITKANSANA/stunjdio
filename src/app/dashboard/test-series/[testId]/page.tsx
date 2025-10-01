@@ -18,8 +18,8 @@ import Certificate from '@/components/certificate';
 import { Progress } from '@/components/ui/progress';
 
 function TestSeriesPlayer() {
-  const params = useParams();
-  const testId = params.testId as string;
+  const params = useParams() as { testId: string };
+  const testId = params.testId;
   const { user } = useAuth();
 
   const [testSeriesDoc, loading, error] = useDocument(doc(firestore, 'testSeries', testId));

@@ -136,8 +136,8 @@ const NotesSection = ({ classId }: { classId: string }) => {
 };
 
 export default function LiveClassPlayerPage() {
-    const params = useParams();
-    const classId = params.classId as string;
+    const params = useParams() as { classId: string };
+    const classId = params.classId;
     
     const [classDoc, loading, error] = useDocument(doc(firestore, 'live_classes', classId));
 

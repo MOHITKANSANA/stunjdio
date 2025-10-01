@@ -47,7 +47,7 @@ const getZohoVideoEmbedUrl = (url: string): string | null => {
         const zohoRegex = /show\.zohopublic\.(in|com)\/publish\/([a-zA-Z0-9_-]+)\/([a-zA-Z0-9_-]+)/;
         const match = url.match(zohoRegex);
         if (match && match[2] && match[3]) {
-            return `https://show.zohopublic.in/publish/z1z1z1z1z1/z1z1z1z1z1?viewtype=embed`;
+            return `https://show.zohopublic.in/publish/${match[2]}/${match[3]}?viewtype=embed`;
         }
     } catch(e) {
         console.error("Error parsing Zoho URL", e);
@@ -136,22 +136,22 @@ const ChatSection = ({ contentId }: { contentId: string }) => {
     const { user } = useAuth();
     const { toast } = useToast();
     const [doubtText, setDoubtText] = useState('');
-    const chatEndRef = useRef<HTMLDivElement | null>(null);
-
-    const chatsCollectionRef = collection(firestore, 'videoChats', contentId, 'messages');
     const [chatsCollection, chatsLoading, chatsError] = useCollection(
-        query(chatsCollectionRef, orderBy('createdAt', 'asc'))
+        query(collection(firestore, 'videoChats', contentId, 'messages'), orderBy('createdAt', 'asc'))
     );
+    const scrollAreaRef = useRef<HTMLDivElement>(null);
     
     useEffect(() => {
-        chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+        if (scrollAreaRef.current) {
+            scrollAreaRef.current.scrollTo({ top: scrollAreaRef.current.scrollHeight, behavior: 'smooth' });
+        }
     }, [chatsCollection]);
 
     const handleDoubtSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!user || !doubtText.trim()) return;
         try {
-            await addDoc(chatsCollectionRef, {
+            await addDoc(collection(firestore, 'videoChats', contentId, 'messages'), {
                 text: doubtText,
                 userId: user.uid,
                 userName: user.displayName,
@@ -166,7 +166,7 @@ const ChatSection = ({ contentId }: { contentId: string }) => {
 
     return (
         <div className="flex flex-col h-full bg-background p-4">
-            <ScrollArea className="flex-grow mb-4 h-64">
+            <ScrollArea className="flex-grow mb-4 h-64" ref={scrollAreaRef}>
                 <div className="space-y-4 pr-4">
                     {chatsLoading && <Skeleton className="h-20 w-full" />}
                     {chatsError && <p className="text-destructive">Could not load chats.</p>}
@@ -194,7 +194,6 @@ const ChatSection = ({ contentId }: { contentId: string }) => {
                             </div>
                         )
                     })}
-                    <div ref={chatEndRef} />
                 </div>
             </ScrollArea>
             {user && (
@@ -277,9 +276,9 @@ const NotesSection = ({ contentId }: { contentId: string }) => {
 
 
 export default function VideoPlaybackPage() {
-    const params = useParams();
-    const courseId = params.courseId as string;
-    const contentId = params.contentId as string;
+    const params = useParams() as { courseId: string; contentId: string };
+    const courseId = params.courseId;
+    const contentId = params.contentId;
     
     const [contentDoc, loading, error] = useDocument(doc(firestore, 'courses', courseId, 'content', contentId));
 

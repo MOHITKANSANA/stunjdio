@@ -436,8 +436,8 @@ const EnrolledCourseView = ({ course, courseId }: { course: DocumentData, course
 
 function CourseDetailPageContent() {
   const { user, loading: authLoading } = useAuth();
-  const params = useParams();
-  const courseId = params.courseId as string;
+  const params = useParams() as { courseId: string };
+  const courseId = params.courseId;
   
   const [courseDoc, courseLoading, courseError] = useDocument(doc(firestore, 'courses', courseId));
 
