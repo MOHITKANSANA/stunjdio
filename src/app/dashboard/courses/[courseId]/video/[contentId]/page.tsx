@@ -94,8 +94,8 @@ const VideoPlayer = ({ videoUrl }: { videoUrl: string }) => {
         );
     }
     
-    // Fallback for direct video links or unsupported urls
-    if (videoUrl.match(/\.(mp4|webm|ogg)$/i)) {
+    // Fallback for direct video links (including Supabase)
+    if (videoUrl.match(/\.(mp4|webm|ogg)$/i) || videoUrl.includes('supabase')) {
         return (
              <div className="w-full aspect-video bg-black rounded-lg">
                 <video

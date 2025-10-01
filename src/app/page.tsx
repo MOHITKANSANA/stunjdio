@@ -10,6 +10,16 @@ import { doc, getDoc } from "firebase/firestore";
 import { firestore } from "@/lib/firebase";
 import Image from "next/image";
 
+const DefaultSplashScreen = ({ userName }: { userName: string | null | undefined }) => (
+    <div className="flex flex-col items-center justify-center h-full w-full bg-gradient-to-br from-primary to-blue-700 text-white p-8">
+        <BookOpenCheck className="h-20 w-20 mb-6 animate-pulse" />
+        <h1 className="text-4xl font-bold font-headline">Go Swami Coaching</h1>
+        {userName && <p className="text-2xl mt-4">Hello, {userName}</p>}
+        <p className="mt-2 text-lg text-white/80">Loading your experience...</p>
+    </div>
+);
+
+
 const LoadingSpinner = () => (
     <div className="flex flex-col items-center gap-4">
         <BookOpenCheck className="h-12 w-12 animate-pulse text-primary" />
@@ -28,7 +38,7 @@ export default function WelcomePage() {
         const fetchSplashScreen = async () => {
             try {
                 const settingsDoc = await getDoc(doc(firestore, 'settings', 'splashScreen'));
-                if (settingsDoc.exists()) {
+                if (settingsDoc.exists() && settingsDoc.data().url) {
                     setSplashScreenUrl(settingsDoc.data().url);
                 }
             } catch (error) {
@@ -41,19 +51,14 @@ export default function WelcomePage() {
     }, []);
 
     useEffect(() => {
-        // If there's no splash screen URL, don't wait.
         if (fetchingSplash) return;
-        if (!splashScreenUrl) {
-            setShowSplash(false);
-            return;
-        }
 
         const splashTimer = setTimeout(() => {
             setShowSplash(false);
-        }, 5000); // 5-second splash screen
+        }, 5000); 
 
         return () => clearTimeout(splashTimer);
-    }, [splashScreenUrl, fetchingSplash]);
+    }, [fetchingSplash]);
 
 
     useEffect(() => {
@@ -66,17 +71,17 @@ export default function WelcomePage() {
         }
     }, [user, authLoading, router, showSplash, fetchingSplash]);
 
-    if (showSplash && splashScreenUrl) {
-        return (
-            <div className="flex min-h-screen w-full items-center justify-center bg-background">
-                <Image src={splashScreenUrl} alt="Loading..." fill style={{ objectFit: 'cover' }} priority />
-            </div>
-        );
-    }
-    
     return (
         <div className="flex min-h-screen w-full items-center justify-center bg-background">
-            <LoadingSpinner />
+             {showSplash ? (
+                splashScreenUrl ? (
+                    <Image src={splashScreenUrl} alt="Loading..." fill style={{ objectFit: 'cover' }} priority />
+                ) : (
+                    <DefaultSplashScreen userName={user?.displayName} />
+                )
+             ) : (
+                <LoadingSpinner />
+             )}
         </div>
     );
 }
