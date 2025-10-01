@@ -137,10 +137,6 @@ export default function MyLearningPage() {
     const [ebooks, ebooksLoading, ebooksError] = useCollection(
         query(collection(firestore, 'ebooks'), orderBy('createdAt', 'desc'))
     );
-
-    const [downloads, downloadsLoading, downloadsError] = useCollection(
-        user ? query(collection(firestore, 'userDownloads'), where('userId', '==', user.uid), orderBy('savedAt', 'desc')) : null
-    );
     
     const [notifications, notificationsLoading, notificationsError] = useCollection(
         user ? query(collection(firestore, 'users', user.uid, 'notifications'), where('read', '==', false), orderBy('createdAt', 'desc')) : null
@@ -303,5 +299,3 @@ export default function MyLearningPage() {
         </div>
     );
 }
-
-

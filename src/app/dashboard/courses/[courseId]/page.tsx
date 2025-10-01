@@ -11,7 +11,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
-import { IndianRupee, BookOpen, Clock, Users, Video, PlayCircle, FileText, StickyNote, ShieldQuestion, Bot, ThumbsUp, ThumbsDown, MessageSquare, CalendarDays, Send, HelpCircle } from 'lucide-react';
+import { IndianRupee, BookOpen, Clock, Users, Video, PlayCircle, FileText, StickyNote, ShieldQuestion, Bot, ThumbsUp, ThumbsDown, MessageSquare, CalendarDays, Send, HelpCircle, Download } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/use-auth';
 import { collection, query, where, orderBy, getDocs, limit, onSnapshot, addDoc, serverTimestamp, arrayUnion, updateDoc, arrayRemove } from 'firebase/firestore';
@@ -29,6 +29,38 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
 const PDFViewer = ({ pdfUrl, title, onOpenChange }: { pdfUrl: string, title: string, onOpenChange: (open: boolean) => void }) => {
+    const { user } = useAuth();
+    const { toast } = useToast();
+
+    useEffect(() => {
+        const saveToDownloads = async () => {
+            if (!user) return;
+            try {
+                // Check if it already exists
+                const q = query(
+                    collection(firestore, 'userDownloads'),
+                    where('userId', '==', user.uid),
+                    where('url', '==', pdfUrl)
+                );
+                const existing = await getDocs(q);
+                if (existing.empty) {
+                     await addDoc(collection(firestore, 'userDownloads'), {
+                        userId: user.uid,
+                        title: title,
+                        url: pdfUrl,
+                        type: 'PDF',
+                        savedAt: serverTimestamp()
+                    });
+                }
+            } catch (e) {
+                console.error("Failed to save to downloads:", e);
+                toast({ variant: 'destructive', description: "Failed to save PDF to your downloads." });
+            }
+        };
+
+        saveToDownloads();
+    }, [pdfUrl, title, user, toast]);
+
     const googleDocsUrl = `https://docs.google.com/gview?url=${encodeURIComponent(pdfUrl)}&embedded=true`;
     return (
         <Dialog open={true} onOpenChange={onOpenChange}>
@@ -410,12 +442,14 @@ const EnrolledCourseView = ({ course, courseId }: { course: DocumentData, course
     return (
         <div className="w-full">
             <Tabs defaultValue={defaultTab} onValueChange={onTabChange} className="w-full">
-                <TabsList className="grid w-full grid-cols-4">
-                    <TabsTrigger value="videos">Videos</TabsTrigger>
-                    <TabsTrigger value="content">Content</TabsTrigger>
-                    <TabsTrigger value="tests">Tests</TabsTrigger>
-                    <TabsTrigger value="doubts">Doubts</TabsTrigger>
-                </TabsList>
+                <div className="overflow-x-auto">
+                    <TabsList className="grid w-full grid-cols-4 min-w-[400px]">
+                        <TabsTrigger value="videos">Videos</TabsTrigger>
+                        <TabsTrigger value="content">Content</TabsTrigger>
+                        <TabsTrigger value="tests">Tests</TabsTrigger>
+                        <TabsTrigger value="doubts">Doubts</TabsTrigger>
+                    </TabsList>
+                </div>
                 <TabsContent value="videos">
                     <VideoLecturesTab courseId={courseId} />
                 </TabsContent>
@@ -490,7 +524,7 @@ function CourseDetailPageContent() {
 
   if (isEnrolled || isFreeCourse) {
       return (
-        <div className="max-w-4xl mx-auto p-4 md:p-8">
+        <div className="max-w-4xl mx-auto">
             <EnrolledCourseView course={course} courseId={courseId} />
         </div>
       )
@@ -550,7 +584,7 @@ function CourseDetailPageContent() {
 
 export default function CourseDetailPage() {
     return (
-        <Suspense fallback={<div>Loading...</div>}>
+        <Suspense fallback={<div className="p-4 md:p-8"><Skeleton className="h-screen w-full" /></div>}>
             <CourseDetailPageContent />
         </Suspense>
     )

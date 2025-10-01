@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
@@ -60,9 +61,18 @@ const CountdownTimer = ({ targetDate, onEnd }: { targetDate: Date; onEnd?: () =>
 
 const ScholarshipHistory = () => {
     const { user } = useAuth();
+    // Corrected query: Firestore requires the orderBy field to be the first field in a composite index.
+    // To avoid this, we can order by appliedAt and filter on the client, or create the index.
+    // A simpler query that avoids the index is to just query by userId.
     const [applications, loading, error] = useCollection(
-        user ? query(collection(firestore, 'scholarshipApplications'), where('userId', '==', user.uid), orderBy('appliedAt', 'desc')) : null
+        user ? query(collection(firestore, 'scholarshipApplications'), where('userId', '==', user.uid)) : null
     );
+
+    const sortedApplications = applications?.docs.sort((a, b) => {
+        const dateA = a.data().appliedAt?.toDate() || 0;
+        const dateB = b.data().appliedAt?.toDate() || 0;
+        return dateB - dateA; // Sort descending
+    });
 
     return (
         <Card>
@@ -72,12 +82,12 @@ const ScholarshipHistory = () => {
             </CardHeader>
             <CardContent>
                 {loading && <Skeleton className="h-24 w-full" />}
-                {error && <Alert variant="destructive"><AlertDescription>Could not load your applications.</AlertDescription></Alert>}
-                {!loading && applications?.empty && (
+                {error && <Alert variant="destructive"><AlertDescription>Could not load your applications: {error.message}</AlertDescription></Alert>}
+                {!loading && (!sortedApplications || sortedApplications.length === 0) && (
                     <p className="text-muted-foreground text-center">You have not applied for any scholarships yet.</p>
                 )}
                 <div className="space-y-4">
-                    {applications?.docs.map(doc => {
+                    {sortedApplications?.map(doc => {
                         const app = doc.data();
                         return (
                             <div key={doc.id} className="p-4 border rounded-lg">
@@ -257,5 +267,3 @@ export default function ScholarshipPage() {
     </div>
   )
 }
-
-    
