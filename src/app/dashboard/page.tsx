@@ -11,6 +11,7 @@ import {
   Youtube,
   Send,
   MessageSquare,
+  Library,
 } from 'lucide-react';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -111,7 +112,7 @@ const ReviewCard = ({ review }: { review: any }) => {
 
 
     return (
-        <Card className="bg-muted/50 animate-fade-in w-80 shrink-0">
+        <Card className="bg-muted/50 w-80 shrink-0">
             <CardContent className="p-4 flex flex-col h-full">
                 <div className="flex items-start gap-3">
                     <Avatar className="h-10 w-10">
@@ -164,6 +165,8 @@ const MainDashboard = () => {
     const [loadingReviews, setLoadingReviews] = useState(true);
     const [newReview, setNewReview] = useState("");
     const { toast } = useToast();
+    const [carouselItems, setCarouselItems] = useState<any[]>([]);
+    const [loadingCarousel, setLoadingCarousel] = useState(true);
 
      useEffect(() => {
         const q = query(
@@ -199,10 +202,18 @@ const MainDashboard = () => {
             setReviews(fetchedReviews);
             setLoadingReviews(false);
         });
+        
+        const carouselQuery = query(collection(firestore, 'homepageCarousel'), orderBy('createdAt', 'asc'));
+        const unsubscribeCarousel = onSnapshot(carouselQuery, (snapshot) => {
+            const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            setCarouselItems(items);
+            setLoadingCarousel(false);
+        });
 
         return () => {
             unsubscribe();
             unsubscribeReviews();
+            unsubscribeCarousel();
         };
     }, []);
     
@@ -225,12 +236,12 @@ const MainDashboard = () => {
     };
         
     const topGridItems = [
-      { label: "My Learning", icon: BookCopy, href: "/dashboard/my-learning", color: "from-blue-500 to-blue-600" },
-      { label: "All Courses", icon: Book, href: "/dashboard/courses", color: "from-green-500 to-green-600" },
-      { label: "Classes & Lectures", icon: Video, href: "/dashboard/classes-lectures", color: "from-orange-500 to-orange-600" },
-      { label: "Previous Papers", icon: Newspaper, href: "/dashboard/papers", color: "from-purple-500 to-purple-600" },
-      { label: "Scholarship", icon: Award, href: "/dashboard/scholarship", color: "from-yellow-500 to-yellow-600" },
-      { label: "AI Tests", icon: Youtube, href: "/dashboard/ai-test", color: "from-red-500 to-red-600" },
+      { label: "My Learning", icon: Library, href: "/dashboard/my-learning", color: "from-blue-500 to-indigo-600" },
+      { label: "All Courses", icon: Book, href: "/dashboard/courses", color: "from-green-500 to-emerald-600" },
+      { label: "Free Courses", icon: BookCopy, href: "/dashboard/courses/free", color: "from-orange-500 to-amber-600" },
+      { label: "Previous Papers", icon: Newspaper, href: "/dashboard/papers", color: "from-purple-500 to-violet-600" },
+      { label: "Scholarship", icon: Award, href: "/dashboard/scholarship", color: "from-yellow-500 to-golden-600" },
+      { label: "AI Tests", icon: Youtube, href: "/dashboard/ai-test", color: "from-red-500 to-rose-600" },
     ];
     
     const getInitials = (name: string | null | undefined) => {
@@ -240,6 +251,27 @@ const MainDashboard = () => {
     
     return (
         <div className="flex flex-col h-full bg-background space-y-6">
+
+             <Carousel opts={{ loop: true }} className="w-full">
+                <CarouselContent>
+                    {loadingCarousel ? (
+                         <CarouselItem><Skeleton className="h-48 w-full rounded-lg" /></CarouselItem>
+                    ) : (
+                        carouselItems.map(item => (
+                            <CarouselItem key={item.id}>
+                                <Link href={item.linkUrl}>
+                                    <div className="relative h-48 w-full rounded-lg overflow-hidden">
+                                        <img src={item.imageUrl} alt="Carousel item" className="w-full h-full object-cover" />
+                                    </div>
+                                </Link>
+                            </CarouselItem>
+                        ))
+                    )}
+                </CarouselContent>
+                <CarouselPrevious className="absolute left-2 top-1/2 -translate-y-1/2" />
+                <CarouselNext className="absolute right-2 top-1/2 -translate-y-1/2" />
+            </Carousel>
+            
             <div className="grid grid-cols-3 md:grid-cols-6 gap-3 md:gap-4">
                  {topGridItems.map((item) => (
                     <Link href={item.href} key={item.label}>
@@ -362,3 +394,5 @@ export default function DashboardPage() {
 
     return isKidsMode ? <KidsTubeDashboard /> : <MainDashboard />;
 }
+
+    

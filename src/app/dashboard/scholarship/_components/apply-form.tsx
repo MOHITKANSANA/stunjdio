@@ -20,7 +20,7 @@ import { useCollection } from 'react-firebase-hooks/firestore';
 const personalDetailsSchema = z.object({
     name: z.string().min(2, 'Name is required.'),
     email: z.string().email(),
-    phone: z.string().min(10, 'Enter a valid phone number.'),
+    phone: z.string().min(10, 'Enter a valid phone number.').regex(/^\d{10,15}$/, 'Enter a valid phone number.'),
     address: z.string().min(5, 'Address is required.'),
 });
 
@@ -65,7 +65,7 @@ const fileToDataUrl = (file: File): Promise<string> => {
 };
 
 
-export function ApplyForm() {
+export function ApplyForm({ onFormSubmit }: { onFormSubmit: () => void }) {
     const { toast } = useToast();
     const { user } = useAuth();
     const [step, setStep] = useState(STEPS.PERSONAL_DETAILS);
@@ -140,12 +140,14 @@ export function ApplyForm() {
                 courseTitle: getCourseTitle(data.courseId),
                 photoUrl,
                 signatureUrl,
-                status: 'applied',
+                status: 'applied', // Initial status
+                resultStatus: 'pending',
                 appliedAt: serverTimestamp(),
             });
             
             setApplicationNumber(appNumber);
             setStep(STEPS.SUCCESS);
+            onFormSubmit(); // Notify parent to refresh
 
         } catch (error) {
             console.error("Application submission error:", error);
@@ -170,7 +172,7 @@ export function ApplyForm() {
                 <CardContent className="text-center py-8">
                     <Check className="h-16 w-16 mx-auto bg-green-100 text-green-600 rounded-full p-3 mb-4" />
                     <h3 className="text-2xl font-bold">Thank You!</h3>
-                    <p className="text-muted-foreground mt-2">Please save your application number for the online test.</p>
+                    <p className="text-muted-foreground mt-2">Please save your application number for future reference.</p>
                     <div className="my-6">
                         <p className="text-sm text-muted-foreground">Your Application Number is:</p>
                         <div className="flex items-center justify-center gap-4 mt-2">
@@ -302,19 +304,19 @@ export function ApplyForm() {
                 </CardContent>
                 <CardFooter className="flex justify-between pt-6">
                     <div>
-                        {step > STEPS.PERSONAL_DETAILS && (
+                        {step > STEPS.PERSONAL_DETAILS && step < STEPS.SUCCESS && (
                             <Button type="button" variant="outline" onClick={handleBack}>Back</Button>
                         )}
                     </div>
                     <div>
                         {step < STEPS.CONFIRMATION_REVIEW ? (
                             <Button type="button" onClick={handleNext}>Next</Button>
-                        ) : (
+                        ) : step === STEPS.CONFIRMATION_REVIEW ? (
                             <Button type="submit" disabled={form.formState.isSubmitting}>
                                 {form.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                 Submit Application
                             </Button>
-                        )}
+                        ) : null}
                     </div>
                 </CardFooter>
             </form>
@@ -322,3 +324,5 @@ export function ApplyForm() {
       </Card>
     );
 }
+
+    

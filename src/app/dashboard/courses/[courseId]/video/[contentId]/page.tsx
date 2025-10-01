@@ -5,7 +5,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/hooks/use-auth';
 import { firestore } from '@/lib/firebase';
 import { doc, collection, query, orderBy, onSnapshot, where, getDoc, addDoc, serverTimestamp } from 'firebase/firestore';
-import { useDocument, useCollection } from 'react-firebase-hooks/firestore';
+import { useDocument } from 'react-firebase-hooks/firestore';
 import { notFound, useParams } from 'next/navigation';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -43,17 +43,16 @@ const getZohoVideoEmbedUrl = (url: string): string | null => {
     if (!url) return null;
     try {
         // Handle Zoho Show Public links
-        const zohoPublicRegex = /show\.zohopublic\.(in|com)\/publish\/([a-zA-Z0-9_-]+)\/([a-zA-Z0-9_-]+)/;
+        const zohoPublicRegex = /show\.zohopublic\.(in|com)\/publish\/([a-zA-Z0-9_-]+)/;
         const publicMatch = url.match(zohoPublicRegex);
-        if (publicMatch && publicMatch[2] && publicMatch[3]) {
-            return `https://show.zohopublic.in/publish/${publicMatch[2]}/${publicMatch[3]}?viewtype=embed`;
+        if (publicMatch && publicMatch[2]) {
+            return `https://show.zohopublic.in/publish/${publicMatch[2]}?viewtype=embed`;
         }
 
         // Handle Zoho Workdrive file links
         const zohoWorkdriveRegex = /workdrive\.zoho\.(in|com)\/file\/([a-zA-Z0-9_-]+)/;
         const workdriveMatch = url.match(zohoWorkdriveRegex);
         if (workdriveMatch && workdriveMatch[2]) {
-             // Convert file URL to embed URL
             return `https://workdrive.zoho.in/embed/${workdriveMatch[2]}`;
         }
     } catch(e) {
@@ -101,7 +100,7 @@ const VideoPlayer = ({ videoUrl }: { videoUrl: string }) => {
         );
     }
     
-    // Fallback for direct video links (including Supabase)
+    // Fallback for direct video links
     if (videoUrl?.match(/\.(mp4|webm|ogg)$/i) || videoUrl?.includes('supabase')) {
         return (
              <div className="w-full aspect-video bg-black rounded-lg">
@@ -119,7 +118,7 @@ const VideoPlayer = ({ videoUrl }: { videoUrl: string }) => {
 
     return (
         <div className="w-full aspect-video bg-black text-white flex items-center justify-center rounded-lg">
-            <p>Deko unsapoetid url jabki yah url cale matalb chaye YouTube ka chaye supabes ka oe chaye zoho workdrive ka jase https://workdrive.zoho.in/file/54vyn63fb75feaaab434cac9dc3e43430efb6</p>
+            <p>Unsupported video URL. Please check the link format.</p>
         </div>
     );
 };
@@ -143,16 +142,29 @@ const ChatSection = ({ contentId }: { contentId: string }) => {
     const { user } = useAuth();
     const { toast } = useToast();
     const [doubtText, setDoubtText] = useState('');
-    const [chatsCollection, chatsLoading, chatsError] = useCollection(
-        query(collection(firestore, 'videoChats', contentId, 'messages'), orderBy('createdAt', 'asc'))
-    );
+    const [chats, setChats] = useState<any[]>([]);
+    const [chatsLoading, setChatsLoading] = useState(true);
+
     const scrollAreaRef = useRef<HTMLDivElement>(null);
     
+    useEffect(() => {
+        const q = query(collection(firestore, 'videoChats', contentId, 'messages'), orderBy('createdAt', 'asc'));
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+            const fetchedChats = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            setChats(fetchedChats);
+            setChatsLoading(false);
+        }, (error) => {
+            console.error("Error fetching chats:", error);
+            setChatsLoading(false);
+        });
+        return () => unsubscribe();
+    }, [contentId]);
+
     useEffect(() => {
         if (scrollAreaRef.current) {
             scrollAreaRef.current.scrollTo({ top: scrollAreaRef.current.scrollHeight, behavior: 'smooth' });
         }
-    }, [chatsCollection]);
+    }, [chats]);
 
     const handleDoubtSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -176,12 +188,10 @@ const ChatSection = ({ contentId }: { contentId: string }) => {
             <ScrollArea className="flex-grow mb-4 h-64" ref={scrollAreaRef}>
                 <div className="space-y-4 pr-4">
                     {chatsLoading && <Skeleton className="h-20 w-full" />}
-                    {chatsError && <p className="text-destructive">Could not load chats.</p>}
-                    {chatsCollection?.docs.map(doc => {
-                        const chat = doc.data();
+                    {chats.map(chat => {
                         const isCurrentUser = user?.uid === chat.userId;
                         return (
-                            <div key={doc.id} className={`flex items-start gap-3 ${isCurrentUser ? 'justify-end' : ''}`}>
+                            <div key={chat.id} className={`flex items-start gap-3 ${isCurrentUser ? 'justify-end' : ''}`}>
                                  {!isCurrentUser && (
                                     <Avatar className="h-8 w-8 shrink-0">
                                         <AvatarImage src={chat.userPhoto || undefined} />
@@ -195,7 +205,7 @@ const ChatSection = ({ contentId }: { contentId: string }) => {
                                   {isCurrentUser && (
                                     <Avatar className="h-8 w-8 shrink-0">
                                         <AvatarImage src={chat.userPhoto || undefined} />
-                                        <AvatarFallback style={{ backgroundColor: `#${intToRGB(hashCode(chat.userName || 'U'))}` }}>{chat.userName?.charAt(0) || 'A'}</AvatarFallback>
+                                        <AvatarFallback style={{ backgroundColor: `#${intToRGB(hashCode(chat.userName || 'U'))}` }}>{chat.userName?.charAt(0) || 'U'}</AvatarFallback>
                                     </Avatar>
                                  )}
                             </div>
@@ -226,8 +236,7 @@ const NotesSection = ({ contentId }: { contentId: string }) => {
     const { toast } = useToast();
     const [notes, setNotes] = useState('');
     const [isSaving, setIsSaving] = useState(false);
-    const debounceTimeout = useRef<NodeJS.Timeout | null>(null);
-
+    
     useEffect(() => {
         if (user) {
             const q = query(
@@ -248,8 +257,7 @@ const NotesSection = ({ contentId }: { contentId: string }) => {
     }, [contentId, user]);
 
     const handleNotesChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-        const newNotes = e.target.value;
-        setNotes(newNotes);
+        setNotes(e.target.value);
     };
     
     const handleSave = async () => {

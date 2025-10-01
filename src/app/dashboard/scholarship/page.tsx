@@ -1,56 +1,49 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card"
 import { ApplyForm } from "./_components/apply-form";
 import { OnlineTest } from "./_components/online-test";
 import { ViewResult } from "./_components/view-result";
 import { ScrutinyForm } from "./_components/scrutiny-form";
-import { Award, FileText, PenSquare, Eye, Search, AlertTriangle } from "lucide-react";
+import { Award, FileText, PenSquare, Eye, Search, AlertTriangle, FileSignature } from "lucide-react";
 import { cn } from '@/lib/utils';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, collection, query, where, orderBy } from 'firebase/firestore';
 import { firestore } from '@/lib/firebase';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { useAuth } from '@/hooks/use-auth';
+import { useCollection } from 'react-firebase-hooks/firestore';
+import { Button } from '@/components/ui/button';
 
-type ActiveTab = 'apply' | 'test' | 'result' | 'review';
-
-const tabItems: { id: ActiveTab; label: string; icon: React.ElementType, gradient: string }[] = [
-    { id: 'apply', label: 'Apply for Scholarship', icon: PenSquare, gradient: 'from-blue-500 to-indigo-600' },
-    { id: 'test', label: 'Online Test', icon: FileText, gradient: 'from-green-500 to-emerald-600' },
-    { id: 'result', label: 'View Result', icon: Eye, gradient: 'from-yellow-500 to-amber-600' },
-    { id: 'review', label: 'Scrutiny/Review', icon: Search, gradient: 'from-purple-500 to-violet-600' },
-];
+type ActiveTab = 'apply' | 'test' | 'result' | 'review' | 'history';
 
 const CountdownTimer = ({ targetDate, onEnd }: { targetDate: Date; onEnd?: () => void }) => {
     const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
 
+    const calculateTimeLeft = useCallback(() => {
+        const difference = +targetDate - +new Date();
+        if (difference > 0) {
+            return {
+                days: Math.floor(difference / (1000 * 60 * 60 * 24)),
+                hours: Math.floor((difference / (1000 * 60 * 60)) % 24),
+                minutes: Math.floor((difference / 1000 / 60) % 60),
+                seconds: Math.floor((difference / 1000) % 60),
+            };
+        } else {
+            if (onEnd) onEnd();
+            return { days: 0, hours: 0, minutes: 0, seconds: 0 };
+        }
+    }, [targetDate, onEnd]);
+
     useEffect(() => {
-        const calculateTimeLeft = () => {
-            const difference = +targetDate - +new Date();
-            let newTimeLeft = { days: 0, hours: 0, minutes: 0, seconds: 0 };
-            if (difference > 0) {
-                newTimeLeft = {
-                    days: Math.floor(difference / (1000 * 60 * 60 * 24)),
-                    hours: Math.floor((difference / (1000 * 60 * 60)) % 24),
-                    minutes: Math.floor((difference / 1000 / 60) % 60),
-                    seconds: Math.floor((difference / 1000) % 60),
-                };
-            } else {
-               if (onEnd) onEnd();
-            }
-            return newTimeLeft;
-        };
-
         setTimeLeft(calculateTimeLeft());
-
         const timer = setInterval(() => {
             setTimeLeft(calculateTimeLeft());
         }, 1000);
-        
         return () => clearTimeout(timer);
-    }, [targetDate, onEnd]);
+    }, [calculateTimeLeft]);
 
 
     return (
@@ -65,6 +58,42 @@ const CountdownTimer = ({ targetDate, onEnd }: { targetDate: Date; onEnd?: () =>
     );
 };
 
+const ScholarshipHistory = () => {
+    const { user } = useAuth();
+    const [applications, loading, error] = useCollection(
+        user ? query(collection(firestore, 'scholarshipApplications'), where('userId', '==', user.uid), orderBy('appliedAt', 'desc')) : null
+    );
+
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle>My Applications</CardTitle>
+                <CardDescription>View your past scholarship applications.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                {loading && <Skeleton className="h-24 w-full" />}
+                {error && <Alert variant="destructive"><AlertDescription>Could not load your applications.</AlertDescription></Alert>}
+                {!loading && applications?.empty && (
+                    <p className="text-muted-foreground text-center">You have not applied for any scholarships yet.</p>
+                )}
+                <div className="space-y-4">
+                    {applications?.docs.map(doc => {
+                        const app = doc.data();
+                        return (
+                            <div key={doc.id} className="p-4 border rounded-lg">
+                                <p className="font-bold">Application Number: {app.applicationNumber}</p>
+                                <p className="text-sm">Applied for: {app.scholarshipType}</p>
+                                {app.courseTitle && <p className="text-sm">Course: {app.courseTitle}</p>}
+                                <p className="text-xs text-muted-foreground mt-2">Applied on: {app.appliedAt.toDate().toLocaleDateString()}</p>
+                            </div>
+                        )
+                    })}
+                </div>
+            </CardContent>
+        </Card>
+    )
+};
+
 
 export default function ScholarshipPage() {
   const [activeTab, setActiveTab] = useState<ActiveTab>('apply');
@@ -72,8 +101,11 @@ export default function ScholarshipPage() {
   const [loading, setLoading] = useState(true);
   const [applicationStatus, setApplicationStatus] = useState<'closed' | 'open' | 'upcoming'>('closed');
   const [testStatus, setTestStatus] = useState<'closed' | 'open' | 'upcoming'>('closed');
+  
+  // Use a key to force re-render of history component
+  const [historyKey, setHistoryKey] = useState(0);
 
-  const fetchSettings = async () => {
+  const fetchSettings = useCallback(async () => {
         try {
             const settingsDoc = await getDoc(doc(firestore, 'settings', 'scholarship'));
             if (settingsDoc.exists()) {
@@ -102,11 +134,24 @@ export default function ScholarshipPage() {
         } finally {
             setLoading(false);
         }
-    };
+    }, []);
   
   useEffect(() => {
     fetchSettings();
-  }, []);
+  }, [fetchSettings]);
+
+  const handleFormSubmit = () => {
+    // Increment key to force ScholarshipHistory to re-fetch data
+    setHistoryKey(prev => prev + 1);
+  };
+  
+  const tabItems: { id: ActiveTab; label: string; icon: React.ElementType }[] = [
+    { id: 'apply', label: 'Apply', icon: PenSquare },
+    { id: 'test', label: 'Online Test', icon: FileText },
+    { id: 'result', label: 'View Result', icon: Eye },
+    { id: 'review', label: 'Scrutiny', icon: Search },
+    { id: 'history', label: 'My Applications', icon: FileSignature },
+];
 
   const renderContent = () => {
     if (loading) {
@@ -136,7 +181,7 @@ export default function ScholarshipPage() {
                 </Alert>
             );
         }
-        return <ApplyForm />;
+        return <ApplyForm onFormSubmit={handleFormSubmit} />;
     };
 
     const renderTestContent = () => {
@@ -177,6 +222,7 @@ export default function ScholarshipPage() {
                 <CardContent><ScrutinyForm /></CardContent>
             </Card>
         );
+        case 'history': return <ScholarshipHistory key={historyKey} />;
         default: return null;
     }
   }
@@ -185,24 +231,23 @@ export default function ScholarshipPage() {
     <div className="max-w-4xl mx-auto space-y-8">
       <div className="text-center">
         <Award className="mx-auto h-12 w-12 text-yellow-500 mb-4" />
-        <h1 className="text-3xl md:text-4xl font-bold font-headline">Student Scholarship Portal</h1>
+        <h1 className="text-3xl md:text-4xl font-bold font-headline">Go Swami National Scholarship Test (GSNST)</h1>
         <p className="text-muted-foreground mt-2">Apply for scholarships, take tests, and view your results.</p>
       </div>
       
-       <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-4">
+       <div className="grid grid-cols-2 md:grid-cols-5 gap-2 sm:gap-4">
         {tabItems.map(item => (
-            <button
+            <Button
                 key={item.id}
+                variant={activeTab === item.id ? 'default' : 'outline'}
                 onClick={() => setActiveTab(item.id)}
                 className={cn(
-                    "flex flex-col items-center justify-center text-white p-4 rounded-lg shadow-md transition-all transform hover:-translate-y-1 aspect-square bg-gradient-to-br",
-                    item.gradient,
-                    activeTab === item.id ? 'ring-4 ring-offset-2 ring-primary dark:ring-primary' : 'hover:shadow-lg'
+                    "flex flex-col items-center justify-center h-24 text-center p-2 rounded-lg shadow-md transition-all transform hover:-translate-y-1"
                 )}
             >
                 <item.icon className="h-8 w-8 mb-2" />
-                <span className="font-semibold text-center text-sm">{item.label}</span>
-            </button>
+                <span className="font-semibold text-xs leading-tight">{item.label}</span>
+            </Button>
         ))}
       </div>
 
@@ -212,3 +257,5 @@ export default function ScholarshipPage() {
     </div>
   )
 }
+
+    
