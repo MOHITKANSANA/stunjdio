@@ -49,15 +49,6 @@ const couponSchema = z.object({
 });
 type CouponFormValues = z.infer<typeof couponSchema>;
 
-const liveClassFormSchema = z.object({
-    title: z.string().min(1, 'Title is required'),
-    youtubeUrl: z.string().url('Must be a valid YouTube URL'),
-    startTime: z.string().refine((val) => !isNaN(Date.parse(val)), { message: 'Invalid date format' }),
-    thumbnailFile: z.instanceof(File).optional(),
-});
-type LiveClassFormValues = z.infer<typeof liveClassFormSchema>;
-
-
 const qrCodeFormSchema = z.object({
     imageFile: z.instanceof(File, { message: 'Please upload an image file.' }).refine(file => file.size < 2 * 1024 * 1024, 'Image must be less than 2MB.'),
 });
@@ -1478,3 +1469,5 @@ function AdminDashboard() {
     </div>
   );
 }
+
+    
