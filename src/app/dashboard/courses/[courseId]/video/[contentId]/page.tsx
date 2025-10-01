@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
@@ -43,11 +42,19 @@ const getYoutubeVideoId = (url: string): string | null => {
 const getZohoVideoEmbedUrl = (url: string): string | null => {
     if (!url) return null;
     try {
-        const zohoRegex = /show\.zohopublic\.(in|com)\/publish\/([a-zA-Z0-9_-]+)\/([a-zA-Z0-9_-]+)/;
-        const match = url.match(zohoRegex);
-        if (match && match[2] && match[3]) {
-            // Ensure the URL uses the correct embed format
-            return `https://show.zohopublic.in/publish/${match[2]}/${match[3]}?viewtype=embed`;
+        // Handle Zoho Show Public links
+        const zohoPublicRegex = /show\.zohopublic\.(in|com)\/publish\/([a-zA-Z0-9_-]+)\/([a-zA-Z0-9_-]+)/;
+        const publicMatch = url.match(zohoPublicRegex);
+        if (publicMatch && publicMatch[2] && publicMatch[3]) {
+            return `https://show.zohopublic.in/publish/${publicMatch[2]}/${publicMatch[3]}?viewtype=embed`;
+        }
+
+        // Handle Zoho Workdrive file links
+        const zohoWorkdriveRegex = /workdrive\.zoho\.(in|com)\/file\/([a-zA-Z0-9_-]+)/;
+        const workdriveMatch = url.match(zohoWorkdriveRegex);
+        if (workdriveMatch && workdriveMatch[2]) {
+             // Convert file URL to embed URL
+            return `https://workdrive.zoho.in/embed/${workdriveMatch[2]}`;
         }
     } catch(e) {
         console.error("Error parsing Zoho URL", e);
@@ -95,7 +102,7 @@ const VideoPlayer = ({ videoUrl }: { videoUrl: string }) => {
     }
     
     // Fallback for direct video links (including Supabase)
-    if (videoUrl.match(/\.(mp4|webm|ogg)$/i) || videoUrl.includes('supabase')) {
+    if (videoUrl?.match(/\.(mp4|webm|ogg)$/i) || videoUrl?.includes('supabase')) {
         return (
              <div className="w-full aspect-video bg-black rounded-lg">
                 <video
@@ -112,7 +119,7 @@ const VideoPlayer = ({ videoUrl }: { videoUrl: string }) => {
 
     return (
         <div className="w-full aspect-video bg-black text-white flex items-center justify-center rounded-lg">
-            <p>Unsupported video URL.</p>
+            <p>Deko unsapoetid url jabki yah url cale matalb chaye YouTube ka chaye supabes ka oe chaye zoho workdrive ka jase https://workdrive.zoho.in/file/54vyn63fb75feaaab434cac9dc3e43430efb6</p>
         </div>
     );
 };
@@ -328,3 +335,5 @@ export default function VideoPlaybackPage() {
         </div>
     );
 }
+
+    
