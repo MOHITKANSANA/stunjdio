@@ -316,35 +316,42 @@ function AdminDashboard() {
 
 
   useEffect(() => {
+    if (!scholarshipApplicants || scholarshipApplicantsLoading) return;
+  
     const fetchScores = async () => {
-        if (!scholarshipApplicants?.docs) return;
-
-        const scores: Record<string, string> = {};
-        for (const appDoc of scholarshipApplicants.docs) {
-            const app = appDoc.data();
-            if (app.status === 'test_taken') {
-                const q = query(
-                    collection(firestore, 'scholarshipTestResults'),
-                    where('applicationNumber', '==', app.applicationNumber)
-                );
-                const resultsSnapshot = await getDocs(q);
-                if (!resultsSnapshot.empty) {
-                    const resultData = resultsSnapshot.docs[0].data();
-                    scores[appDoc.id] = `${resultData.score}/${resultData.totalQuestions}`;
-                } else {
-                    scores[appDoc.id] = 'N/A';
-                }
+      if (!scholarshipApplicants?.docs) return;
+  
+      const scores: Record<string, string> = {};
+      for (const appDoc of scholarshipApplicants.docs) {
+        const app = appDoc.data();
+        if (app.status === 'test_taken') {
+          const q = query(
+            collection(firestore, 'scholarshipTestResults'),
+            where('applicationNumber', '==', app.applicationNumber)
+          );
+          try {
+            const resultsSnapshot = await getDocs(q);
+            if (!resultsSnapshot.empty) {
+              const resultData = resultsSnapshot.docs[0].data();
+              scores[appDoc.id] = `${resultData.score}/${resultData.totalQuestions}`;
             } else {
-                 scores[appDoc.id] = 'N/A';
+              scores[appDoc.id] = 'N/A';
             }
+          } catch (e) {
+            console.error(e);
+            scores[appDoc.id] = 'N/A';
+          }
+        } else {
+          scores[appDoc.id] = 'N/A';
         }
-        setApplicantTestScores(scores);
+      }
+      setApplicantTestScores(scores);
     };
-
+  
     if (scholarshipApplicants) {
-        fetchScores();
+      fetchScores();
     }
-}, [scholarshipApplicants]);
+  }, [scholarshipApplicants, scholarshipApplicantsLoading]);
   
   const courseForm = useForm<CourseFormValues>({ resolver: zodResolver(courseFormSchema), defaultValues: { title: '', category: '', description: '', price: 0, validity: 365, isFree: false, imageFile: undefined } });
   const couponForm = useForm<CouponFormValues>({ resolver: zodResolver(couponSchema), defaultValues: { code: '', discountType: 'percentage', discountValue: 10, courseId: '', expiryDate: '' } });
@@ -535,7 +542,6 @@ function AdminDashboard() {
   };
 
   const onSplashScreenSubmit = async (data: SplashScreenFormValues) => {
-    splashScreenForm.formState.isSubmitting;
     try {
       const dataUrl = await fileToDataUrl(data.imageFile);
       await setDoc(doc(firestore, 'settings', 'splashScreen'), { url: dataUrl });

@@ -43,10 +43,10 @@ const getYoutubeVideoId = (url: string): string | null => {
 const getZohoVideoEmbedUrl = (url: string): string | null => {
     if (!url) return null;
     try {
-         // Example: https://show.zohopublic.in/publish/z1z1z1z1z1/z1z1z1z1z1
         const zohoRegex = /show\.zohopublic\.(in|com)\/publish\/([a-zA-Z0-9_-]+)\/([a-zA-Z0-9_-]+)/;
         const match = url.match(zohoRegex);
         if (match && match[2] && match[3]) {
+            // Ensure the URL uses the correct embed format
             return `https://show.zohopublic.in/publish/${match[2]}/${match[3]}?viewtype=embed`;
         }
     } catch(e) {
@@ -328,4 +328,3 @@ export default function VideoPlaybackPage() {
         </div>
     );
 }
-

@@ -22,6 +22,7 @@ export default function WelcomePage() {
     const router = useRouter();
     const [splashScreenUrl, setSplashScreenUrl] = useState<string | null>(null);
     const [showSplash, setShowSplash] = useState(true);
+    const [fetchingSplash, setFetchingSplash] = useState(true);
 
     useEffect(() => {
         const fetchSplashScreen = async () => {
@@ -32,36 +33,43 @@ export default function WelcomePage() {
                 }
             } catch (error) {
                 console.error("Error fetching splash screen:", error);
+            } finally {
+                setFetchingSplash(false);
             }
         };
         fetchSplashScreen();
     }, []);
 
     useEffect(() => {
-        if (!splashScreenUrl) return;
+        // If there's no splash screen URL, don't wait.
+        if (fetchingSplash) return;
+        if (!splashScreenUrl) {
+            setShowSplash(false);
+            return;
+        }
 
         const splashTimer = setTimeout(() => {
             setShowSplash(false);
         }, 5000); // 5-second splash screen
 
         return () => clearTimeout(splashTimer);
-    }, [splashScreenUrl]);
+    }, [splashScreenUrl, fetchingSplash]);
 
 
     useEffect(() => {
-        if (showSplash || authLoading) return;
+        if (showSplash || authLoading || fetchingSplash) return;
 
         if (user) {
             router.replace('/dashboard');
         } else {
             router.replace('/login');
         }
-    }, [user, authLoading, router, showSplash]);
+    }, [user, authLoading, router, showSplash, fetchingSplash]);
 
     if (showSplash && splashScreenUrl) {
         return (
             <div className="flex min-h-screen w-full items-center justify-center bg-background">
-                <Image src={splashScreenUrl} alt="Loading..." fill style={{ objectFit: 'cover' }} />
+                <Image src={splashScreenUrl} alt="Loading..." fill style={{ objectFit: 'cover' }} priority />
             </div>
         );
     }
