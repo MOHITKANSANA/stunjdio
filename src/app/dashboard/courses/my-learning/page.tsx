@@ -1,18 +1,17 @@
 
-
 'use client';
 
-import { BookOpenCheck, Trophy, Library, BookMarked, BellDot, Newspaper, Trash2, Eye, Download } from "lucide-react";
+import { BookOpenCheck, Trophy, Library, BookMarked, BellDot, Newspaper, Trash2, Eye } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from '@/hooks/use-auth';
-import { useCollection, useDocumentData } from 'react-firebase-hooks/firestore';
-import { collection, query, where, orderBy, updateDoc, doc, getDocs, deleteDoc, addDoc, serverTimestamp } from 'firebase/firestore';
+import { useCollection } from 'react-firebase-hooks/firestore';
+import { collection, query, where, orderBy, updateDoc, doc, getDocs, deleteDoc } from 'firebase/firestore';
 import { firestore } from '@/lib/firebase';
 import { Skeleton } from "@/components/ui/skeleton";
 import Image from 'next/image';
 import Link from 'next/link';
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -79,38 +78,6 @@ const EBookCard = ({ ebook, onClick }: { ebook: any, onClick: () => void }) => {
     );
 }
 
-const DownloadCard = ({ item }: { item: any }) => {
-    const { toast } = useToast();
-    
-    const handleDownloadDelete = async (id: string) => {
-        if (window.confirm("Are you sure you want to remove this from your downloads?")) {
-            try {
-                await deleteDoc(doc(firestore, 'userDownloads', id));
-                toast({ description: "Item removed from downloads." });
-            } catch (error) {
-                toast({ variant: 'destructive', description: "Failed to remove item." });
-            }
-        }
-    };
-    
-    return (
-         <Card>
-            <CardHeader>
-                <CardTitle className="text-lg">{item.title}</CardTitle>
-                 <CardDescription>Type: {item.type}</CardDescription>
-            </CardHeader>
-            <CardFooter className="gap-2">
-                 <a href={item.url} target="_blank" rel="noopener noreferrer" className="w-full">
-                    <Button className="w-full"><Eye className="mr-2"/>View</Button>
-                 </a>
-                 <Button variant="destructive" onClick={() => handleDownloadDelete(item.id)}>
-                    <Trash2 className="mr-2"/> Remove
-                </Button>
-            </CardFooter>
-        </Card>
-    )
-}
-
 export default function MyLearningPage() {
     const { user, loading: authLoading } = useAuth();
     const [selectedPdf, setSelectedPdf] = useState<{ url: string, title: string } | null>(null);
@@ -136,10 +103,6 @@ export default function MyLearningPage() {
     
     const [ebooks, ebooksLoading, ebooksError] = useCollection(
         query(collection(firestore, 'ebooks'), orderBy('createdAt', 'desc'))
-    );
-
-    const [downloads, downloadsLoading, downloadsError] = useCollection(
-        user ? query(collection(firestore, 'userDownloads'), where('userId', '==', user.uid), orderBy('savedAt', 'desc')) : null
     );
     
     const [notifications, notificationsLoading, notificationsError] = useCollection(
@@ -189,7 +152,7 @@ export default function MyLearningPage() {
     }, {} as Record<string, string>);
     
     return (
-        <div className="space-y-8">
+        <div className="space-y-8 p-4 md:p-8">
              {selectedPdf && (
                 <PDFViewer 
                     pdfUrl={selectedPdf.url}
@@ -263,7 +226,7 @@ export default function MyLearningPage() {
                         ))}
                     </div>
                 </TabsContent>
-                 <TabsContent value="notifications" className="mt-6">
+                <TabsContent value="notifications" className="mt-6">
                     <Card>
                         <CardHeader className="flex flex-row items-center justify-between">
                             <div>
@@ -303,5 +266,4 @@ export default function MyLearningPage() {
         </div>
     );
 }
-
 

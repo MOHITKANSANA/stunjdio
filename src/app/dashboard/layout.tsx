@@ -49,20 +49,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { doc, getDoc, onSnapshot } from 'firebase/firestore';
 import { firestore } from '@/lib/firebase';
-
-const bottomNavItems = [
-    { href: '/dashboard', icon: Home, label: 'Home' },
-    { href: '/dashboard/my-learning', icon: Library, label: 'My Learning' },
-    { href: '/dashboard/tutor', icon: Bot, label: 'AI Tutor' },
-    { href: '/dashboard/profile', icon: User, label: 'Profile' },
-];
-
-const kidsBottomNavItems = [
-    { href: '/dashboard', icon: Home, label: 'Home' },
-    { href: '/dashboard/kids/search', icon: Search, label: 'Search' },
-    { href: '/dashboard/kids/doubts', icon: HelpCircle, label: 'My Doubts' },
-    { href: '/dashboard/profile', icon: User, label: 'Profile' },
-];
+import { AppBottomNav } from './bottom-nav';
 
 
 const sidebarNavItems = [
@@ -71,8 +58,8 @@ const sidebarNavItems = [
     { href: '/dashboard/profile', icon: User, label: 'profile' },
     { href: '/dashboard/courses', icon: Book, label: 'courses' },
     { href: '/dashboard/courses/free', icon: BookCopy, label: 'Free Courses' },
+    { href: '/dashboard/downloads', icon: Download, label: 'My Downloads' },
     { href: '/dashboard/scholarship', icon: Award, label: 'scholarship' },
-    { href: '/dashboard/classes-lectures', icon: Video, label: 'Classes & Lectures' },
     { href: '/dashboard/papers', icon: Newspaper, label: 'Previous Papers' },
     { href: '/dashboard/tutor', icon: Bot, label: 'AI Tutor' },
     { href: '/dashboard/ai-test', icon: ShieldQuestion, label: 'ai_tests' },
@@ -88,7 +75,7 @@ const kidsSidebarNavItems = [
 const SidebarMenuItemWithHandler = ({ href, icon: Icon, label, closeSidebar }: { href: string; icon: React.ElementType; label: string; closeSidebar: () => void; }) => {
     const pathname = usePathname();
     const { t } = useLanguage();
-    const isActive = pathname.startsWith(href) && (href !== '/dashboard' || pathname === '/dashboard');
+    const isActive = pathname === href || (href !== '/dashboard' && pathname.startsWith(href));
 
     return (
         <SidebarMenuItem>
@@ -199,32 +186,6 @@ const AppHeader = () => {
         </header>
   )
 }
-
-const AppBottomNav = ({ isKidsMode }: { isKidsMode: boolean }) => {
-    const pathname = usePathname();
-    const items = isKidsMode ? kidsBottomNavItems : bottomNavItems;
-
-    return (
-         <footer className="sticky bottom-0 z-10 border-t border-border/50 bg-background/95 backdrop-blur-sm md:hidden shadow-[0_-2px_10px_rgba(0,0,0,0.1)]">
-              <nav className="flex items-center justify-around p-1">
-                {items.map((item) => (
-                   <Link 
-                     key={item.label}
-                     href={item.href}
-                     className={cn(
-                       "flex flex-col items-center justify-center gap-1 rounded-md p-2 text-xs font-medium transition-colors hover:bg-accent hover:text-accent-foreground w-16 h-14",
-                       pathname === item.href ? "text-primary" : "text-muted-foreground"
-                     )}
-                   >
-                      <item.icon className="h-6 w-6" />
-                      <span className="text-center text-[10px] leading-tight">{item.label}</span>
-                   </Link>
-                ))}
-              </nav>
-          </footer>
-    )
-}
-
 
 const LoadingScreen = () => (
     <div className="flex h-screen w-full items-center justify-center bg-background">
@@ -347,7 +308,9 @@ export default function DashboardLayout({
                 {!isVideoPage && <AppHeader />}
                  <main className="flex-1 overflow-y-auto h-full">
                     <SidebarInset>
-                        <div className={cn(!pathname.includes('/live-class/') && !isVideoPage && 'p-4 md:p-6')}>
+                        <div className={cn(
+                            !pathname.includes('/live-class/') && !isVideoPage && !pathname.includes('/kids/video/') && 'p-4 md:p-6'
+                        )}>
                             {children}
                         </div>
                     </SidebarInset>

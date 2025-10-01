@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
@@ -233,12 +234,12 @@ export default function VideoPage() {
     const video = videoDoc.data();
 
     return (
-        <div className="flex flex-col md:flex-row max-w-full mx-auto p-4 gap-6">
+        <div className="flex flex-col md:flex-row max-w-full mx-auto md:p-4 gap-6">
             <div className="flex-grow md:w-[65%] lg:w-[70%]">
-                 <div className="sticky top-4 z-10">
+                 <div className="sticky top-0 md:top-4 z-10">
                     <VideoPlayer videoUrl={video.videoUrl} onEnded={handleVideoEnd} />
                 </div>
-                <div className="py-4">
+                <div className="p-4 md:py-4 md:px-0">
                     <h1 className="text-xl font-bold">{video.title}</h1>
                     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mt-2 gap-4">
                          <div className="flex items-center gap-3">
@@ -273,7 +274,7 @@ export default function VideoPage() {
                     </div>
                 </div>
                 <Separator className="my-6" />
-                <div className="space-y-6">
+                <div className="space-y-6 px-4 md:px-0">
                     <h2 className="text-lg font-bold flex items-center gap-2">
                         <MessageSquare /> Ask a Doubt ({doubts?.docs.length || 0})
                     </h2>
@@ -300,7 +301,7 @@ export default function VideoPage() {
                     </div>
                 </div>
             </div>
-             <div className="w-full md:w-[35%] lg:w-[30%] shrink-0">
+             <div className="w-full md:w-[35%] lg:w-[30%] shrink-0 p-4 md:p-0">
                 <h3 className="text-lg font-bold mb-4">Up Next</h3>
                  <div className="space-y-3">
                      {relatedVideosLoading && [...Array(5)].map((_, i) => (
@@ -331,3 +332,4 @@ export default function VideoPage() {
         </div>
     );
 }
+
