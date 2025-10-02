@@ -193,7 +193,7 @@ const MainDashboard = () => {
     const topGridItems = [
       { label: "My Learning", icon: Library, href: "/dashboard/my-learning", color: "from-blue-500 to-indigo-600" },
       { label: "All Courses", icon: Book, href: "/dashboard/courses", color: "from-green-500 to-emerald-600" },
-      { label: "Live Classes", icon: Clapperboard, href: "/dashboard/classes-lectures", color: "from-red-500 to-rose-600" },
+      { label: "Free Courses", icon: BookCopy, href: "/dashboard/courses/free", color: "from-red-500 to-rose-600" },
       { label: "Previous Papers", icon: Newspaper, href: "/dashboard/papers", color: "from-purple-500 to-violet-600" },
       { label: "Scholarship", icon: Award, href: "/dashboard/scholarship", color: "from-yellow-500 to-amber-600" },
       { label: "AI Tests", icon: Youtube, href: "/dashboard/ai-test", color: "from-orange-500 to-amber-600" },
