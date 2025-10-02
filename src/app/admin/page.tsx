@@ -11,6 +11,7 @@ import { AddTestSeriesForm } from "./_components/add-test-series-form";
 import { ManageEnrollments } from "./_components/manage-enrollments";
 import { ManageScholarships } from "./_components/manage-scholarships";
 import { ManagePointRequests } from "./_components/manage-point-requests";
+import { AddKidsVideoForm } from "./_components/add-kids-video-form";
 
 
 export default function AdminPage() {
@@ -76,15 +77,26 @@ export default function AdminPage() {
                 </TabsContent>
 
                 <TabsContent value="kids_tube" className="mt-6">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Kids Tube Point Requests</CardTitle>
-                            <CardDescription>Award extra points to kids.</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <ManagePointRequests />
-                        </CardContent>
-                    </Card>
+                     <div className="grid gap-8 lg:grid-cols-2">
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Add New Kids Tube Video</CardTitle>
+                                <CardDescription>Add a new video to the Kids Tube section.</CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <AddKidsVideoForm />
+                            </CardContent>
+                        </Card>
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Kids Tube Point Requests</CardTitle>
+                                <CardDescription>Award extra points to kids.</CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <ManagePointRequests />
+                            </CardContent>
+                        </Card>
+                    </div>
                 </TabsContent>
 
             </Tabs>

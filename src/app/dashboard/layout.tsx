@@ -219,7 +219,8 @@ export default function DashboardLayout({
   const [checkingProfile, setCheckingProfile] = useState(true);
   const [isScreenLocked, setIsScreenLocked] = useState(false);
   const [timeUsed, setTimeUsed] = useState(0); // in seconds
-  const isVideoPage = pathname.includes('/video/');
+  
+  const isVideoPlaybackPage = pathname.includes('/video/') || pathname.includes('/live-class/');
 
   useEffect(() => {
     let timer: NodeJS.Timeout;
@@ -306,19 +307,17 @@ export default function DashboardLayout({
       <SidebarProvider>
           <div className="flex h-screen w-full flex-col bg-gray-50 dark:bg-gray-950">
              {isScreenLocked && <ScreenTimeLock />}
-             {!pathname.includes('/courses/') && !pathname.includes('/live-class/') && <AppSidebar isKidsMode={isKidsMode} />}
-             <div className={cn("flex flex-col w-full h-full overflow-hidden", !pathname.includes('/courses/') && !pathname.includes('/live-class/') && "md:pl-[var(--sidebar-width-icon)] group-data-[state=expanded]:md:pl-[var(--sidebar-width)]")}>
-                {!pathname.includes('/courses/') && !pathname.includes('/live-class/') && <AppHeader />}
+             {!isVideoPlaybackPage && <AppSidebar isKidsMode={isKidsMode} />}
+             <div className={cn("flex flex-col w-full h-full overflow-hidden", !isVideoPlaybackPage && "md:pl-[var(--sidebar-width-icon)] group-data-[state=expanded]:md:pl-[var(--sidebar-width)]")}>
+                {!isVideoPlaybackPage && <AppHeader />}
                  <main className="flex-1 overflow-y-auto h-full">
                     <SidebarInset>
-                        <div className={cn(
-                             !pathname.includes('/live-class/') && !isVideoPage && !pathname.includes('/kids/video/') && 'p-4 md:p-6'
-                        )}>
+                        <div className={cn(!isVideoPlaybackPage && 'p-4 md:p-6')}>
                             {children}
                         </div>
                     </SidebarInset>
                 </main>
-                {!isVideoPage && <AppBottomNav isKidsMode={isKidsMode} />}
+                {!isVideoPlaybackPage && <AppBottomNav isKidsMode={isKidsMode} />}
              </div>
           </div>
       </SidebarProvider>
