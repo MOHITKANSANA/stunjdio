@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
@@ -78,62 +77,53 @@ const getGoogleDriveEmbedUrl = (url: string): string | null => {
 
 
 const VideoPlayer = ({ videoUrl }: { videoUrl: string }) => {
-    const youtubeVideoId = getYoutubeVideoId(videoUrl);
-    const zohoEmbedUrl = getZohoVideoEmbedUrl(videoUrl);
-    const googleDriveEmbedUrl = getGoogleDriveEmbedUrl(videoUrl);
-    const isSupabaseLink = videoUrl?.includes('supabase');
+    let embedUrl;
+    let playerType = 'iframe'; // Default to iframe
 
+    const youtubeId = getYoutubeVideoId(videoUrl);
+    const zohoUrl = getZohoVideoEmbedUrl(videoUrl);
+    const googleDriveUrl = getGoogleDriveEmbedUrl(videoUrl);
+    const isDirectLink = videoUrl?.match(/\.(mp4|webm|ogg)$/i) || videoUrl?.includes('supabase');
 
-    let embedUrl = null;
-    let type = 'other';
-
-    if (youtubeVideoId) {
-        embedUrl = `https://www.youtube.com/embed/${youtubeVideoId}?autoplay=1&rel=0`;
-        type = 'youtube';
-    } else if (zohoEmbedUrl) {
-        embedUrl = zohoEmbedUrl;
-        type = 'zoho';
-    } else if (googleDriveEmbedUrl) {
-        embedUrl = googleDriveEmbedUrl;
-        type = 'googledrive';
-    } else if (videoUrl?.match(/\.(mp4|webm|ogg)$/i) || isSupabaseLink) {
+    if (youtubeId) {
+        embedUrl = `https://www.youtube.com/embed/${youtubeId}?autoplay=1&rel=0`;
+    } else if (zohoUrl) {
+        embedUrl = zohoUrl;
+    } else if (googleDriveUrl) {
+        embedUrl = googleDriveUrl;
+    } else if (isDirectLink) {
         embedUrl = videoUrl;
-        type = 'direct';
+        playerType = 'video';
     } else {
-        embedUrl = videoUrl;
+        embedUrl = videoUrl; // Fallback for other iframe-able content
     }
 
-    if (type === 'youtube' || type === 'zoho' || type === 'googledrive' || type === 'direct') {
+    if (!embedUrl) {
         return (
-            <div className="w-full aspect-video bg-black rounded-lg">
-                {type === 'direct' ? (
-                     <video
-                        controls
-                        autoPlay
-                        src={embedUrl}
-                        className="w-full h-full rounded-lg"
-                    >
-                        Your browser does not support the video tag.
-                    </video>
-                ) : (
-                    <iframe
-                        width="100%"
-                        height="100%"
-                        src={embedUrl}
-                        title="Course Video Player"
-                        frameBorder="0"
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                        allowFullScreen
-                        className="rounded-lg"
-                    ></iframe>
-                )}
+            <div className="w-full aspect-video bg-black text-white flex items-center justify-center rounded-lg">
+                <p>Unsupported video URL. Please check the link format.</p>
             </div>
         );
     }
-    
+
     return (
-        <div className="w-full aspect-video bg-black text-white flex items-center justify-center rounded-lg">
-            <p>Unsupported video URL. Please check the link format.</p>
+        <div className="w-full aspect-video bg-black rounded-lg">
+            {playerType === 'video' ? (
+                <video controls autoPlay src={embedUrl} className="w-full h-full rounded-lg">
+                    Your browser does not support the video tag.
+                </video>
+            ) : (
+                <iframe
+                    width="100%"
+                    height="100%"
+                    src={embedUrl}
+                    title="Course Video Player"
+                    frameBorder="0"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                    allowFullScreen
+                    className="rounded-lg"
+                ></iframe>
+            )}
         </div>
     );
 };
@@ -343,7 +333,7 @@ export default function VideoPlaybackPage() {
 
     if (loading) {
         return (
-            <div className="h-screen w-screen flex flex-col">
+            <div className="flex flex-col h-screen bg-background overflow-hidden">
                  <div className="w-full">
                     <Skeleton className="w-full aspect-video" />
                 </div>
@@ -399,3 +389,5 @@ export default function VideoPlaybackPage() {
         </div>
     );
 }
+
+    
