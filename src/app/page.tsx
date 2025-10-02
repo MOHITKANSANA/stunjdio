@@ -5,24 +5,39 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/use-auth";
-import { BookOpenCheck } from "lucide-react";
+import { Shield } from "lucide-react";
 
 const AnimatedSplashScreen = () => (
-    <div className="splash-container flex flex-col items-center justify-center h-full w-full text-white p-8">
-        <div className="splash-logo">
-            <BookOpenCheck className="h-24 w-24 text-slate-800" />
+    <div className="splash-container flex flex-col items-center justify-between h-full w-full text-white p-8">
+        <div className="text-center w-full splash-item splash-item-1">
+            <p className="text-sm text-gray-300">Made with ❤️ in India</p>
         </div>
-        <h1 className="text-5xl font-bold font-headline text-slate-900 mt-6 splash-name">
-            Go Swami X
-        </h1>
-        <p className="mt-2 text-lg text-slate-700 splash-tagline">The Future of Learning</p>
+        <div className="flex flex-col items-center text-center">
+            <div className="splash-item splash-item-2">
+                <Shield className="h-24 w-24 text-primary" />
+            </div>
+            <h1 className="text-5xl font-bold font-headline text-white mt-6 splash-item splash-item-3">
+                Go Swami X
+            </h1>
+            <p className="mt-2 text-lg text-gray-300 splash-item splash-item-4">Your Path to Success Starts Here</p>
+        </div>
+        <div className="text-center w-full space-y-2">
+           <p className="text-sm text-gray-400 splash-item splash-item-5">Live Classes • AI Tests • Personal Mentorship</p>
+           <div className="flex justify-center gap-4 text-xs text-gray-500">
+                <span className="splash-item splash-item-6">UPSC</span>
+                <span className="splash-item splash-item-6">•</span>
+                <span className="splash-item splash-item-7">SSC</span>
+                 <span className="splash-item splash-item-7">•</span>
+                <span className="splash-item splash-item-7">Defence</span>
+           </div>
+        </div>
     </div>
 );
 
 
 const LoadingSpinner = () => (
     <div className="flex flex-col items-center gap-4">
-        <BookOpenCheck className="h-12 w-12 animate-pulse text-primary" />
+        <Shield className="h-12 w-12 animate-pulse text-primary" />
         <p className="text-muted-foreground">Loading your experience...</p>
     </div>
 );
@@ -43,7 +58,7 @@ export default function WelcomePage() {
             }, 500); 
 
             return () => clearTimeout(fadeOutTimer);
-        }, 2500); 
+        }, 3500); 
 
         return () => clearTimeout(splashTimer);
     }, []);

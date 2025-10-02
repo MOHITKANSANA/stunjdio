@@ -15,7 +15,7 @@ import {
   Clapperboard,
 } from 'lucide-react';
 import Link from 'next/link';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useAuth } from '@/hooks/use-auth';
 import { doc, getDoc, collection, query, orderBy, limit, onSnapshot, addDoc, serverTimestamp, updateDoc, arrayUnion } from 'firebase/firestore';
 import { firestore } from '@/lib/firebase';
@@ -35,6 +35,13 @@ import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Input } from '@/components/ui/input';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription
+} from '@/components/ui/dialog';
 
 
 const CountdownTimer = ({ targetDate }: { targetDate: Date }) => {
@@ -78,43 +85,15 @@ const CountdownTimer = ({ targetDate }: { targetDate: Date }) => {
     );
 };
 
-const ReviewCard = ({ review }: { review: any }) => {
-    const { user } = useAuth();
-    const { toast } = useToast();
-    const [replyText, setReplyText] = useState("");
-    const [showReplies, setShowReplies] = useState(false);
-
-    const handleReplySubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!user || !replyText.trim()) return;
-
-        const replyData = {
-            id: doc(collection(firestore, 'dummy')).id,
-            text: replyText,
-            userName: user.displayName,
-            userPhoto: user.photoURL,
-            createdAt: new Date(),
-        };
-
-        try {
-            await updateDoc(doc(firestore, 'reviews', review.id), {
-                replies: arrayUnion(replyData)
-            });
-            setReplyText("");
-        } catch (error) {
-            toast({ variant: 'destructive', description: "Failed to post reply." });
-        }
-    };
-    
+const ReviewCard = ({ review, onReviewClick }: { review: any, onReviewClick: (review: any) => void }) => {
     const getInitials = (name: string | null | undefined) => {
         if (!name) return "S";
         return name.charAt(0).toUpperCase();
     }
 
-
     return (
         <CarouselItem className="pl-4 basis-full md:basis-1/2 lg:basis-1/3">
-            <Card className="bg-muted/50 h-full">
+            <Card className="bg-muted/50 h-full cursor-pointer hover:bg-muted/80" onClick={() => onReviewClick(review)}>
                  <CardContent className="p-4 flex flex-col h-full gap-3">
                     <div className="flex items-center gap-3">
                          <Avatar className="h-10 w-10 border-2 border-primary">
@@ -146,6 +125,8 @@ const MainDashboard = () => {
     const [loadingReviews, setLoadingReviews] = useState(true);
     const [newReview, setNewReview] = useState("");
     const { toast } = useToast();
+    const [selectedReview, setSelectedReview] = useState<any>(null);
+
     
      useEffect(() => {
         const q = query(
@@ -202,7 +183,7 @@ const MainDashboard = () => {
             setNewReview("");
             toast({ description: "Your review has been submitted. Thank you!" });
         } catch (error: any) {
-            toast({ variant: 'destructive', description: `Could not submit your review: ${error.message}` });
+            toast({ variant: 'destructive', description: `Could not submit your review: ${'' + error.message}` });
         }
     };
         
@@ -234,6 +215,22 @@ const MainDashboard = () => {
 
     return (
         <div className="flex flex-col h-full bg-background space-y-6">
+             <Dialog open={!!selectedReview} onOpenChange={(isOpen) => !isOpen && setSelectedReview(null)}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Student Review</DialogTitle>
+                        {selectedReview && (
+                            <DialogDescription>
+                                By {selectedReview.userName}
+                            </DialogDescription>
+                        )}
+                    </DialogHeader>
+                    <div className="prose dark:prose-invert">
+                        <p>{selectedReview?.text}</p>
+                    </div>
+                </DialogContent>
+            </Dialog>
+
             <h1 className="text-2xl font-bold">{getGreeting()}</h1>
             
             <div className="grid grid-cols-3 md:grid-cols-6 gap-3 md:gap-4">
@@ -297,7 +294,7 @@ const MainDashboard = () => {
                                 </CarouselItem>
                             ))
                         ) : (
-                            reviews.map((review) => <ReviewCard key={review.id} review={review} />)
+                            reviews.map((review) => <ReviewCard key={review.id} review={review} onReviewClick={setSelectedReview} />)
                         )}
                          <CarouselItem className="pl-4 basis-full md:basis-1/2 lg:basis-1/3">
                             <Card className="bg-muted/50 h-full">
