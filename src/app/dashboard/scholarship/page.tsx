@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
@@ -8,7 +7,7 @@ import { ApplyForm } from "./_components/apply-form";
 import { OnlineTest } from "./_components/online-test";
 import { ViewResult } from "./_components/view-result";
 import { ScrutinyForm } from "./_components/scrutiny-form";
-import { Award, FileText, PenSquare, Eye, Search, AlertTriangle, FileSignature } from "lucide-react";
+import { Award, FileText, PenSquare, Eye, Search, AlertTriangle, FileSignature, Ticket } from "lucide-react";
 import { cn } from '@/lib/utils';
 import { doc, getDoc, collection, query, where, orderBy } from 'firebase/firestore';
 import { firestore } from '@/lib/firebase';
@@ -17,8 +16,9 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useAuth } from '@/hooks/use-auth';
 import { useCollection } from 'react-firebase-hooks/firestore';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 
-type ActiveTab = 'apply' | 'test' | 'result' | 'review' | 'history';
+type ActiveTab = 'apply' | 'test' | 'result' | 'review' | 'history' | 'admit-card';
 
 const CountdownTimer = ({ targetDate, onEnd }: { targetDate: Date; onEnd: () => void; }) => {
     const calculateTimeLeft = useCallback(() => {
@@ -68,9 +68,6 @@ const CountdownTimer = ({ targetDate, onEnd }: { targetDate: Date; onEnd: () => 
 
 const ScholarshipHistory = () => {
     const { user } = useAuth();
-    // Corrected query: Firestore requires the orderBy field to be the first field in a composite index.
-    // To avoid this, we can order by appliedAt and filter on the client, or create the index.
-    // A simpler query that avoids the index is to just query by userId.
     const [applications, loading, error] = useCollection(
         user ? query(collection(firestore, 'scholarshipApplications'), where('userId', '==', user.uid)) : null
     );
@@ -111,17 +108,97 @@ const ScholarshipHistory = () => {
     )
 };
 
+const AdmitCardDownloader = () => {
+    const [applicationNumber, setApplicationNumber] = useState('');
+    const [applicantData, setApplicantData] = useState<any>(null);
+    const [isLoading, setIsLoading] = useState(false);
+
+    const handleFetchApplicant = async () => {
+        if (applicationNumber.length !== 5) return;
+        setIsLoading(true);
+        const q = query(collection(firestore, 'scholarshipApplications'), where('applicationNumber', '==', applicationNumber));
+        const snapshot = await getDocs(q);
+        if (!snapshot.empty) {
+            setApplicantData(snapshot.docs[0].data());
+        } else {
+            alert("Application number not found.");
+            setApplicantData(null);
+        }
+        setIsLoading(false);
+    };
+
+    const handlePrint = () => {
+        const printContent = document.getElementById('admit-card');
+        if (printContent) {
+            const WinPrint = window.open('', '', 'width=900,height=650');
+            WinPrint?.document.write(`<html><head><title>Admit Card</title><script src="https://cdn.tailwindcss.com"></script></head><body>`);
+            WinPrint?.document.write(printContent.innerHTML);
+            WinPrint?.document.write('</body></html>');
+            WinPrint?.document.close();
+            WinPrint?.focus();
+            WinPrint?.print();
+            WinPrint?.close();
+        }
+    };
+
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle>Download Admit Card</CardTitle>
+                <CardDescription>Enter your application number to download your admit card.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <div className="flex gap-2">
+                    <Input value={applicationNumber} onChange={(e) => setApplicationNumber(e.target.value)} placeholder="Enter 5-digit Application Number" />
+                    <Button onClick={handleFetchApplicant} disabled={isLoading}>
+                        {isLoading ? <Loader2 className="animate-spin" /> : "Fetch"}
+                    </Button>
+                </div>
+                {applicantData && (
+                    <div className="mt-6">
+                        <div id="admit-card" className="p-6 border rounded-lg bg-white text-black">
+                            <div className="text-center pb-4 border-b">
+                                <h2 className="text-2xl font-bold">Go Swami National Scholarship Test (GSNST)</h2>
+                                <h3 className="text-xl font-semibold">Admit Card</h3>
+                            </div>
+                            <div className="grid grid-cols-3 gap-4 mt-4">
+                                <div className="col-span-2 space-y-2">
+                                    <p><strong>Application No:</strong> {applicantData.applicationNumber}</p>
+                                    <p><strong>Candidate's Name:</strong> {applicantData.name}</p>
+                                    <p><strong>Email:</strong> {applicantData.email}</p>
+                                </div>
+                                <div className="w-24 h-32 border bg-gray-200 flex items-center justify-center text-xs text-gray-500">
+                                    {applicantData.photoUrl ? <img src={applicantData.photoUrl} alt="Candidate" className="w-full h-full object-cover" /> : 'Affix Photo Here'}
+                                </div>
+                            </div>
+                             <div className="mt-4 border-t pt-4">
+                                <h4 className="font-bold mb-2">Instructions:</h4>
+                                <ol className="list-decimal list-inside text-sm space-y-1">
+                                    <li>Bring a printed copy of this admit card to the test center.</li>
+                                    <li>If your photo is not visible, please affix a recent passport-sized photograph.</li>
+                                    <li>Bring a valid photo ID (Aadhaar, Passport, etc.).</li>
+                                    <li>You must use your application number to appear for the online test.</li>
+                                    <li>No electronic devices are allowed in the examination hall.</li>
+                                </ol>
+                            </div>
+                        </div>
+                        <Button onClick={handlePrint} className="mt-4 w-full">Print Admit Card</Button>
+                    </div>
+                )}
+            </CardContent>
+        </Card>
+    );
+};
+
 
 export default function ScholarshipPage() {
   const [activeTab, setActiveTab] = useState<ActiveTab>('apply');
   const [settings, setSettings] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   
-  // Use state to manage statuses derived from settings
   const [applicationStatus, setApplicationStatus] = useState<'closed' | 'open' | 'upcoming'>('closed');
   const [testStatus, setTestStatus] = useState<'closed' | 'open' | 'upcoming'>('closed');
   
-  // Use a key to force re-render of history component
   const [historyKey, setHistoryKey] = useState(0);
 
   const fetchSettings = useCallback(async () => {
@@ -153,7 +230,7 @@ export default function ScholarshipPage() {
     } finally {
         setLoading(false);
     }
-  }, []); // Empty dependency array means this is stable and won't change.
+  }, []);
 
 
   useEffect(() => {
@@ -161,12 +238,12 @@ export default function ScholarshipPage() {
   }, [fetchSettings]);
 
   const handleFormSubmit = () => {
-    // Increment key to force ScholarshipHistory to re-fetch data
     setHistoryKey(prev => prev + 1);
   };
   
   const tabItems: { id: ActiveTab; label: string; icon: React.ElementType }[] = [
     { id: 'apply', label: 'Apply', icon: PenSquare },
+    { id: 'admit-card', label: 'Admit Card', icon: Ticket },
     { id: 'test', label: 'Online Test', icon: FileText },
     { id: 'result', label: 'View Result', icon: Eye },
     { id: 'review', label: 'Scrutiny', icon: Search },
@@ -231,6 +308,7 @@ export default function ScholarshipPage() {
 
     switch (activeTab) {
         case 'apply': return renderApplicationContent();
+        case 'admit-card': return <AdmitCardDownloader />;
         case 'test': return renderTestContent();
         case 'result': return <ViewResult />;
         case 'review': return (
@@ -255,7 +333,7 @@ export default function ScholarshipPage() {
         <p className="text-muted-foreground mt-2">Apply for scholarships, take tests, and view your results.</p>
       </div>
       
-       <div className="grid grid-cols-2 md:grid-cols-5 gap-2 sm:gap-4">
+       <div className="grid grid-cols-3 md:grid-cols-6 gap-2 sm:gap-4">
         {tabItems.map(item => (
             <Button
                 key={item.id}

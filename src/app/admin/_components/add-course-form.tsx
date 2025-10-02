@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, ChangeEvent } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -10,10 +10,11 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { addDoc, collection, doc, serverTimestamp, updateDoc } from 'firebase/firestore';
+import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import { firestore } from '@/lib/firebase';
-import { Loader2, PlusCircle, Trash2 } from 'lucide-react';
+import { Loader2, PlusCircle, Trash2, Upload } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
+import Image from 'next/image';
 
 const contentSchema = z.object({
   type: z.enum(['video', 'pdf', 'note', 'test_series']),
@@ -29,16 +30,32 @@ const courseSchema = z.object({
   description: z.string().min(10, 'Description is required.'),
   price: z.coerce.number().min(0, 'Price must be a positive number.'),
   validity: z.coerce.number().min(1, 'Validity must be at least 1 day.'),
-  imageUrl: z.string().url('Must be a valid URL.'),
+  imageUrl: z.string().optional(),
+  imageFile: z.any().optional(),
   isFree: z.boolean().default(false),
   content: z.array(contentSchema).optional(),
+}).refine(data => data.imageUrl || data.imageFile, {
+    message: "Image URL or an uploaded image is required.",
+    path: ["imageFile"],
 });
 
+
 type CourseFormValues = z.infer<typeof courseSchema>;
+
+function fileToDataUrl(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+    });
+}
 
 export function AddCourseForm() {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const form = useForm<CourseFormValues>({
     resolver: zodResolver(courseSchema),
@@ -59,9 +76,24 @@ export function AddCourseForm() {
     name: "content"
   });
 
+  const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      form.setValue('imageFile', file);
+      setImagePreview(URL.createObjectURL(file));
+      form.setValue('imageUrl', ''); // Clear URL if file is selected
+    }
+  };
+
+
   const onSubmit = async (data: CourseFormValues) => {
     setIsLoading(true);
     try {
+      let imageUrl = data.imageUrl;
+      if (data.imageFile) {
+        imageUrl = await fileToDataUrl(data.imageFile);
+      }
+
       const courseCollection = collection(firestore, 'courses');
       const courseRef = await addDoc(courseCollection, {
         title: data.title,
@@ -69,7 +101,7 @@ export function AddCourseForm() {
         description: data.description,
         price: data.price,
         validity: data.validity,
-        imageUrl: data.imageUrl,
+        imageUrl: imageUrl,
         isFree: data.isFree,
         createdAt: serverTimestamp(),
       });
@@ -85,6 +117,7 @@ export function AddCourseForm() {
 
       toast({ title: 'Success', description: 'Course added successfully.' });
       form.reset();
+      setImagePreview(null);
     } catch (error) {
       console.error('Error adding course:', error);
       toast({ variant: 'destructive', title: 'Error', description: 'Could not add course.' });
@@ -114,9 +147,34 @@ export function AddCourseForm() {
             <FormItem><FormLabel>Validity (days)</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>
           )} />
         </div>
-        <FormField control={form.control} name="imageUrl" render={({ field }) => (
-          <FormItem><FormLabel>Image URL</FormLabel><FormControl><Input placeholder="https://example.com/image.jpg" {...field} /></FormControl><FormMessage /></FormItem>
-        )} />
+        
+        <FormField
+          control={form.control}
+          name="imageFile"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Course Image</FormLabel>
+              <FormControl>
+                <>
+                  <Button type="button" variant="outline" className="w-full" onClick={() => fileInputRef.current?.click()}>
+                    <Upload className="mr-2 h-4 w-4" />
+                    {imagePreview ? 'Change Image' : 'Upload Image'}
+                  </Button>
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleFileChange}
+                    className="hidden"
+                    accept="image/*"
+                  />
+                </>
+              </FormControl>
+              {imagePreview && <Image src={imagePreview} alt="Image preview" width={100} height={100} className="mt-2 rounded-md" />}
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
         <FormField control={form.control} name="isFree" render={({ field }) => (
             <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
                 <FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl>
