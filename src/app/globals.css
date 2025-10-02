@@ -72,6 +72,8 @@
   body {
     @apply bg-background text-foreground;
   }
+  .text-saffron { color: #FF9933; }
+  .text-green { color: #138808; }
 }
 
 @keyframes marquee {

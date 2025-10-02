@@ -26,6 +26,7 @@ import {
   Bot,
   Newspaper,
   Clapperboard,
+  FileCode,
 } from 'lucide-react';
 
 import { useAuth } from '@/hooks/use-auth';
@@ -42,6 +43,7 @@ import {
   SidebarFooter,
   useSidebar,
   SidebarInset,
+  SidebarSeparator,
 } from '@/components/ui/sidebar';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -49,7 +51,7 @@ import { cn } from '@/lib/utils';
 import { useLanguage } from '@/hooks/use-language';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
-import { doc, getDoc, onSnapshot } from 'firebase/firestore';
+import { doc, getDoc, onSnapshot, collection, query, orderBy } from 'firebase/firestore';
 import { firestore } from '@/lib/firebase';
 import { AppBottomNav } from './bottom-nav';
 
@@ -98,6 +100,15 @@ const AppSidebar = ({ isKidsMode }: { isKidsMode: boolean }) => {
     const { t } = useLanguage();
     const { logout } = useAuth();
     const router = useRouter();
+    const [customPages, setCustomPages] = useState<any[]>([]);
+
+    useEffect(() => {
+        const q = query(collection(firestore, "htmlPages"), orderBy("slug"));
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+            setCustomPages(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+        });
+        return () => unsubscribe();
+    }, []);
 
     const closeSidebar = () => {
         if (isMobile) {
@@ -136,6 +147,26 @@ const AppSidebar = ({ isKidsMode }: { isKidsMode: boolean }) => {
                             closeSidebar={closeSidebar}
                         />
                     ))}
+
+                    {customPages.length > 0 && (
+                        <>
+                            <SidebarSeparator />
+                            <SidebarMenuItem>
+                                <div className="px-2 py-1 text-sm font-semibold text-primary-foreground/70">Custom Pages</div>
+                            </SidebarMenuItem>
+                            {customPages.map((page) => (
+                                <SidebarMenuItemWithHandler
+                                    key={page.id}
+                                    href={`/p/${page.slug}`}
+                                    icon={FileCode}
+                                    label={page.slug.replace(/-/g, ' ')}
+                                    closeSidebar={closeSidebar}
+                                />
+                            ))}
+                        </>
+                    )}
+
+                     <SidebarSeparator />
                      <SidebarMenuItem>
                         <Link href="/admin">
                            <SidebarMenuButton onClick={() => handleNavigation('/admin')}>

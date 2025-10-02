@@ -14,35 +14,60 @@ import { firestore } from '@/lib/firebase';
 import { Loader2 } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
-const htmlPageSchema = z.object({
+const pageSchema = z.object({
   pageSlug: z.string().min(3, 'Slug must be at least 3 characters.').regex(/^[a-z0-9-]+$/, 'Slug can only contain lowercase letters, numbers, and hyphens.'),
-  htmlContent: z.string().min(1, 'HTML content cannot be empty.'),
+  contentType: z.enum(['html', 'json']),
+  htmlContent: z.string().optional(),
+  jsonContent: z.string().optional(),
+}).refine(data => {
+    if (data.contentType === 'html') return !!data.htmlContent;
+    if (data.contentType === 'json') {
+        try {
+            JSON.parse(data.jsonContent || '');
+            return true;
+        } catch {
+            return false;
+        }
+    }
+    return false;
+}, {
+    message: "Content is required and JSON must be valid.",
+    path: ['htmlContent'], // Point error to one field
 });
 
-type HtmlPageFormValues = z.infer<typeof htmlPageSchema>;
+type PageFormValues = z.infer<typeof pageSchema>;
 
 export function HtmlEditor() {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [generatedUrl, setGeneratedUrl] = useState('');
 
-  const form = useForm<HtmlPageFormValues>({
-    resolver: zodResolver(htmlPageSchema),
+  const form = useForm<PageFormValues>({
+    resolver: zodResolver(pageSchema),
     defaultValues: {
       pageSlug: '',
+      contentType: 'html',
       htmlContent: '',
+      jsonContent: '',
     },
   });
 
-  const onSubmit = async (data: HtmlPageFormValues) => {
+  const contentType = form.watch('contentType');
+
+  const onSubmit = async (data: PageFormValues) => {
     setIsLoading(true);
     setGeneratedUrl('');
     try {
       const pageRef = doc(firestore, 'htmlPages', data.pageSlug);
+      
+      const contentToSave = data.contentType === 'html' ? data.htmlContent : data.jsonContent;
+      
       await setDoc(pageRef, {
         slug: data.pageSlug,
-        content: data.htmlContent,
+        content: contentToSave,
+        type: data.contentType,
       });
 
       const url = `/p/${data.pageSlug}`;
@@ -58,11 +83,10 @@ export function HtmlEditor() {
           </p>
         ),
       });
-      // Optionally reset form
       // form.reset();
     } catch (error) {
       console.error('Error saving page:', error);
-      toast({ variant: 'destructive', title: 'Error', description: 'Could not save the HTML page.' });
+      toast({ variant: 'destructive', title: 'Error', description: 'Could not save the page.' });
     } finally {
       setIsLoading(false);
     }
@@ -71,9 +95,9 @@ export function HtmlEditor() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Custom HTML Page Editor</CardTitle>
+        <CardTitle>Custom Page Editor</CardTitle>
         <CardDescription>
-          Create a new page by providing a URL slug and its HTML content. The new page will be available at `/p/[your-slug]`.
+          Create a new page by providing a URL slug and its HTML or JSON content.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -87,7 +111,7 @@ export function HtmlEditor() {
                   <FormLabel>Page Slug</FormLabel>
                   <FormControl>
                     <div className="flex items-center">
-                        <span className="text-muted-foreground p-2 bg-muted border rounded-lmd">/p/</span>
+                        <span className="text-muted-foreground p-2 bg-muted border rounded-l-md">/p/</span>
                         <Input {...field} placeholder="about-us" className="rounded-l-none"/>
                     </div>
                   </FormControl>
@@ -96,23 +120,60 @@ export function HtmlEditor() {
               )}
             />
             
-            <FormField
+             <FormField
               control={form.control}
-              name="htmlContent"
+              name="contentType"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>HTML Content</FormLabel>
-                  <FormControl>
-                    <Textarea
-                      {...field}
-                      placeholder="<html>...</html>"
-                      className="min-h-[400px] font-mono"
-                    />
-                  </FormControl>
+                  <FormLabel>Content Type</FormLabel>
+                   <Tabs defaultValue={field.value} onValueChange={(value) => field.onChange(value as 'html' | 'json')} className="w-full">
+                        <TabsList>
+                            <TabsTrigger value="html">HTML</TabsTrigger>
+                            <TabsTrigger value="json">JSON</TabsTrigger>
+                        </TabsList>
+                   </Tabs>
                   <FormMessage />
                 </FormItem>
               )}
             />
+
+            {contentType === 'html' ? (
+                 <FormField
+                    control={form.control}
+                    name="htmlContent"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>HTML Content</FormLabel>
+                        <FormControl>
+                            <Textarea
+                            {...field}
+                            placeholder="<html>...</html>"
+                            className="min-h-[400px] font-mono"
+                            />
+                        </FormControl>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                />
+            ) : (
+                 <FormField
+                    control={form.control}
+                    name="jsonContent"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>JSON Content</FormLabel>
+                        <FormControl>
+                            <Textarea
+                            {...field}
+                            placeholder='{ "title": "My Page", "data": [] }'
+                            className="min-h-[400px] font-mono"
+                            />
+                        </FormControl>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                />
+            )}
             
             <Button type="submit" disabled={isLoading}>
               {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
@@ -124,5 +185,3 @@ export function HtmlEditor() {
     </Card>
   );
 }
-
-    

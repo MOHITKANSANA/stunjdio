@@ -14,6 +14,7 @@ import {
   Library,
   Clapperboard,
   PenSquare,
+  Users,
 } from 'lucide-react';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -43,6 +44,7 @@ import {
   DialogTitle,
   DialogDescription
 } from '@/components/ui/dialog';
+import Image from 'next/image';
 
 
 const CountdownTimer = ({ targetDate }: { targetDate: Date }) => {
@@ -116,6 +118,23 @@ const ReviewCard = ({ review, onReviewClick }: { review: any, onReviewClick: (re
     );
 };
 
+const EducatorCard = ({ educator }: { educator: any }) => {
+    return (
+         <CarouselItem className="pl-4 basis-1/2 md:basis-1/3 lg:basis-1/4">
+            <Card className="text-center">
+                <CardContent className="p-4">
+                    <Avatar className="h-24 w-24 mx-auto mb-4 border-4 border-primary">
+                        <AvatarImage src={educator.photoUrl} alt={educator.name} />
+                        <AvatarFallback>{educator.name.charAt(0)}</AvatarFallback>
+                    </Avatar>
+                    <CardTitle className="text-lg">{educator.name}</CardTitle>
+                    <CardDescription>{educator.expertise}</CardDescription>
+                </CardContent>
+            </Card>
+        </CarouselItem>
+    )
+}
+
 // Main App Dashboard Component
 const MainDashboard = () => {
     const { user } = useAuth();
@@ -124,6 +143,8 @@ const MainDashboard = () => {
     const [nextLiveClass, setNextLiveClass] = useState<any>(null);
     const [reviews, setReviews] = useState<any[]>([]);
     const [loadingReviews, setLoadingReviews] = useState(true);
+    const [educators, setEducators] = useState<any[]>([]);
+    const [loadingEducators, setLoadingEducators] = useState(true);
     const [newReview, setNewReview] = useState("");
     const { toast } = useToast();
     const [selectedReview, setSelectedReview] = useState<any>(null);
@@ -165,9 +186,17 @@ const MainDashboard = () => {
             setLoadingReviews(false);
         });
         
+        const educatorsQuery = query(collection(firestore, 'educators'), orderBy('createdAt', 'desc'));
+        const unsubscribeEducators = onSnapshot(educatorsQuery, (snapshot) => {
+            const fetchedEducators = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            setEducators(fetchedEducators);
+            setLoadingEducators(false);
+        });
+        
         return () => {
             unsubscribe();
             unsubscribeReviews();
+            unsubscribeEducators();
         };
     }, []);
     
@@ -327,6 +356,25 @@ const MainDashboard = () => {
                         Leave your own review
                     </Button>
                 </div>
+            </div>
+            
+            <div>
+                 <h2 className="text-xl font-bold mb-3">Meet Our Educators</h2>
+                 <Carousel opts={{ align: "start" }} className="w-full">
+                    <CarouselContent className="-ml-4">
+                        {loadingEducators ? (
+                            [...Array(3)].map((_, i) => (
+                                <CarouselItem key={i} className="pl-4 basis-1/2 md:basis-1/3 lg:basis-1/4">
+                                    <Skeleton className="h-48 w-full rounded-lg" />
+                                </CarouselItem>
+                            ))
+                        ) : (
+                            educators.map((educator) => <EducatorCard key={educator.id} educator={educator} />)
+                        )}
+                    </CarouselContent>
+                     <CarouselPrevious className="hidden sm:flex" />
+                    <CarouselNext className="hidden sm:flex" />
+                </Carousel>
             </div>
         </div>
     );

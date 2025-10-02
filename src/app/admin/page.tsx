@@ -14,6 +14,7 @@ import { ManagePointRequests } from "./_components/manage-point-requests";
 import { AddKidsVideoForm } from "./_components/add-kids-video-form";
 import { AddContentToCourseForm } from "./_components/add-content-to-course-form";
 import { HtmlEditor } from "./_components/html-editor";
+import { AddEducatorForm } from "./_components/add-educator-form";
 
 
 export default function AdminPage() {
@@ -26,7 +27,7 @@ export default function AdminPage() {
             </div>
             
              <Tabs defaultValue="content" className="w-full">
-                <TabsList className="grid w-full grid-cols-2 md:grid-cols-5">
+                <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
                     <TabsTrigger value="content">Content</TabsTrigger>
                     <TabsTrigger value="enrollments">Enrollments</TabsTrigger>
                     <TabsTrigger value="scholarships">Scholarships</TabsTrigger>
@@ -52,6 +53,10 @@ export default function AdminPage() {
                              <Card>
                                 <CardHeader><CardTitle>Add New Test Series</CardTitle></CardHeader>
                                 <CardContent><AddTestSeriesForm /></CardContent>
+                            </Card>
+                             <Card>
+                                <CardHeader><CardTitle>Add New Educator</CardTitle></CardHeader>
+                                <CardContent><AddEducatorForm /></CardContent>
                             </Card>
                         </div>
                         <div className="space-y-8">
@@ -114,5 +119,3 @@ export default function AdminPage() {
         </div>
     );
 }
-
-    

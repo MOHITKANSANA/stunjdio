@@ -13,10 +13,12 @@ const AnimatedSplashScreen = () => (
             <p className="text-sm text-gray-300">Made with ❤️ in India</p>
         </div>
         <div className="flex flex-col items-center text-center">
-            <div className="splash-item splash-item-2">
-                <Shield className="h-24 w-24 text-primary" />
-            </div>
-            <h1 className="text-5xl font-bold font-headline text-white mt-6 splash-item splash-item-3 metallic-text">
+             <div className="splash-item splash-item-2 font-headline text-8xl font-bold flex items-center">
+                <span className="text-saffron">G</span>
+                <span className="text-green">S</span>
+             </div>
+
+            <h1 className="text-5xl font-bold font-headline text-white mt-4 splash-item splash-item-3 metallic-text">
                 GoSwamiX
             </h1>
             <p className="mt-2 text-lg text-gray-300 splash-item splash-item-4">Your Path to Success Starts Here</p>

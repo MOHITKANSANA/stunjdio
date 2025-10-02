@@ -21,6 +21,16 @@ export async function generateStaticParams() {
   }
 }
 
+function JsonViewer({ data }: { data: any }) {
+    return (
+        <div className="bg-gray-100 dark:bg-gray-900 p-4 md:p-8 min-h-screen">
+            <pre className="bg-white dark:bg-black p-6 rounded-lg shadow-lg overflow-x-auto text-sm">
+                {JSON.stringify(data, null, 2)}
+            </pre>
+        </div>
+    );
+}
+
 export default async function CustomHtmlPage({ params }: PageProps) {
   const { slug } = params;
 
@@ -32,17 +42,25 @@ export default async function CustomHtmlPage({ params }: PageProps) {
     }
 
     const pageData = pageDoc.data();
-    const htmlContent = pageData.content;
+    const contentType = pageData.type || 'html'; // Default to html if type is not set
+    const content = pageData.content;
 
-    // This is a simple way to render the HTML. For security, especially if user-input
-    // is ever allowed, this should be sanitized.
+    if (contentType === 'json') {
+        let jsonData;
+        try {
+            jsonData = JSON.parse(content);
+        } catch {
+            return <div className="p-8 text-red-500">Error: Invalid JSON content.</div>
+        }
+        return <JsonViewer data={jsonData} />;
+    }
+
+    // Default to HTML rendering
     return (
-      <div dangerouslySetInnerHTML={{ __html: htmlContent }} />
+      <div dangerouslySetInnerHTML={{ __html: content }} />
     );
   } catch (error) {
     console.error(`Error fetching page ${slug}:`, error);
     notFound();
   }
 }
-
-    
