@@ -20,7 +20,7 @@ import { Button } from '@/components/ui/button';
 
 type ActiveTab = 'apply' | 'test' | 'result' | 'review' | 'history';
 
-const CountdownTimer = ({ targetDate, onEnd }: { targetDate: Date; onEnd?: () => void }) => {
+const CountdownTimer = ({ targetDate, onEnd }: { targetDate: Date; onEnd: () => void; }) => {
     const calculateTimeLeft = useCallback(() => {
         const difference = +targetDate - +new Date();
         if (difference > 0) {
@@ -31,19 +31,27 @@ const CountdownTimer = ({ targetDate, onEnd }: { targetDate: Date; onEnd?: () =>
                 seconds: Math.floor((difference / 1000) % 60),
             };
         } else {
-            if (onEnd) onEnd();
             return { days: 0, hours: 0, minutes: 0, seconds: 0 };
         }
-    }, [targetDate, onEnd]);
+    }, [targetDate]);
 
     const [timeLeft, setTimeLeft] = useState(calculateTimeLeft());
 
     useEffect(() => {
+        if (+targetDate < +new Date()) {
+            onEnd();
+            return;
+        }
+
         const timer = setInterval(() => {
-            setTimeLeft(calculateTimeLeft());
+            const newTimeLeft = calculateTimeLeft();
+            setTimeLeft(newTimeLeft);
+            if (newTimeLeft.days === 0 && newTimeLeft.hours === 0 && newTimeLeft.minutes === 0 && newTimeLeft.seconds === 0) {
+                onEnd();
+            }
         }, 1000);
         return () => clearInterval(timer);
-    }, [calculateTimeLeft]);
+    }, [targetDate, onEnd, calculateTimeLeft]);
 
 
     return (
@@ -108,46 +116,49 @@ export default function ScholarshipPage() {
   const [activeTab, setActiveTab] = useState<ActiveTab>('apply');
   const [settings, setSettings] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  
+  // Use state to manage statuses derived from settings
   const [applicationStatus, setApplicationStatus] = useState<'closed' | 'open' | 'upcoming'>('closed');
   const [testStatus, setTestStatus] = useState<'closed' | 'open' | 'upcoming'>('closed');
   
   // Use a key to force re-render of history component
   const [historyKey, setHistoryKey] = useState(0);
 
-  useEffect(() => {
-    const fetchSettings = async () => {
-        try {
-            const settingsDoc = await getDoc(doc(firestore, 'settings', 'scholarship'));
-            if (settingsDoc.exists()) {
-                const data = settingsDoc.data();
-                setSettings(data);
-                const now = new Date();
+  const fetchSettings = useCallback(async () => {
+    try {
+        const settingsDoc = await getDoc(doc(firestore, 'settings', 'scholarship'));
+        if (settingsDoc.exists()) {
+            const data = settingsDoc.data();
+            setSettings(data);
+            const now = new Date();
 
-                const appStartDate = data.startDate?.toDate();
-                const appEndDate = data.endDate?.toDate();
-                if (appStartDate && appEndDate) {
-                    if (now < appStartDate) setApplicationStatus('upcoming');
-                    else if (now >= appStartDate && now <= appEndDate) setApplicationStatus('open');
-                    else setApplicationStatus('closed');
-                }
-
-                const testStartDate = data.testStartDate?.toDate();
-                const testEndDate = data.testEndDate?.toDate();
-                if (testStartDate && testEndDate) {
-                    if (now < testStartDate) setTestStatus('upcoming');
-                    else if (now >= testStartDate && now <= testEndDate) setTestStatus('open');
-                    else setTestStatus('closed');
-                }
+            const appStartDate = data.startDate?.toDate();
+            const appEndDate = data.endDate?.toDate();
+            if (appStartDate && appEndDate) {
+                if (now < appStartDate) setApplicationStatus('upcoming');
+                else if (now >= appStartDate && now <= appEndDate) setApplicationStatus('open');
+                else setApplicationStatus('closed');
             }
-        } catch (error) {
-            console.error("Failed to fetch scholarship settings:", error);
-        } finally {
-            setLoading(false);
+
+            const testStartDate = data.testStartDate?.toDate();
+            const testEndDate = data.testEndDate?.toDate();
+            if (testStartDate && testEndDate) {
+                if (now < testStartDate) setTestStatus('upcoming');
+                else if (now >= testStartDate && now <= testEndDate) setTestStatus('open');
+                else setTestStatus('closed');
+            }
         }
-    };
-    
+    } catch (error) {
+        console.error("Failed to fetch scholarship settings:", error);
+    } finally {
+        setLoading(false);
+    }
+  }, []); // Empty dependency array means this is stable and won't change.
+
+
+  useEffect(() => {
     fetchSettings();
-  }, []);
+  }, [fetchSettings]);
 
   const handleFormSubmit = () => {
     // Increment key to force ScholarshipHistory to re-fetch data
@@ -174,7 +185,7 @@ export default function ScholarshipPage() {
                     <CardHeader><CardTitle>Applications Open Soon!</CardTitle></CardHeader>
                     <CardContent>
                         <p className="mb-4">Applications will open on {settings.startDate.toDate().toLocaleString()}.</p>
-                        <CountdownTimer targetDate={settings.startDate.toDate()} onEnd={() => window.location.reload()} />
+                        <CountdownTimer targetDate={settings.startDate.toDate()} onEnd={fetchSettings} />
                     </CardContent>
                 </Card>
             );
@@ -200,7 +211,7 @@ export default function ScholarshipPage() {
                     <CardHeader><CardTitle>Online Test Starts Soon!</CardTitle></CardHeader>
                     <CardContent>
                         <p className="mb-4">The online test will be available from {settings.testStartDate.toDate().toLocaleString()}.</p>
-                         <CountdownTimer targetDate={settings.testStartDate.toDate()} onEnd={() => window.location.reload()} />
+                         <CountdownTimer targetDate={settings.testStartDate.toDate()} onEnd={fetchSettings} />
                     </CardContent>
                 </Card>
             );

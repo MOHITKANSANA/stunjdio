@@ -2,7 +2,7 @@
 'use client';
 
 import { useCollection } from 'react-firebase-hooks/firestore';
-import { collection, query, where, orderBy, doc, updateDoc } from 'firebase/firestore';
+import { collection, query, where, orderBy, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { firestore } from '@/lib/firebase';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
@@ -22,7 +22,10 @@ export function ManageEnrollments() {
     const handleUpdateStatus = async (id: string, status: 'approved' | 'rejected') => {
         try {
             const enrollmentRef = doc(firestore, 'enrollments', id);
-            await updateDoc(enrollmentRef, { status });
+            await updateDoc(enrollmentRef, { 
+                status,
+                processedAt: serverTimestamp(),
+            });
             toast({ title: 'Success', description: `Enrollment has been ${status}.` });
         } catch (e) {
             toast({ variant: 'destructive', title: 'Error', description: 'Could not update enrollment status.' });
@@ -44,7 +47,7 @@ export function ManageEnrollments() {
                         <TableHead>User</TableHead>
                         <TableHead>Course</TableHead>
                         <TableHead>Screenshot</TableHead>
-                        <TableHead>Actions</TableHead>
+                        <TableHead>{status === 'pending' ? 'Actions' : 'Status'}</TableHead>
                     </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -62,14 +65,22 @@ export function ManageEnrollments() {
                                         <Image src={enrollment.screenshotDataUrl} alt="Payment Screenshot" width={80} height={80} className="rounded-md object-cover" />
                                     </a>
                                 </TableCell>
-                                <TableCell className="space-x-2">
-                                    {status === 'pending' && (
-                                        <>
+                                <TableCell>
+                                    {status === 'pending' ? (
+                                        <div className="flex gap-2">
                                             <Button size="sm" onClick={() => handleUpdateStatus(enrollmentDoc.id, 'approved')}>Approve</Button>
                                             <Button size="sm" variant="destructive" onClick={() => handleUpdateStatus(enrollmentDoc.id, 'rejected')}>Reject</Button>
-                                        </>
+                                        </div>
+                                    ) : (
+                                        <div className="flex flex-col">
+                                             <Badge variant={status === 'approved' ? 'default' : 'destructive'}>{status}</Badge>
+                                             {enrollment.processedAt && (
+                                                <span className="text-xs text-muted-foreground mt-1">
+                                                    {enrollment.processedAt.toDate().toLocaleString()}
+                                                </span>
+                                             )}
+                                        </div>
                                     )}
-                                     {status !== 'pending' && <Badge variant={status === 'approved' ? 'default' : 'destructive'}>{status}</Badge>}
                                 </TableCell>
                             </TableRow>
                         );

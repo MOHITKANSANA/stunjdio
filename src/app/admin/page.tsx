@@ -12,6 +12,7 @@ import { ManageEnrollments } from "./_components/manage-enrollments";
 import { ManageScholarships } from "./_components/manage-scholarships";
 import { ManagePointRequests } from "./_components/manage-point-requests";
 import { AddKidsVideoForm } from "./_components/add-kids-video-form";
+import { AddContentToCourseForm } from "./_components/add-content-to-course-form";
 
 
 export default function AdminPage() {
@@ -37,6 +38,10 @@ export default function AdminPage() {
                             <Card>
                                 <CardHeader><CardTitle>Add New Course</CardTitle></CardHeader>
                                 <CardContent><AddCourseForm /></CardContent>
+                            </Card>
+                            <Card>
+                                <CardHeader><CardTitle>Add Content to Existing Course</CardTitle></CardHeader>
+                                <CardContent><AddContentToCourseForm /></CardContent>
                             </Card>
                              <Card>
                                 <CardHeader><CardTitle>Add New E-Book</CardTitle></CardHeader>
