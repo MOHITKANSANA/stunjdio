@@ -16,19 +16,19 @@ const AnimatedSplashScreen = () => (
             <div className="splash-item splash-item-2">
                 <Shield className="h-24 w-24 text-primary" />
             </div>
-            <h1 className="text-5xl font-bold font-headline text-white mt-6 splash-item splash-item-3">
-                Go Swami X
+            <h1 className="text-5xl font-bold font-headline text-white mt-6 splash-item splash-item-3 metallic-text">
+                GoSwamiX
             </h1>
             <p className="mt-2 text-lg text-gray-300 splash-item splash-item-4">Your Path to Success Starts Here</p>
         </div>
         <div className="text-center w-full space-y-2">
            <p className="text-sm text-gray-400 splash-item splash-item-5">Live Classes • AI Tests • Personal Mentorship</p>
            <div className="flex justify-center gap-4 text-xs text-gray-500">
-                <span className="splash-item splash-item-6">UPSC</span>
+                <span className="splash-item splash-item-6 feature-text-1">UPSC</span>
                 <span className="splash-item splash-item-6">•</span>
-                <span className="splash-item splash-item-7">SSC</span>
+                <span className="splash-item splash-item-7 feature-text-2">SSC</span>
                  <span className="splash-item splash-item-7">•</span>
-                <span className="splash-item splash-item-7">Defence</span>
+                <span className="splash-item splash-item-7 feature-text-3">Defence</span>
            </div>
         </div>
     </div>

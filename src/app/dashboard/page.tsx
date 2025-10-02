@@ -13,6 +13,7 @@ import {
   MessageSquare,
   Library,
   Clapperboard,
+  PenSquare,
 } from 'lucide-react';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -126,6 +127,7 @@ const MainDashboard = () => {
     const [newReview, setNewReview] = useState("");
     const { toast } = useToast();
     const [selectedReview, setSelectedReview] = useState<any>(null);
+    const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
 
     
      useEffect(() => {
@@ -181,6 +183,7 @@ const MainDashboard = () => {
                 replies: [],
             });
             setNewReview("");
+            setIsReviewModalOpen(false);
             toast({ description: "Your review has been submitted. Thank you!" });
         } catch (error: any) {
             toast({ variant: 'destructive', description: `Could not submit your review: ${'' + error.message}` });
@@ -192,7 +195,7 @@ const MainDashboard = () => {
       { label: "All Courses", icon: Book, href: "/dashboard/courses", color: "from-green-500 to-emerald-600" },
       { label: "Live Classes", icon: Clapperboard, href: "/dashboard/classes-lectures", color: "from-red-500 to-rose-600" },
       { label: "Previous Papers", icon: Newspaper, href: "/dashboard/papers", color: "from-purple-500 to-violet-600" },
-      { label: "Scholarship", icon: Award, href: "/dashboard/scholarship", color: "from-yellow-500 to-golden-600" },
+      { label: "Scholarship", icon: Award, href: "/dashboard/scholarship", color: "from-yellow-500 to-amber-600" },
       { label: "AI Tests", icon: Youtube, href: "/dashboard/ai-test", color: "from-orange-500 to-amber-600" },
     ];
     
@@ -225,9 +228,27 @@ const MainDashboard = () => {
                             </DialogDescription>
                         )}
                     </DialogHeader>
-                    <div className="prose dark:prose-invert">
+                    <div className="prose dark:prose-invert max-h-[60vh] overflow-y-auto">
                         <p>{selectedReview?.text}</p>
                     </div>
+                </DialogContent>
+            </Dialog>
+
+             <Dialog open={isReviewModalOpen} onOpenChange={setIsReviewModalOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Leave a Review</DialogTitle>
+                        <DialogDescription>Share your experience with us.</DialogDescription>
+                    </DialogHeader>
+                    <form onSubmit={handleReviewSubmit} className="flex flex-col items-start gap-3">
+                        <Textarea 
+                            value={newReview} 
+                            onChange={(e) => setNewReview(e.target.value)} 
+                            placeholder="Write your review here..."
+                            className="h-32"
+                        />
+                        <Button type="submit" size="sm"><Send className="mr-2 h-4 w-4"/>Submit Review</Button>
+                    </form>
                 </DialogContent>
             </Dialog>
 
@@ -296,26 +317,16 @@ const MainDashboard = () => {
                         ) : (
                             reviews.map((review) => <ReviewCard key={review.id} review={review} onReviewClick={setSelectedReview} />)
                         )}
-                         <CarouselItem className="pl-4 basis-full md:basis-1/2 lg:basis-1/3">
-                            <Card className="bg-muted/50 h-full">
-                                <CardContent className="p-4 flex flex-col justify-center h-full">
-                                        <h3 className="font-semibold mb-2 text-center">Leave a review</h3>
-                                        <form onSubmit={handleReviewSubmit} className="flex flex-col items-start gap-3">
-                                        <Textarea 
-                                            value={newReview} 
-                                            onChange={(e) => setNewReview(e.target.value)} 
-                                            placeholder="Write your review here..."
-                                            className="h-20"
-                                        />
-                                        <Button type="submit" size="sm"><Send className="mr-2 h-4 w-4"/>Submit</Button>
-                                    </form>
-                                </CardContent>
-                            </Card>
-                         </CarouselItem>
                     </CarouselContent>
                     <CarouselPrevious className="hidden sm:flex" />
                     <CarouselNext className="hidden sm:flex" />
                 </Carousel>
+                <div className="mt-4">
+                    <Button variant="outline" className="w-full" onClick={() => setIsReviewModalOpen(true)}>
+                        <PenSquare className="mr-2 h-4 w-4" />
+                        Leave your own review
+                    </Button>
+                </div>
             </div>
         </div>
     );
