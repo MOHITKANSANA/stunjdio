@@ -28,6 +28,7 @@ import {
   Clapperboard,
   FileCode,
   FlaskConical,
+  Loader2,
 } from 'lucide-react';
 
 import { useAuth } from '@/hooks/use-auth';
@@ -208,12 +209,12 @@ const AppHeader = () => {
                 <div className='md:hidden'>
                     <SidebarTrigger />
                 </div>
-                 <div className="hidden md:flex items-center gap-4 text-lg font-semibold font-headline">
+                 <div className="flex items-center gap-2 md:gap-4 text-lg font-semibold font-headline">
                     <Link href="/dashboard">
-                        <Button className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-bold">Go Swami X</Button>
+                        <Button className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-bold text-xs sm:text-sm">Go Swami X</Button>
                     </Link>
                      <Link href="/dashboard/tests">
-                        <Button className="bg-gradient-to-r from-green-500 to-teal-600 hover:from-green-600 hover:to-teal-700 text-white font-bold">Test Hub</Button>
+                        <Button className="bg-gradient-to-r from-green-500 to-teal-600 hover:from-green-600 hover:to-teal-700 text-white font-bold text-xs sm:text-sm">Test Hub</Button>
                     </Link>
                  </div>
             </div>
