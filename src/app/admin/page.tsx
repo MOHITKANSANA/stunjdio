@@ -3,12 +3,6 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { AddCourseForm } from "./_components/add-course-form";
-import { AddTestSeriesForm } from "./_components/add-test-series-form";
-import { AddEbookForm } from "./_components/add-ebook-form";
-import { AddPaperForm } from "./_components/add-paper-form";
-import { ManageEnrollments } from "./_components/manage-enrollments";
-import { ManageScholarships } from "./_components/manage-scholarships";
-import { ManageUsers } from "./_components/manage-users";
 import { ManageLiveClass } from "./_components/manage-live-class";
 
 export default function AdminPage() {
@@ -34,34 +28,6 @@ export default function AdminPage() {
 
                     <Card>
                         <CardHeader>
-                            <CardTitle>Add New Test Series</CardTitle>
-                            <CardDescription>Create a new test series with questions.</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <AddTestSeriesForm />
-                        </CardContent>
-                    </Card>
-                    
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Add New E-Book</CardTitle>
-                            <CardDescription>Upload a new e-book for students.</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <AddEbookForm />
-                        </CardContent>
-                    </Card>
-
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Add Previous Year Paper</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <AddPaperForm />
-                        </CardContent>
-                    </Card>
-                    <Card>
-                        <CardHeader>
                             <CardTitle>Add New Live Class</CardTitle>
                         </CardHeader>
                         <CardContent>
@@ -70,30 +36,7 @@ export default function AdminPage() {
                     </Card>
                 </div>
                 <div className="space-y-8">
-                    <Card>
-                         <CardHeader>
-                            <CardTitle>Manage Users</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <ManageUsers />
-                        </CardContent>
-                    </Card>
-                     <Card>
-                         <CardHeader>
-                            <CardTitle>Manage Enrollments</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <ManageEnrollments />
-                        </CardContent>
-                    </Card>
-                     <Card>
-                         <CardHeader>
-                            <CardTitle>Manage Scholarships</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <ManageScholarships />
-                        </CardContent>
-                    </Card>
+                   {/* Other management components will go here once implemented */}
                 </div>
 
             </div>
