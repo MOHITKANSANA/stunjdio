@@ -104,7 +104,7 @@ export function ManageLiveClass() {
             <FormItem>
               <FormLabel>Thumbnail Image</FormLabel>
               <FormControl>
-                <>
+                <div>
                   <Button type="button" variant="outline" className="w-full" onClick={() => fileInputRef.current?.click()}>
                     <Upload className="mr-2 h-4 w-4" />
                     {imagePreview ? 'Change Image' : 'Upload Thumbnail'}
@@ -116,7 +116,7 @@ export function ManageLiveClass() {
                     className="hidden"
                     accept="image/*"
                   />
-                </>
+                </div>
               </FormControl>
               {imagePreview && <Image src={imagePreview} alt="Thumbnail preview" width={100} height={100} className="mt-2 rounded-md" />}
               <FormMessage />
