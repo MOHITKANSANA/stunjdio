@@ -9,7 +9,7 @@ import { ViewResult } from "./_components/view-result";
 import { ScrutinyForm } from "./_components/scrutiny-form";
 import { Award, FileText, PenSquare, Eye, Search, AlertTriangle, FileSignature, Ticket, Loader2 } from "lucide-react";
 import { cn } from '@/lib/utils';
-import { doc, getDoc, collection, query, where, orderBy } from 'firebase/firestore';
+import { doc, getDoc, collection, query, where, orderBy, getDocs } from 'firebase/firestore';
 import { firestore } from '@/lib/firebase';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
