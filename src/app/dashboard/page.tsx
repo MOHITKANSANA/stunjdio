@@ -113,44 +113,22 @@ const ReviewCard = ({ review }: { review: any }) => {
 
 
     return (
-        <Card className="bg-muted/50 w-80 shrink-0">
-            <CardContent className="p-4 flex flex-col h-full">
-                <div className="flex items-start gap-3">
-                    <Avatar className="h-10 w-10">
+        <Card className="bg-muted/50 w-64 shrink-0">
+             <CardContent className="p-4 flex flex-col h-full gap-3">
+                <div className="flex items-center gap-3">
+                     <Avatar className="h-10 w-10 border-2 border-primary">
                         <AvatarImage src={review.userPhoto} />
                         <AvatarFallback>{getInitials(review.userName)}</AvatarFallback>
                     </Avatar>
                     <div>
                         <p className="font-semibold text-sm">{review.userName}</p>
-                        <p className="text-sm">{review.text}</p>
+                        <p className="text-xs text-muted-foreground">Student</p>
                     </div>
                 </div>
-                <div className="flex-grow" />
-                <div className="mt-4 text-xs space-y-2">
-                    <button onClick={() => setShowReplies(!showReplies)} className="text-blue-500 hover:underline">
-                        {showReplies ? 'Hide' : `View replies (${review.replies?.length || 0})`}
-                    </button>
-                    {showReplies && (
-                        <div className="space-y-2 pt-2 border-t">
-                            {review.replies?.map((reply: any) => (
-                                <div key={reply.id} className="flex items-start gap-2">
-                                     <Avatar className="h-6 w-6">
-                                        <AvatarImage src={reply.userPhoto} />
-                                        <AvatarFallback>{getInitials(reply.userName)}</AvatarFallback>
-                                    </Avatar>
-                                    <div>
-                                        <p className="font-semibold text-xs">{reply.userName}</p>
-                                        <p className="text-xs">{reply.text}</p>
-                                    </div>
-                                </div>
-                            ))}
-                             <form onSubmit={handleReplySubmit} className="flex items-center gap-2 pt-2">
-                                <Input value={replyText} onChange={(e) => setReplyText(e.target.value)} placeholder="Reply..." className="h-8 text-xs" />
-                                <Button type="submit" size="sm" className="h-8">Reply</Button>
-                            </form>
-                        </div>
-                    )}
-                </div>
+                <p className="text-sm text-foreground/80 leading-relaxed line-clamp-3">
+                    <span className="text-2xl font-bold text-primary/50 mr-1 leading-none">“</span>
+                    {review.text}
+                </p>
             </CardContent>
         </Card>
     );
@@ -204,17 +182,9 @@ const MainDashboard = () => {
             setLoadingReviews(false);
         });
         
-        const carouselQuery = query(collection(firestore, 'homepageCarousel'), orderBy('createdAt', 'asc'));
-        const unsubscribeCarousel = onSnapshot(carouselQuery, (snapshot) => {
-            const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            setCarouselItems(items);
-            setLoadingCarousel(false);
-        });
-
         return () => {
             unsubscribe();
             unsubscribeReviews();
-            unsubscribeCarousel();
         };
     }, []);
     
@@ -253,26 +223,6 @@ const MainDashboard = () => {
     return (
         <div className="flex flex-col h-full bg-background space-y-6">
             <h1 className="text-2xl font-bold">Hello, {user?.displayName || 'Student'}!</h1>
-
-             <Carousel opts={{ loop: true }} className="w-full">
-                <CarouselContent>
-                    {loadingCarousel ? (
-                         <CarouselItem><Skeleton className="h-48 w-full rounded-lg" /></CarouselItem>
-                    ) : (
-                        carouselItems.map(item => (
-                            <CarouselItem key={item.id}>
-                                <Link href={item.linkUrl}>
-                                    <div className="relative h-48 w-full rounded-lg overflow-hidden">
-                                        <img src={item.imageUrl} alt="Carousel item" className="w-full h-full object-cover" />
-                                    </div>
-                                </Link>
-                            </CarouselItem>
-                        ))
-                    )}
-                </CarouselContent>
-                <CarouselPrevious className="absolute left-2 top-1/2 -translate-y-1/2" />
-                <CarouselNext className="absolute right-2 top-1/2 -translate-y-1/2" />
-            </Carousel>
             
             <div className="grid grid-cols-3 md:grid-cols-6 gap-3 md:gap-4">
                  {topGridItems.map((item) => (
@@ -327,33 +277,27 @@ const MainDashboard = () => {
             <div>
                  <h2 className="text-xl font-bold mb-3">What Our Students Say</h2>
                  <div className="relative">
-                    <Carousel opts={{ align: "start" }}>
-                        <CarouselContent className="-ml-4">
-                            {loadingReviews ? <Skeleton className="h-48 w-full" /> : reviews.map((review, index) => (
-                                <CarouselItem key={index} className="pl-4 basis-4/5 sm:basis-1/2 md:basis-1/3">
-                                   <ReviewCard review={review} />
-                                </CarouselItem>
-                            ))}
-                             <CarouselItem className="pl-4 basis-4/5 sm:basis-1/2 md:basis-1/3">
-                                 <Card className="bg-muted/50 w-80 shrink-0 h-full">
-                                    <CardContent className="p-4 flex flex-col justify-center h-full">
-                                         <h3 className="font-semibold mb-2 text-center">Leave a review</h3>
-                                         <form onSubmit={handleReviewSubmit} className="flex flex-col items-start gap-3">
-                                            <Textarea 
-                                                value={newReview} 
-                                                onChange={(e) => setNewReview(e.target.value)} 
-                                                placeholder="Write your review here..."
-                                                className="h-24"
-                                            />
-                                            <Button type="submit" size="sm"><Send className="mr-2"/>Submit</Button>
-                                        </form>
-                                    </CardContent>
-                                </Card>
-                            </CarouselItem>
-                        </CarouselContent>
-                        <CarouselPrevious className="absolute left-0 top-1/2 -translate-y-1/2" />
-                        <CarouselNext className="absolute right-0 top-1/2 -translate-y-1/2"/>
-                    </Carousel>
+                    <div className="flex overflow-x-auto space-x-4 pb-4 -ml-4 pl-4">
+                        {loadingReviews ? (
+                            [...Array(3)].map((_, i) => <Skeleton key={i} className="h-40 w-64 rounded-lg" />)
+                        ) : (
+                            reviews.map((review, index) => <ReviewCard key={index} review={review} />)
+                        )}
+                         <Card className="bg-muted/50 w-64 shrink-0 h-full">
+                            <CardContent className="p-4 flex flex-col justify-center h-full">
+                                    <h3 className="font-semibold mb-2 text-center">Leave a review</h3>
+                                    <form onSubmit={handleReviewSubmit} className="flex flex-col items-start gap-3">
+                                    <Textarea 
+                                        value={newReview} 
+                                        onChange={(e) => setNewReview(e.target.value)} 
+                                        placeholder="Write your review here..."
+                                        className="h-20"
+                                    />
+                                    <Button type="submit" size="sm"><Send className="mr-2 h-4 w-4"/>Submit</Button>
+                                </form>
+                            </CardContent>
+                        </Card>
+                    </div>
                  </div>
             </div>
         </div>
