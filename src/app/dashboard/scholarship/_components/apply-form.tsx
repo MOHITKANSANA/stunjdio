@@ -17,16 +17,15 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useCollection } from 'react-firebase-hooks/firestore';
 
-const personalDetailsSchema = z.object({
+const applyFormSchema = z.object({
     name: z.string().min(2, 'Name is required.'),
     email: z.string().email(),
     phone: z.string().min(10, 'Enter a valid phone number.').regex(/^\d{10,15}$/, 'Enter a valid phone number.'),
     address: z.string().min(5, 'Address is required.'),
-});
-
-const scholarshipChoiceSchema = z.object({
     scholarshipType: z.string().min(1, 'Please select a scholarship type.'),
     courseId: z.string().optional(),
+    photo: z.instanceof(File).optional(),
+    signature: z.instanceof(File).optional(),
 }).refine(data => {
     if (data.scholarshipType === 'Specific Course' && !data.courseId) {
         return false;
@@ -36,13 +35,6 @@ const scholarshipChoiceSchema = z.object({
     message: 'Please select a course.',
     path: ['courseId'],
 });
-
-const uploadsSchema = z.object({
-    photo: z.instanceof(File).optional(),
-    signature: z.instanceof(File).optional(),
-});
-
-const applyFormSchema = personalDetailsSchema.merge(scholarshipChoiceSchema).merge(uploadsSchema);
 
 
 type ApplyFormValues = z.infer<typeof applyFormSchema>;
@@ -324,5 +316,3 @@ export function ApplyForm({ onFormSubmit }: { onFormSubmit: () => void }) {
       </Card>
     );
 }
-
-    
