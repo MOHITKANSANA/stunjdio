@@ -21,8 +21,6 @@ import { Button } from '@/components/ui/button';
 type ActiveTab = 'apply' | 'test' | 'result' | 'review' | 'history';
 
 const CountdownTimer = ({ targetDate, onEnd }: { targetDate: Date; onEnd?: () => void }) => {
-    const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
-
     const calculateTimeLeft = useCallback(() => {
         const difference = +targetDate - +new Date();
         if (difference > 0) {
@@ -38,12 +36,13 @@ const CountdownTimer = ({ targetDate, onEnd }: { targetDate: Date; onEnd?: () =>
         }
     }, [targetDate, onEnd]);
 
+    const [timeLeft, setTimeLeft] = useState(calculateTimeLeft());
+
     useEffect(() => {
-        setTimeLeft(calculateTimeLeft());
         const timer = setInterval(() => {
             setTimeLeft(calculateTimeLeft());
         }, 1000);
-        return () => clearTimeout(timer);
+        return () => clearInterval(timer);
     }, [calculateTimeLeft]);
 
 
