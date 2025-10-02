@@ -18,7 +18,7 @@ import { DatePicker } from './date-picker';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Switch } from '@/components/ui/switch';
 import { Loader2, PlusCircle, Trash2 } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
@@ -413,5 +413,7 @@ export function ManageScholarships() {
         </div>
     );
 }
+
+    
 
     
