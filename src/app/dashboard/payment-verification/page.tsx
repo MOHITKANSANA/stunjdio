@@ -329,7 +329,7 @@ function PaymentVerificationPageContent() {
                         <CardContent className='p-4 space-y-3'>
                             <div className="flex justify-between items-center">
                                 <h4 className="font-semibold">Price Details</h4>
-                                <p className="font-bold text-xl">₹{discountInfo ? discountInfo.newPrice.toFixed(2) : itemData.price.toFixed(2)}</p>
+                                <p className="font-bold text-xl">₹{discountInfo ? discountInfo.newPrice.toFixed(2) : (itemData.price || 0).toFixed(2)}</p>
                             </div>
                             {discountInfo && (
                                 <>
