@@ -1,17 +1,18 @@
 
+
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/hooks/use-auth';
 import { firestore } from '@/lib/firebase';
-import { doc, collection, query, orderBy, onSnapshot, where, getDoc, addDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, collection, query, orderBy, onSnapshot, where, getDoc, addDoc, serverTimestamp, deleteDoc } from 'firebase/firestore';
 import { useDocument } from 'react-firebase-hooks/firestore';
 import { notFound, useParams } from 'next/navigation';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Send, MessageSquare, BookText, Save } from 'lucide-react';
+import { Send, MessageSquare, BookText, Save, Download } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { saveNoteAction } from '@/app/actions/live-class';
@@ -61,18 +62,52 @@ const getZohoVideoEmbedUrl = (url: string): string | null => {
     return null;
 };
 
+const getGoogleDriveEmbedUrl = (url: string): string | null => {
+    if (!url) return null;
+    try {
+        const googleDriveRegex = /drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/;
+        const match = url.match(googleDriveRegex);
+        if (match && match[1]) {
+            return `https://drive.google.com/file/d/${match[1]}/preview`;
+        }
+    } catch (e) {
+        console.error("Error parsing Google Drive URL", e);
+    }
+    return null;
+}
+
 
 const VideoPlayer = ({ videoUrl }: { videoUrl: string }) => {
     const youtubeVideoId = getYoutubeVideoId(videoUrl);
     const zohoEmbedUrl = getZohoVideoEmbedUrl(videoUrl);
+    const googleDriveEmbedUrl = getGoogleDriveEmbedUrl(videoUrl);
+    const isSupabaseLink = videoUrl?.includes('supabase');
+
+
+    let embedUrl = null;
+    let type = 'other';
 
     if (youtubeVideoId) {
+        embedUrl = `https://www.youtube.com/embed/${youtubeVideoId}?autoplay=1&rel=0`;
+        type = 'youtube';
+    } else if (zohoEmbedUrl) {
+        embedUrl = zohoEmbedUrl;
+        type = 'zoho';
+    } else if (googleDriveEmbedUrl) {
+        embedUrl = googleDriveEmbedUrl;
+        type = 'googledrive';
+    } else if (videoUrl?.match(/\.(mp4|webm|ogg)$/i) || isSupabaseLink) {
+        embedUrl = videoUrl;
+        type = 'direct';
+    }
+
+    if (type === 'youtube' || type === 'zoho' || type === 'googledrive') {
         return (
             <div className="w-full aspect-video">
                 <iframe
                     width="100%"
                     height="100%"
-                    src={`https://www.youtube.com/embed/${youtubeVideoId}?autoplay=1&rel=0`}
+                    src={embedUrl!}
                     title="Course Video Player"
                     frameBorder="0"
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
@@ -82,32 +117,14 @@ const VideoPlayer = ({ videoUrl }: { videoUrl: string }) => {
             </div>
         );
     }
-
-    if (zohoEmbedUrl) {
-         return (
-            <div className="w-full aspect-video">
-                <iframe
-                    width="100%"
-                    height="100%"
-                    src={zohoEmbedUrl}
-                    title="Course Video Player"
-                    frameBorder="0"
-                    allow="autoplay; fullscreen"
-                    allowFullScreen
-                    className="rounded-lg"
-                ></iframe>
-            </div>
-        );
-    }
     
-    // Fallback for direct video links
-    if (videoUrl?.match(/\.(mp4|webm|ogg)$/i) || videoUrl?.includes('supabase')) {
+    if (type === 'direct') {
         return (
              <div className="w-full aspect-video bg-black rounded-lg">
                 <video
                     controls
                     autoPlay
-                    src={videoUrl}
+                    src={embedUrl!}
                     className="w-full h-full rounded-lg"
                 >
                     Your browser does not support the video tag.
@@ -242,7 +259,8 @@ const NotesSection = ({ contentId }: { contentId: string }) => {
             const q = query(
                 collection(firestore, 'liveClassNotes'),
                 where('classId', '==', contentId),
-                where('userId', '==', user.uid)
+                where('userId', '==', user.uid),
+                limit(1)
             );
             const unsubscribe = onSnapshot(q, (querySnapshot) => {
                 if (!querySnapshot.empty) {
@@ -251,10 +269,13 @@ const NotesSection = ({ contentId }: { contentId: string }) => {
                 } else {
                     setNotes('');
                 }
+            }, (error) => {
+                 console.error("Error fetching notes:", error);
+                 toast({ variant: 'destructive', description: "Could not load your notes." });
             });
             return () => unsubscribe();
         }
-    }, [contentId, user]);
+    }, [contentId, user, toast]);
 
     const handleNotesChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
         setNotes(e.target.value);
@@ -267,7 +288,7 @@ const NotesSection = ({ contentId }: { contentId: string }) => {
         if (result.success) {
             toast({ description: 'Notes saved successfully.' });
         } else {
-            toast({ variant: 'destructive', description: 'Failed to save notes.' });
+            toast({ variant: 'destructive', description: result.error || 'Failed to save notes.' });
         }
         setIsSaving(false);
     };
@@ -296,6 +317,31 @@ export default function VideoPlaybackPage() {
     const contentId = params.contentId;
     
     const [contentDoc, loading, error] = useDocument(doc(firestore, 'courses', courseId, 'content', contentId));
+    const { user } = useAuth();
+    const { toast } = useToast();
+
+    const handleDownload = async () => {
+        if (!user || !contentDoc?.exists()) return;
+        const content = contentDoc.data();
+        if (getYoutubeVideoId(content.url)) {
+            toast({ variant: 'destructive', description: "YouTube videos cannot be downloaded." });
+            return;
+        }
+
+        try {
+            await addDoc(collection(firestore, 'userDownloads'), {
+                userId: user.uid,
+                title: content.title,
+                url: content.url,
+                type: 'Video',
+                savedAt: serverTimestamp()
+            });
+            toast({ description: "Added to your downloads." });
+        } catch (e) {
+            toast({ variant: 'destructive', description: "Failed to add to downloads." });
+        }
+    };
+
 
     if (loading) {
         return (
@@ -314,16 +360,28 @@ export default function VideoPlaybackPage() {
     }
     
     const content = contentDoc.data();
+    const canDownload = !getYoutubeVideoId(content.url);
+
 
     return (
         <div className="flex flex-col h-screen bg-background overflow-hidden">
-             <div className="w-full fixed top-0 left-0 right-0 z-10 md:pl-[var(--sidebar-width-icon)] group-data-[state=expanded]:md:pl-[var(--sidebar-width)]">
+             <div className="w-full">
                 <VideoPlayer videoUrl={content.url} />
             </div>
-            <div className="pt-[56.25vw] md:pt-0 flex-grow min-h-0 flex flex-col">
-                <div className="md:pt-[calc(56.25vw-3rem)] p-4 border-b">
-                    <h1 className="text-xl font-bold break-words">{content.title}</h1>
-                    {content.introduction && <p className="text-muted-foreground text-sm mt-1">{content.introduction}</p>}
+            <div className="flex-grow min-h-0 flex flex-col">
+                <div className="p-4 border-b">
+                     <div className="flex justify-between items-start">
+                        <div>
+                            <h1 className="text-xl font-bold break-words">{content.title}</h1>
+                            {content.introduction && <p className="text-muted-foreground text-sm mt-1">{content.introduction}</p>}
+                        </div>
+                         {canDownload && (
+                            <Button variant="outline" size="sm" onClick={handleDownload}>
+                                <Download className="mr-2 h-4 w-4" />
+                                Download
+                            </Button>
+                        )}
+                    </div>
                 </div>
                 <div className="flex-grow min-h-0">
                     <Tabs defaultValue="chat" className="w-full h-full flex flex-col">
@@ -343,5 +401,3 @@ export default function VideoPlaybackPage() {
         </div>
     );
 }
-
-    

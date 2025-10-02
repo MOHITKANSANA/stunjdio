@@ -1,4 +1,5 @@
 
+
 "use client"
 import React, { useEffect, useState } from 'react';
 import {
@@ -24,6 +25,7 @@ import {
   Youtube,
   Bot,
   Newspaper,
+  Clapperboard,
 } from 'lucide-react';
 
 import { useAuth } from '@/hooks/use-auth';
@@ -303,13 +305,13 @@ export default function DashboardLayout({
       <SidebarProvider>
           <div className="flex h-screen w-full flex-col bg-gray-50 dark:bg-gray-950">
              {isScreenLocked && <ScreenTimeLock />}
-             {!isVideoPage && <AppSidebar isKidsMode={isKidsMode} />}
-             <div className={cn("flex flex-col w-full h-full overflow-hidden", !isVideoPage && "md:pl-[var(--sidebar-width-icon)] group-data-[state=expanded]:md:pl-[var(--sidebar-width)]")}>
-                {!isVideoPage && <AppHeader />}
+             {!pathname.includes('/courses/') && !pathname.includes('/live-class/') && <AppSidebar isKidsMode={isKidsMode} />}
+             <div className={cn("flex flex-col w-full h-full overflow-hidden", !pathname.includes('/courses/') && !pathname.includes('/live-class/') && "md:pl-[var(--sidebar-width-icon)] group-data-[state=expanded]:md:pl-[var(--sidebar-width)]")}>
+                {!pathname.includes('/courses/') && !pathname.includes('/live-class/') && <AppHeader />}
                  <main className="flex-1 overflow-y-auto h-full">
                     <SidebarInset>
                         <div className={cn(
-                            !pathname.includes('/live-class/') && !isVideoPage && !pathname.includes('/kids/video/') && 'p-4 md:p-6'
+                             !pathname.includes('/live-class/') && !isVideoPage && !pathname.includes('/kids/video/') && 'p-4 md:p-6'
                         )}>
                             {children}
                         </div>
