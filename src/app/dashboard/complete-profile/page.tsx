@@ -24,6 +24,8 @@ import { Loader2, Upload, BookOpenCheck } from "lucide-react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { statesAndDistricts } from "@/lib/states-districts";
+import ReactCrop, { type Crop } from 'react-image-crop';
+import 'react-image-crop/dist/ReactCrop.css';
 
 const profileSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters." }),
@@ -32,13 +34,44 @@ const profileSchema = z.object({
   classOrExam: z.string().min(1, { message: "Please select your class or exam." }),
   board: z.string().min(1, { message: "Please select your board." }),
   ageGroup: z.string().min(1, { message: "Please select your age group." }),
-  photoFile: z.instanceof(File).optional(),
+  photoFile: z.any().optional(),
 });
 
 type ProfileFormValues = z.infer<typeof profileSchema>;
 
 const classOptions = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "SSC", "NDA", "CDS", "Army", "UPSC", "NTPC", "PCS"];
 const boardOptions = ["State Board", "CBSE", "ICSE", "Other"];
+
+// Function to get cropped image data URL
+function getCroppedImg(image: HTMLImageElement, crop: Crop, fileName: string): Promise<string> {
+    const canvas = document.createElement('canvas');
+    const scaleX = image.naturalWidth / image.width;
+    const scaleY = image.naturalHeight / image.height;
+    canvas.width = crop.width;
+    canvas.height = crop.height;
+    const ctx = canvas.getContext('2d');
+
+    if (!ctx) {
+        return Promise.reject(new Error('Canvas context is not available'));
+    }
+
+    ctx.drawImage(
+        image,
+        crop.x * scaleX,
+        crop.y * scaleY,
+        crop.width * scaleX,
+        crop.height * scaleY,
+        0,
+        0,
+        crop.width,
+        crop.height
+    );
+
+    return new Promise((resolve) => {
+        resolve(canvas.toDataURL('image/jpeg', 0.8)); // Use JPEG for better compression
+    });
+}
+
 
 export default function CompleteProfilePage() {
   const [isLoading, setIsLoading] = useState(false);
@@ -47,6 +80,10 @@ export default function CompleteProfilePage() {
   const { toast } = useToast();
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const imgRef = useRef<HTMLImageElement>(null);
+  const [crop, setCrop] = useState<Crop>();
+  const [croppedImageUrl, setCroppedImageUrl] = useState<string | null>(null);
+
 
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileSchema),
@@ -71,18 +108,19 @@ export default function CompleteProfilePage() {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
-      form.setValue("photoFile", file, { shouldValidate: true });
       setPreviewImage(URL.createObjectURL(file));
     }
   };
 
-  const fileToDataUrl = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result as string);
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
+  const makeClientCrop = async (crop: Crop) => {
+    if (imgRef.current && crop.width && crop.height) {
+        const cropped = await getCroppedImg(
+            imgRef.current,
+            crop,
+            'newFile.jpeg'
+        );
+        setCroppedImageUrl(cropped);
+    }
   };
 
   const onSubmit = async (data: ProfileFormValues) => {
@@ -91,8 +129,8 @@ export default function CompleteProfilePage() {
     try {
       let photoURL = user.photoURL;
       
-      if(data.photoFile) {
-          photoURL = await fileToDataUrl(data.photoFile);
+      if(croppedImageUrl) {
+          photoURL = croppedImageUrl;
       }
 
       await updateProfile(user, {
@@ -144,11 +182,11 @@ export default function CompleteProfilePage() {
           <CardContent className="space-y-4">
              <div className="flex flex-col items-center space-y-2">
                 <Avatar className="h-24 w-24">
-                    <AvatarImage src={previewImage || user?.photoURL || undefined} />
+                    <AvatarImage src={croppedImageUrl || user?.photoURL || undefined} />
                     <AvatarFallback><Upload /></AvatarFallback>
                 </Avatar>
                 <Button type="button" size="sm" variant="outline" onClick={() => fileInputRef.current?.click()}>
-                    Upload Photo (Optional)
+                    Upload Photo
                 </Button>
                 <input
                     type="file"
@@ -157,6 +195,19 @@ export default function CompleteProfilePage() {
                     className="hidden"
                     accept="image/png, image/jpeg"
                 />
+                 {previewImage && (
+                    <div className="mt-4">
+                        <p className="text-center text-sm text-muted-foreground">Crop your image</p>
+                        <ReactCrop
+                            crop={crop}
+                            onChange={c => setCrop(c)}
+                            onComplete={makeClientCrop}
+                            aspect={1}
+                        >
+                            <img ref={imgRef} src={previewImage} alt="Crop preview" />
+                        </ReactCrop>
+                    </div>
+                )}
             </div>
             <div className="space-y-2">
               <Label htmlFor="name">Full Name</Label>

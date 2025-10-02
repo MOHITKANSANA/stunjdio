@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -16,6 +16,9 @@ import { useAuth } from '@/hooks/use-auth';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useCollection } from 'react-firebase-hooks/firestore';
+import ReactCrop, { type Crop } from 'react-image-crop';
+import 'react-image-crop/dist/ReactCrop.css';
+
 
 const applyFormSchema = z.object({
     name: z.string().min(2, 'Name is required.'),
@@ -24,8 +27,8 @@ const applyFormSchema = z.object({
     address: z.string().min(5, 'Address is required.'),
     scholarshipType: z.string().min(1, 'Please select a scholarship type.'),
     courseId: z.string().optional(),
-    photo: z.instanceof(File).optional(),
-    signature: z.instanceof(File).optional(),
+    photo: z.any().optional(),
+    signature: z.any().optional(),
 }).refine(data => {
     if (data.scholarshipType === 'Specific Course' && !data.courseId) {
         return false;
@@ -47,14 +50,34 @@ const STEPS = {
   SUCCESS: 5,
 };
 
-const fileToDataUrl = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result as string);
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
+function getCroppedImg(image: HTMLImageElement, crop: Crop, fileName: string): Promise<string> {
+    const canvas = document.createElement('canvas');
+    const scaleX = image.naturalWidth / image.width;
+    const scaleY = image.naturalHeight / image.height;
+    canvas.width = crop.width;
+    canvas.height = crop.height;
+    const ctx = canvas.getContext('2d');
+
+    if (!ctx) {
+        return Promise.reject(new Error('Canvas context is not available'));
+    }
+
+    ctx.drawImage(
+        image,
+        crop.x * scaleX,
+        crop.y * scaleY,
+        crop.width * scaleX,
+        crop.height * scaleY,
+        0,
+        0,
+        crop.width,
+        crop.height
+    );
+
+    return new Promise((resolve) => {
+        resolve(canvas.toDataURL('image/jpeg', 0.8));
     });
-};
+}
 
 
 export function ApplyForm({ onFormSubmit }: { onFormSubmit: () => void }) {
@@ -67,6 +90,17 @@ export function ApplyForm({ onFormSubmit }: { onFormSubmit: () => void }) {
     const [coursesCollection, coursesLoading] = useCollection(
         query(collection(firestore, 'courses'), orderBy('title', 'asc'))
     );
+
+    const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+    const photoImgRef = useRef<HTMLImageElement>(null);
+    const [photoCrop, setPhotoCrop] = useState<Crop>();
+    const [croppedPhoto, setCroppedPhoto] = useState<string | null>(null);
+
+    const [signaturePreview, setSignaturePreview] = useState<string | null>(null);
+    const signatureImgRef = useRef<HTMLImageElement>(null);
+    const [signatureCrop, setSignatureCrop] = useState<Crop>();
+    const [croppedSignature, setCroppedSignature] = useState<string | null>(null);
+
     
     const form = useForm<ApplyFormValues>({
         resolver: zodResolver(applyFormSchema),
@@ -83,6 +117,17 @@ export function ApplyForm({ onFormSubmit }: { onFormSubmit: () => void }) {
     const scholarshipType = form.watch('scholarshipType');
     const formData = form.watch();
 
+    const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files[0]) {
+            setPhotoPreview(URL.createObjectURL(e.target.files[0]));
+        }
+    };
+    const handleSignatureChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files[0]) {
+            setSignaturePreview(URL.createObjectURL(e.target.files[0]));
+        }
+    };
+
     const handleNext = async () => {
         let isValid = false;
         if (step === STEPS.PERSONAL_DETAILS) {
@@ -90,7 +135,14 @@ export function ApplyForm({ onFormSubmit }: { onFormSubmit: () => void }) {
         } else if (step === STEPS.SCHOLARSHIP_CHOICE) {
             isValid = await form.trigger(['scholarshipType', 'courseId']);
         } else if (step === STEPS.UPLOADS) {
-            // Uploads are optional, so we can always proceed.
+            if (photoImgRef.current && photoCrop) {
+                const cropped = await getCroppedImg(photoImgRef.current, photoCrop, 'photo.jpeg');
+                setCroppedPhoto(cropped);
+            }
+             if (signatureImgRef.current && signatureCrop) {
+                const cropped = await getCroppedImg(signatureImgRef.current, signatureCrop, 'signature.jpeg');
+                setCroppedSignature(cropped);
+            }
             isValid = true;
         }
         
@@ -117,9 +169,6 @@ export function ApplyForm({ onFormSubmit }: { onFormSubmit: () => void }) {
         try {
             const appNumber = String(Math.floor(10000 + Math.random() * 90000));
             
-            const photoUrl = data.photo ? await fileToDataUrl(data.photo) : null;
-            const signatureUrl = data.signature ? await fileToDataUrl(data.signature) : null;
-
             await addDoc(collection(firestore, 'scholarshipApplications'), {
                 userId: user.uid,
                 applicationNumber: appNumber,
@@ -130,16 +179,16 @@ export function ApplyForm({ onFormSubmit }: { onFormSubmit: () => void }) {
                 scholarshipType: data.scholarshipType,
                 courseId: data.courseId || null,
                 courseTitle: getCourseTitle(data.courseId),
-                photoUrl,
-                signatureUrl,
-                status: 'applied', // Initial status
+                photoUrl: croppedPhoto,
+                signatureUrl: croppedSignature,
+                status: 'applied',
                 resultStatus: 'pending',
                 appliedAt: serverTimestamp(),
             });
             
             setApplicationNumber(appNumber);
             setStep(STEPS.SUCCESS);
-            onFormSubmit(); // Notify parent to refresh
+            onFormSubmit();
 
         } catch (error) {
             console.error("Application submission error:", error);
@@ -239,21 +288,29 @@ export function ApplyForm({ onFormSubmit }: { onFormSubmit: () => void }) {
                 );
             case STEPS.UPLOADS:
                 return (
-                    <>
-                        <FormField control={form.control} name="photo" render={({ field: { onChange, value, ...rest } }) => (
-                            <FormItem>
-                                <FormLabel>Your Photo</FormLabel>
-                                <FormControl><Input type="file" accept="image/*" onChange={(e) => onChange(e.target.files?.[0])} {...rest} /></FormControl>
-                                <FormMessage />
-                            </FormItem>
-                        )} />
-                        <FormField control={form.control} name="signature" render={({ field: { onChange, value, ...rest } }) => (
-                            <FormItem>
-                                <FormLabel>Your Signature</FormLabel>
-                                <FormControl><Input type="file" accept="image/*" onChange={(e) => onChange(e.target.files?.[0])} {...rest} /></FormControl>
-                                <FormMessage />
-                            </FormItem>
-                        )} />
+                    <div className="space-y-6">
+                        <div>
+                            <FormLabel>Your Photo (Optional)</FormLabel>
+                            <Input type="file" accept="image/*" onChange={handlePhotoChange} />
+                            {photoPreview && (
+                                <div className="mt-2">
+                                <ReactCrop crop={photoCrop} onChange={c => setPhotoCrop(c)} aspect={1}>
+                                    <img ref={photoImgRef} src={photoPreview} alt="Photo Preview"/>
+                                </ReactCrop>
+                                </div>
+                            )}
+                        </div>
+                         <div>
+                            <FormLabel>Your Signature (Optional)</FormLabel>
+                            <Input type="file" accept="image/*" onChange={handleSignatureChange} />
+                            {signaturePreview && (
+                                <div className="mt-2">
+                                <ReactCrop crop={signatureCrop} onChange={c => setSignatureCrop(c)} aspect={2}>
+                                    <img ref={signatureImgRef} src={signaturePreview} alt="Signature Preview" />
+                                </ReactCrop>
+                                </div>
+                            )}
+                        </div>
                     </>
                 );
             case STEPS.CONFIRMATION_REVIEW:
@@ -272,8 +329,8 @@ export function ApplyForm({ onFormSubmit }: { onFormSubmit: () => void }) {
                         )}
                         <hr />
                         <h4 className="font-semibold">Uploads</h4>
-                        <p><span className="font-medium">Photo:</span> {formData.photo?.name || 'Not provided'}</p>
-                        <p><span className="font-medium">Signature:</span> {formData.signature?.name || 'Not provided'}</p>
+                        <p><span className="font-medium">Photo:</span> {croppedPhoto ? 'Provided' : 'Not provided'}</p>
+                        <p><span className="font-medium">Signature:</span> {croppedSignature ? 'Provided' : 'Not provided'}</p>
                     </div>
                 );
             default:
