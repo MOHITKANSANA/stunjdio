@@ -30,13 +30,9 @@ const courseSchema = z.object({
   description: z.string().min(10, 'Description is required.'),
   price: z.coerce.number().min(0, 'Price must be a positive number.'),
   validity: z.coerce.number().min(1, 'Validity must be at least 1 day.'),
-  imageUrl: z.string().optional(),
-  imageFile: z.any().optional(),
+  imageFile: z.any().refine(file => file, 'An uploaded image is required.'),
   isFree: z.boolean().default(false),
   content: z.array(contentSchema).optional(),
-}).refine(data => data.imageUrl || data.imageFile, {
-    message: "Image URL or an uploaded image is required.",
-    path: ["imageFile"],
 });
 
 
@@ -65,7 +61,6 @@ export function AddCourseForm() {
       description: '',
       price: 0,
       validity: 365,
-      imageUrl: '',
       isFree: false,
       content: [],
     },
@@ -81,7 +76,6 @@ export function AddCourseForm() {
       const file = e.target.files[0];
       form.setValue('imageFile', file);
       setImagePreview(URL.createObjectURL(file));
-      form.setValue('imageUrl', ''); // Clear URL if file is selected
     }
   };
 
@@ -89,10 +83,7 @@ export function AddCourseForm() {
   const onSubmit = async (data: CourseFormValues) => {
     setIsLoading(true);
     try {
-      let imageUrl = data.imageUrl;
-      if (data.imageFile) {
-        imageUrl = await fileToDataUrl(data.imageFile);
-      }
+      const imageUrl = await fileToDataUrl(data.imageFile);
 
       const courseCollection = collection(firestore, 'courses');
       const courseRef = await addDoc(courseCollection, {
@@ -155,7 +146,7 @@ export function AddCourseForm() {
             <FormItem>
               <FormLabel>Course Image</FormLabel>
               <FormControl>
-                <>
+                <div>
                   <Button type="button" variant="outline" className="w-full" onClick={() => fileInputRef.current?.click()}>
                     <Upload className="mr-2 h-4 w-4" />
                     {imagePreview ? 'Change Image' : 'Upload Image'}
@@ -167,7 +158,7 @@ export function AddCourseForm() {
                     className="hidden"
                     accept="image/*"
                   />
-                </>
+                </div>
               </FormControl>
               {imagePreview && <Image src={imagePreview} alt="Image preview" width={100} height={100} className="mt-2 rounded-md" />}
               <FormMessage />
