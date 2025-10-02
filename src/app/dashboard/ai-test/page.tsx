@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, Suspense, useEffect, useRef } from 'react';
@@ -233,14 +234,7 @@ function AiTestPageContent() {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
 
   const { user } = useAuth();
-  const searchParams = useSearchParams();
-  const router = useRouter();
-  const initialTab = searchParams.get('tab') || 'ai';
   
-  const [testSeriesCollection, testSeriesLoading] = useCollection(
-      query(collection(firestore, 'testSeries'), orderBy('createdAt', 'desc'))
-  );
-
   const answeringForm = useForm<{ answers: { question: string; selectedIndex?: string }[] }>({
      defaultValues: { answers: [] }
   });
@@ -308,10 +302,6 @@ function AiTestPageContent() {
     if (currentQuestionIndex > 0) {
       setCurrentQuestionIndex(prev => prev - 1);
     }
-  };
-
-  const onTabChange = (value: string) => {
-    router.push(`/dashboard/ai-test?tab=${value}`);
   };
 
 
@@ -440,46 +430,7 @@ function AiTestPageContent() {
 
   return (
     <div className="max-w-2xl mx-auto space-y-6 p-4">
-      <Tabs defaultValue={initialTab} onValueChange={onTabChange}>
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="ai">AI Generated Tests</TabsTrigger>
-          <TabsTrigger value="series">Practice Test Series</TabsTrigger>
-        </TabsList>
-        <TabsContent value="ai" className="mt-4">
-            <AiTestGenerator onTestGenerated={onTestGenerated} />
-        </TabsContent>
-        <TabsContent value="series">
-            <Card className="shadow-lg border-border/60 mt-4">
-                 <CardHeader>
-                    <CardTitle>Test Series</CardTitle>
-                    <CardDescription>
-                        Select a test from our curated series to practice.
-                    </CardDescription>
-                </CardHeader>
-                <CardContent>
-                   {testSeriesLoading ? (
-                       <p>Loading test series...</p>
-                   ) : testSeriesCollection && !testSeriesCollection.empty ? (
-                        <div className="space-y-4">
-                            {testSeriesCollection.docs.map(doc => (
-                                <Link key={doc.id} href={`/dashboard/test-series/${doc.id}`}>
-                                    <div className="p-4 border rounded-lg hover:bg-muted transition-colors">
-                                        <h3 className="font-semibold">{doc.data().title}</h3>
-                                        <p className="text-sm text-muted-foreground">{doc.data().subject}</p>
-                                    </div>
-                                </Link>
-                            ))}
-                        </div>
-                   ) : (
-                        <div className="text-center p-8 text-muted-foreground">
-                            <FileText className="mx-auto h-12 w-12" />
-                            <p className="mt-4">No practice test series available yet.</p>
-                        </div>
-                   )}
-                </CardContent>
-            </Card>
-        </TabsContent>
-      </Tabs>
+        <AiTestGenerator onTestGenerated={onTestGenerated} />
     </div>
   );
 }
@@ -491,5 +442,3 @@ export default function AiTestPage() {
         </Suspense>
     )
 }
-
-    

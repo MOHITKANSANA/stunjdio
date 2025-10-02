@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState } from 'react';
@@ -14,6 +13,7 @@ import { firestore } from '@/lib/firebase';
 import { Loader2, PlusCircle, Trash2 } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Checkbox } from '@/components/ui/checkbox';
 
 const questionSchema = z.object({
   text: z.string().min(1, 'Question text is required.'),
@@ -25,6 +25,8 @@ const testSeriesSchema = z.object({
   title: z.string().min(1, 'Title is required.'),
   subject: z.string().min(1, 'Subject is required.'),
   questions: z.array(questionSchema).min(1, 'Add at least one question.'),
+  price: z.coerce.number().min(0).default(0),
+  isFree: z.boolean().default(false),
 });
 
 type TestSeriesFormValues = z.infer<typeof testSeriesSchema>;
@@ -40,6 +42,8 @@ const jsonTestSchema = z.object({
             return false;
         }
     }, { message: "Invalid JSON format or doesn't match question schema." }),
+    price: z.coerce.number().min(0).default(0),
+    isFree: z.boolean().default(false),
 });
 type JsonTestFormValues = z.infer<typeof jsonTestSchema>;
 
@@ -54,6 +58,8 @@ export function AddTestSeriesForm() {
       title: '',
       subject: '',
       questions: [],
+      price: 0,
+      isFree: true,
     },
   });
 
@@ -63,6 +69,8 @@ export function AddTestSeriesForm() {
         title: '',
         subject: '',
         jsonContent: '',
+        price: 0,
+        isFree: true,
     }
   });
 
@@ -96,6 +104,8 @@ export function AddTestSeriesForm() {
             title: data.title,
             subject: data.subject,
             questions: questions,
+            price: data.price,
+            isFree: data.isFree,
             createdAt: serverTimestamp(),
         });
         toast({ title: 'Success', description: 'Test Series added from JSON successfully.' });
@@ -122,6 +132,17 @@ export function AddTestSeriesForm() {
                 )} />
                 <FormField control={manualForm.control} name="subject" render={({ field }) => (
                 <FormItem><FormLabel>Subject</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+                )} />
+                 <FormField control={manualForm.control} name="price" render={({ field }) => (
+                  <FormItem><FormLabel>Price</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>
+                )} />
+                <FormField control={manualForm.control} name="isFree" render={({ field }) => (
+                    <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                        <FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl>
+                        <div className="space-y-1 leading-none">
+                            <FormLabel>Is this a free test series?</FormLabel>
+                        </div>
+                    </FormItem>
                 )} />
                 
                 <div className="space-y-4">
@@ -160,6 +181,17 @@ export function AddTestSeriesForm() {
                     )} />
                     <FormField control={jsonForm.control} name="subject" render={({ field }) => (
                         <FormItem><FormLabel>Subject</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+                    )} />
+                     <FormField control={jsonForm.control} name="price" render={({ field }) => (
+                        <FormItem><FormLabel>Price</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>
+                    )} />
+                    <FormField control={jsonForm.control} name="isFree" render={({ field }) => (
+                        <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                            <FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl>
+                            <div className="space-y-1 leading-none">
+                                <FormLabel>Is this a free test series?</FormLabel>
+                            </div>
+                        </FormItem>
                     )} />
                      <FormField control={jsonForm.control} name="jsonContent" render={({ field }) => (
                         <FormItem><FormLabel>Questions (JSON format)</FormLabel><FormControl><Textarea className="min-h-[200px]" {...field} /></FormControl><FormMessage /></FormItem>

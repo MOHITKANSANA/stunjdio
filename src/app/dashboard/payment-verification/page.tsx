@@ -44,16 +44,19 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 const verificationFormSchema = z.object({
   enrollmentType: z.string().min(1, 'Please select an enrollment type.'),
-  courseId: z.string().optional(),
+  courseId: z.string().optional(), // Can be for a course or a test series
   couponCode: z.string().optional(),
   screenshotFile: z.instanceof(File, { message: 'A screenshot is required.' }),
 }).refine(data => {
     if (data.enrollmentType === 'Course Enrollment' && !data.courseId) {
         return false;
     }
+    if (data.enrollmentType === 'Test Series' && !data.courseId) {
+        return false;
+    }
     return true;
 }, {
-    message: 'Please select a course.',
+    message: 'Please select an item.',
     path: ['courseId'],
 });
 
@@ -65,6 +68,7 @@ function PaymentVerificationPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const preselectedCourseId = searchParams.get('courseId');
+  const preselectedTestSeriesId = searchParams.get('testSeriesId');
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
@@ -72,9 +76,13 @@ function PaymentVerificationPageContent() {
   const [couponStatus, setCouponStatus] = useState<'idle' | 'loading' | 'valid' | 'invalid'>('idle');
   const [discountInfo, setDiscountInfo] = useState<{ originalPrice: number, discount: number, newPrice: number } | null>(null);
   
-  const [coursesCollection, coursesLoading, coursesError] = useCollection(
+  const [coursesCollection, coursesLoading] = useCollection(
     query(collection(firestore, 'courses'), where('isFree', '==', false), orderBy('title', 'asc'))
   );
+  const [testSeriesCollection, testSeriesLoading] = useCollection(
+    query(collection(firestore, 'testSeries'), where('isFree', '==', false), orderBy('title', 'asc'))
+  );
+
   const [qrCodeDoc] = useCollection(collection(firestore, 'settings'));
   const qrCodeUrl = qrCodeDoc?.docs.find(d => d.id === 'paymentQrCode')?.data().url;
 
@@ -82,19 +90,22 @@ function PaymentVerificationPageContent() {
   const form = useForm<VerificationFormValues>({
     resolver: zodResolver(verificationFormSchema),
     defaultValues: {
-      enrollmentType: preselectedCourseId ? 'Course Enrollment' : '',
-      courseId: preselectedCourseId || '',
+      enrollmentType: preselectedCourseId ? 'Course Enrollment' : (preselectedTestSeriesId ? 'Test Series' : ''),
+      courseId: preselectedCourseId || preselectedTestSeriesId || '',
       couponCode: '',
       screenshotFile: undefined,
     },
   });
 
   const enrollmentType = form.watch('enrollmentType');
-  const selectedCourseId = form.watch('courseId');
+  const selectedItemId = form.watch('courseId');
   const enteredCouponCode = form.watch('couponCode');
   
-  const courseDocRef = selectedCourseId ? doc(firestore, 'courses', selectedCourseId) : null;
-  const [courseData, courseDataLoading] = useDocumentData(courseDocRef);
+  const itemDocRef = selectedItemId && enrollmentType
+    ? doc(firestore, enrollmentType === 'Course Enrollment' ? 'courses' : 'testSeries', selectedItemId) 
+    : null;
+
+  const [itemData, itemDataLoading] = useDocumentData(itemDocRef);
 
 
   useEffect(() => {
@@ -102,17 +113,21 @@ function PaymentVerificationPageContent() {
       form.setValue('enrollmentType', 'Course Enrollment');
       form.setValue('courseId', preselectedCourseId);
     }
-  }, [preselectedCourseId, form]);
+     if (preselectedTestSeriesId) {
+      form.setValue('enrollmentType', 'Test Series');
+      form.setValue('courseId', preselectedTestSeriesId);
+    }
+  }, [preselectedCourseId, preselectedTestSeriesId, form]);
 
   const handleApplyCoupon = async () => {
-    if (!enteredCouponCode || !selectedCourseId || !courseData) return;
+    if (!enteredCouponCode || !selectedItemId || !itemData) return;
     setCouponStatus('loading');
     setDiscountInfo(null);
     try {
         const q = query(
             collection(firestore, 'coupons'),
             where('code', '==', enteredCouponCode.toUpperCase()),
-            where('courseId', '==', selectedCourseId),
+            where('courseId', '==', selectedItemId), // Assuming coupons are tied to courses/tests by ID
             where('isActive', '==', true)
         );
         const couponSnapshot = await getDocs(q);
@@ -129,7 +144,7 @@ function PaymentVerificationPageContent() {
             return;
         }
         
-        const originalPrice = courseData.price;
+        const originalPrice = itemData.price;
         let discount = 0;
 
         if (coupon.discountType === 'percentage') {
@@ -149,7 +164,7 @@ function PaymentVerificationPageContent() {
     }
   };
 
-  if (authLoading || coursesLoading) {
+  if (authLoading || coursesLoading || testSeriesLoading) {
     return (
       <div className="max-w-xl mx-auto p-4 md:p-8">
         <Skeleton className="h-96 w-full" />
@@ -179,11 +194,14 @@ function PaymentVerificationPageContent() {
   };
 
   const getEnrollmentTitle = (data: VerificationFormValues) => {
+    let collection;
     if (data.enrollmentType === 'Course Enrollment') {
-        const selectedCourse = coursesCollection?.docs.find(doc => doc.id === data.courseId);
-        return selectedCourse?.data().title || 'Unknown Course';
+        collection = coursesCollection;
+    } else if (data.enrollmentType === 'Test Series') {
+        collection = testSeriesCollection;
     }
-    return data.enrollmentType;
+    const selectedItem = collection?.docs.find(doc => doc.id === data.courseId);
+    return selectedItem?.data().title || 'Unknown Item';
   }
 
   const onSubmit = async (data: VerificationFormValues) => {
@@ -248,7 +266,6 @@ function PaymentVerificationPageContent() {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="Full App Upgrade">Full App Upgrade</SelectItem>
                           <SelectItem value="Course Enrollment">Course Enrollment</SelectItem>
                           <SelectItem value="Test Series">Test Series</SelectItem>
                         </SelectContent>
@@ -259,7 +276,6 @@ function PaymentVerificationPageContent() {
                 />
 
                 {enrollmentType === 'Course Enrollment' && (
-                  <>
                     <FormField
                       control={form.control}
                       name="courseId"
@@ -273,7 +289,6 @@ function PaymentVerificationPageContent() {
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              {coursesError && <p className='p-2 text-xs text-destructive'>Could not load courses.</p>}
                               {coursesCollection?.docs.map(doc => (
                                   <SelectItem key={doc.id} value={doc.id}>{doc.data().title}</SelectItem>
                               ))}
@@ -283,55 +298,79 @@ function PaymentVerificationPageContent() {
                         </FormItem>
                       )}
                     />
-                    {courseData && (
-                        <Card className='bg-muted/50'>
-                            <CardContent className='p-4 space-y-3'>
-                                <div className="flex justify-between items-center">
-                                    <h4 className="font-semibold">Price Details</h4>
-                                    <p className="font-bold text-xl">₹{discountInfo ? discountInfo.newPrice.toFixed(2) : courseData.price.toFixed(2)}</p>
-                                </div>
-                                {discountInfo && (
-                                    <>
-                                        <div className="flex justify-between items-center text-sm text-muted-foreground">
-                                            <span>Original Price</span>
-                                            <span className='line-through'>₹{discountInfo.originalPrice.toFixed(2)}</span>
-                                        </div>
-                                         <div className="flex justify-between items-center text-sm text-green-600 font-medium">
-                                            <span>Discount</span>
-                                            <span>- ₹{discountInfo.discount.toFixed(2)}</span>
-                                        </div>
-                                    </>
-                                )}
-                                 <div className="flex gap-2">
-                                    <FormField
-                                        control={form.control}
-                                        name="couponCode"
-                                        render={({ field }) => (
-                                            <FormItem className='flex-grow'>
-                                                <FormControl>
-                                                    <div className="relative">
-                                                        <Ticket className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                                        <Input placeholder="Enter coupon code" className="pl-10" {...field} />
-                                                    </div>
-                                                </FormControl>
-                                            </FormItem>
-                                        )}
-                                    />
-                                    <Button type="button" onClick={handleApplyCoupon} disabled={!enteredCouponCode || couponStatus === 'loading'}>
-                                        {couponStatus === 'loading' ? <Loader2 className="h-4 w-4 animate-spin"/> : 'Apply'}
-                                    </Button>
-                                </div>
-                                {couponStatus === 'valid' && (
-                                    <Alert variant="default" className="border-green-500 text-green-700 [&>svg]:text-green-700">
-                                        <CheckCircle className="h-4 w-4" />
-                                        <AlertTitle>Coupon Applied!</AlertTitle>
-                                        <AlertDescription>Your discount has been applied to the total price.</AlertDescription>
-                                    </Alert>
-                                )}
-                            </CardContent>
-                        </Card>
-                    )}
-                  </>
+                )}
+                 {enrollmentType === 'Test Series' && (
+                    <FormField
+                      control={form.control}
+                      name="courseId"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Select Test Series</FormLabel>
+                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select a test series" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {testSeriesCollection?.docs.map(doc => (
+                                  <SelectItem key={doc.id} value={doc.id}>{doc.data().title}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                )}
+
+                {itemData && (
+                    <Card className='bg-muted/50'>
+                        <CardContent className='p-4 space-y-3'>
+                            <div className="flex justify-between items-center">
+                                <h4 className="font-semibold">Price Details</h4>
+                                <p className="font-bold text-xl">₹{discountInfo ? discountInfo.newPrice.toFixed(2) : itemData.price.toFixed(2)}</p>
+                            </div>
+                            {discountInfo && (
+                                <>
+                                    <div className="flex justify-between items-center text-sm text-muted-foreground">
+                                        <span>Original Price</span>
+                                        <span className='line-through'>₹{discountInfo.originalPrice.toFixed(2)}</span>
+                                    </div>
+                                     <div className="flex justify-between items-center text-sm text-green-600 font-medium">
+                                        <span>Discount</span>
+                                        <span>- ₹{discountInfo.discount.toFixed(2)}</span>
+                                    </div>
+                                </>
+                            )}
+                             <div className="flex gap-2">
+                                <FormField
+                                    control={form.control}
+                                    name="couponCode"
+                                    render={({ field }) => (
+                                        <FormItem className='flex-grow'>
+                                            <FormControl>
+                                                <div className="relative">
+                                                    <Ticket className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                                    <Input placeholder="Enter coupon code" className="pl-10" {...field} />
+                                                </div>
+                                            </FormControl>
+                                        </FormItem>
+                                    )}
+                                />
+                                <Button type="button" onClick={handleApplyCoupon} disabled={!enteredCouponCode || couponStatus === 'loading'}>
+                                    {couponStatus === 'loading' ? <Loader2 className="h-4 w-4 animate-spin"/> : 'Apply'}
+                                </Button>
+                            </div>
+                            {couponStatus === 'valid' && (
+                                <Alert variant="default" className="border-green-500 text-green-700 [&>svg]:text-green-700">
+                                    <CheckCircle className="h-4 w-4" />
+                                    <AlertTitle>Coupon Applied!</AlertTitle>
+                                    <AlertDescription>Your discount has been applied to the total price.</AlertDescription>
+                                </Alert>
+                            )}
+                        </CardContent>
+                    </Card>
                 )}
                 
                 <FormField
@@ -402,4 +441,3 @@ export default function PaymentVerificationPage() {
 }
 
     
-

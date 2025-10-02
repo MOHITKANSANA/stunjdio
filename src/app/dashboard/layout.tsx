@@ -27,6 +27,7 @@ import {
   Newspaper,
   Clapperboard,
   FileCode,
+  FlaskConical,
 } from 'lucide-react';
 
 import { useAuth } from '@/hooks/use-auth';
@@ -67,7 +68,7 @@ const sidebarNavItems = [
     { href: '/dashboard/scholarship', icon: Award, label: 'scholarship' },
     { href: '/dashboard/papers', icon: Newspaper, label: 'Previous Papers' },
     { href: '/dashboard/tutor', icon: Bot, label: 'AI Tutor' },
-    { href: '/dashboard/ai-test', icon: ShieldQuestion, label: 'ai_tests' },
+    { href: '/dashboard/tests', icon: ShieldQuestion, label: 'ai_tests' },
 ];
 
 const kidsSidebarNavItems = [
@@ -207,8 +208,13 @@ const AppHeader = () => {
                 <div className='md:hidden'>
                     <SidebarTrigger />
                 </div>
-                 <div className="hidden md:flex items-center gap-2 text-lg font-semibold font-headline">
-                    Go Swami Coaching
+                 <div className="hidden md:flex items-center gap-4 text-lg font-semibold font-headline">
+                    <Link href="/dashboard">
+                        <Button className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-bold">Go Swami X</Button>
+                    </Link>
+                     <Link href="/dashboard/tests">
+                        <Button className="bg-gradient-to-r from-green-500 to-teal-600 hover:from-green-600 hover:to-teal-700 text-white font-bold">Test Hub</Button>
+                    </Link>
                  </div>
             </div>
             <div className="flex items-center gap-2">

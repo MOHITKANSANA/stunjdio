@@ -1,4 +1,3 @@
-
 'use client';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,6 +14,7 @@ import { AddKidsVideoForm } from "./_components/add-kids-video-form";
 import { AddContentToCourseForm } from "./_components/add-content-to-course-form";
 import { HtmlEditor } from "./_components/html-editor";
 import { AddEducatorForm } from "./_components/add-educator-form";
+import { ManageTestSeriesEnrollments } from "./_components/manage-test-series-enrollment";
 
 
 export default function AdminPage() {
@@ -27,9 +27,10 @@ export default function AdminPage() {
             </div>
             
              <Tabs defaultValue="content" className="w-full">
-                <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+                <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-6">
                     <TabsTrigger value="content">Content</TabsTrigger>
-                    <TabsTrigger value="enrollments">Enrollments</TabsTrigger>
+                    <TabsTrigger value="course_enrollments">Course Enrollments</TabsTrigger>
+                    <TabsTrigger value="test_enrollments">Test Enrollments</TabsTrigger>
                     <TabsTrigger value="scholarships">Scholarships</TabsTrigger>
                     <TabsTrigger value="kids_tube">Kids Tube</TabsTrigger>
                     <TabsTrigger value="html_editor">HTML Editor</TabsTrigger>
@@ -72,14 +73,26 @@ export default function AdminPage() {
                     </div>
                 </TabsContent>
 
-                <TabsContent value="enrollments" className="mt-6">
+                <TabsContent value="course_enrollments" className="mt-6">
                     <Card>
                         <CardHeader>
-                            <CardTitle>Manage Enrollments</CardTitle>
+                            <CardTitle>Manage Course Enrollments</CardTitle>
                             <CardDescription>Approve or reject student course enrollment requests.</CardDescription>
                         </CardHeader>
                         <CardContent>
                             <ManageEnrollments />
+                        </CardContent>
+                    </Card>
+                </TabsContent>
+
+                <TabsContent value="test_enrollments" className="mt-6">
+                     <Card>
+                        <CardHeader>
+                            <CardTitle>Manage Test Series Enrollments</CardTitle>
+                            <CardDescription>Approve or reject student test series enrollment requests.</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <ManageTestSeriesEnrollments />
                         </CardContent>
                     </Card>
                 </TabsContent>
