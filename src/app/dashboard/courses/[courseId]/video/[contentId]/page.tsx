@@ -99,40 +99,38 @@ const VideoPlayer = ({ videoUrl }: { videoUrl: string }) => {
     } else if (videoUrl?.match(/\.(mp4|webm|ogg)$/i) || isSupabaseLink) {
         embedUrl = videoUrl;
         type = 'direct';
+    } else {
+        embedUrl = videoUrl;
     }
 
-    if (type === 'youtube' || type === 'zoho' || type === 'googledrive') {
+    if (type === 'youtube' || type === 'zoho' || type === 'googledrive' || type === 'direct') {
         return (
-            <div className="w-full aspect-video">
-                <iframe
-                    width="100%"
-                    height="100%"
-                    src={embedUrl!}
-                    title="Course Video Player"
-                    frameBorder="0"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                    allowFullScreen
-                    className="rounded-lg"
-                ></iframe>
+            <div className="w-full aspect-video bg-black rounded-lg">
+                {type === 'direct' ? (
+                     <video
+                        controls
+                        autoPlay
+                        src={embedUrl}
+                        className="w-full h-full rounded-lg"
+                    >
+                        Your browser does not support the video tag.
+                    </video>
+                ) : (
+                    <iframe
+                        width="100%"
+                        height="100%"
+                        src={embedUrl}
+                        title="Course Video Player"
+                        frameBorder="0"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                        allowFullScreen
+                        className="rounded-lg"
+                    ></iframe>
+                )}
             </div>
         );
     }
     
-    if (type === 'direct') {
-        return (
-             <div className="w-full aspect-video bg-black rounded-lg">
-                <video
-                    controls
-                    autoPlay
-                    src={embedUrl!}
-                    className="w-full h-full rounded-lg"
-                >
-                    Your browser does not support the video tag.
-                </video>
-            </div>
-        )
-    }
-
     return (
         <div className="w-full aspect-video bg-black text-white flex items-center justify-center rounded-lg">
             <p>Unsupported video URL. Please check the link format.</p>
