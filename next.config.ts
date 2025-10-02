@@ -32,6 +32,12 @@ const nextConfig: NextConfig = {
         hostname: 'i.postimg.cc',
         port: '',
         pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'workdrive.zoho.in',
+        port: '',
+        pathname: '/**',
       }
     ],
   },
