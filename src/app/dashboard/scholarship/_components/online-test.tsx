@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Upload } from 'lucide-react';
-import { collection, query, where, getDocs, addDoc, serverTimestamp, orderBy, updateDoc, doc } from 'firebase/firestore';
+import { collection, query, where, getDocs, addDoc, serverTimestamp, orderBy, updateDoc, doc, getDoc } from 'firebase/firestore';
 import { firestore } from '@/lib/firebase';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -46,17 +46,19 @@ const fileToDataUrl = (file: File): Promise<string> => {
     });
 };
 
-export function OnlineTest() {
+export function OnlineTest({ settings }: { settings: any }) {
     const { toast } = useToast();
     const [isLoading, setIsLoading] = useState(false);
     const [applicant, setApplicant] = useState<any>(null);
     const [stage, setStage] = useState<'verify' | 'payment' | 'pending_approval' | 'test' | 'submitted'>('verify');
     
     const [questionsCollection, questionsLoading] = useCollection(
-        query(collection(firestore, 'scholarshipTest'), orderBy('createdAt', 'asc'))
+        query(doc(firestore, 'settings', 'scholarshipTest'))
     );
-     const [qrCodeDoc, qrCodeLoading] = useCollection(collection(firestore, 'settings'));
-     const qrCodeUrl = qrCodeDoc?.docs.find(d => d.id === 'paymentQrCode')?.data().url;
+    const questions = questionsCollection?.data()?.questions;
+
+    const [qrCodeDoc, qrCodeLoading] = useCollection(collection(firestore, 'settings'));
+    const qrCodeUrl = qrCodeDoc?.docs.find(d => d.id === 'paymentQrCode')?.data().url;
 
     const regForm = useForm<RegFormValues>({ resolver: zodResolver(regSchema) });
     const paymentForm = useForm<PaymentFormValues>({ 
@@ -86,15 +88,19 @@ export function OnlineTest() {
                 const applicantData = { id: querySnapshot.docs[0].id, ...querySnapshot.docs[0].data() };
                 setApplicant(applicantData);
                 
+                if (settings?.isTestFree) {
+                    if (questions) {
+                        replace(questions.map((q: any, i: number) => ({ questionId: `q-${i}`, questionText: q.text, selectedOption: undefined })));
+                    }
+                    setStage('test');
+                    return;
+                }
+
                 if (applicantData.status === 'test_taken') {
                     setStage('submitted');
                 } else if (applicantData.status === 'payment_approved') {
-                    if (questionsCollection) {
-                        replace(questionsCollection.docs.map(doc => ({
-                            questionId: doc.id,
-                            questionText: doc.data().text,
-                            selectedOption: undefined
-                        })));
+                    if (questions) {
+                       replace(questions.map((q: any, i: number) => ({ questionId: `q-${i}`, questionText: q.text, selectedOption: undefined })));
                     }
                     setStage('test');
                 } else if (applicantData.status === 'payment_pending') {
@@ -135,8 +141,8 @@ export function OnlineTest() {
         setIsLoading(true);
         try {
             let score = 0;
-            const submittedAnswers = data.answers.map(ans => {
-                const question = questionsCollection?.docs.find(q => q.id === ans.questionId)?.data();
+            const submittedAnswers = data.answers.map((ans, index) => {
+                const question = questions[index];
                 const isCorrect = question?.correctAnswer === ans.selectedOption;
                 if (isCorrect) score++;
                 return { ...ans, isCorrect, correctAnswer: question?.correctAnswer };
@@ -147,7 +153,7 @@ export function OnlineTest() {
                 applicationNumber: applicant.applicationNumber,
                 applicantName: applicant.name,
                 score,
-                totalQuestions: questionsCollection?.docs.length,
+                totalQuestions: questions.length,
                 answers: submittedAnswers,
                 submittedAt: serverTimestamp(),
             });
@@ -187,19 +193,19 @@ export function OnlineTest() {
     }
 
     if (stage === 'test' && applicant) {
-        if (questionsLoading) return <Skeleton className="w-full h-64" />
+        if (questionsLoading || !questions) return <Skeleton className="w-full h-64" />
         
         return (
             <Card>
                 <CardHeader>
-                    <CardTitle>Scholarship Test</CardTitle>
+                    <CardTitle>{questionsCollection?.data()?.title || 'Scholarship Test'}</CardTitle>
                     <CardDescription>Welcome, <span className="font-bold">{applicant.name}</span>. Please answer all questions.</CardDescription>
                 </CardHeader>
                 <CardContent>
                     <Form {...answeringForm}>
                         <form onSubmit={answeringForm.handleSubmit(onTestSubmit)} className="space-y-8 mt-6">
                             {fields.map((field, index) => {
-                                const question = questionsCollection?.docs[index]?.data();
+                                const question = questions[index];
                                 if (!question) return null;
                                 return (
                                 <FormField
@@ -306,3 +312,5 @@ export function OnlineTest() {
        
     )
 }
+
+    

@@ -9,7 +9,7 @@ import { ViewResult } from "./_components/view-result";
 import { ScrutinyForm } from "./_components/scrutiny-form";
 import { Award, FileText, PenSquare, Eye, Search, AlertTriangle, FileSignature, Ticket, Loader2 } from "lucide-react";
 import { cn } from '@/lib/utils';
-import { doc, getDoc, collection, query, where, orderBy, getDocs } from 'firebase/firestore';
+import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { firestore } from '@/lib/firebase';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -48,6 +48,7 @@ const CountdownTimer = ({ targetDate, onEnd }: { targetDate: Date; onEnd: () => 
             setTimeLeft(newTimeLeft);
             if (newTimeLeft.days === 0 && newTimeLeft.hours === 0 && newTimeLeft.minutes === 0 && newTimeLeft.seconds === 0) {
                 onEnd();
+                clearInterval(timer);
             }
         }, 1000);
         return () => clearInterval(timer);
@@ -202,6 +203,7 @@ export default function ScholarshipPage() {
   const [historyKey, setHistoryKey] = useState(0);
 
   const fetchSettings = useCallback(async () => {
+    setLoading(true);
     try {
         const settingsDoc = await getDoc(doc(firestore, 'settings', 'scholarship'));
         if (settingsDoc.exists()) {
@@ -215,6 +217,8 @@ export default function ScholarshipPage() {
                 if (now < appStartDate) setApplicationStatus('upcoming');
                 else if (now >= appStartDate && now <= appEndDate) setApplicationStatus('open');
                 else setApplicationStatus('closed');
+            } else {
+                setApplicationStatus('open'); // Default to open if dates not set
             }
 
             const testStartDate = data.testStartDate?.toDate();
@@ -223,6 +227,8 @@ export default function ScholarshipPage() {
                 if (now < testStartDate) setTestStatus('upcoming');
                 else if (now >= testStartDate && now <= testEndDate) setTestStatus('open');
                 else setTestStatus('closed');
+            } else {
+                setTestStatus('open'); // Default to open if dates not set
             }
         }
     } catch (error) {
@@ -293,7 +299,7 @@ export default function ScholarshipPage() {
                 </Card>
             );
         }
-        if (testStatus === 'closed') {
+        if (testStatus === 'closed' && settings?.isTestFree !== true) {
              return (
                 <Alert variant="destructive">
                     <AlertTriangle className="h-4 w-4" />
@@ -302,7 +308,7 @@ export default function ScholarshipPage() {
                 </Alert>
             );
         }
-        return <OnlineTest />;
+        return <OnlineTest settings={settings} />;
     };
 
 
@@ -355,3 +361,5 @@ export default function ScholarshipPage() {
     </div>
   )
 }
+
+    

@@ -13,6 +13,7 @@ import { ManageScholarships } from "./_components/manage-scholarships";
 import { ManagePointRequests } from "./_components/manage-point-requests";
 import { AddKidsVideoForm } from "./_components/add-kids-video-form";
 import { AddContentToCourseForm } from "./_components/add-content-to-course-form";
+import { HtmlEditor } from "./_components/html-editor";
 
 
 export default function AdminPage() {
@@ -25,11 +26,12 @@ export default function AdminPage() {
             </div>
             
              <Tabs defaultValue="content" className="w-full">
-                <TabsList className="grid w-full grid-cols-2 md:grid-cols-4">
+                <TabsList className="grid w-full grid-cols-2 md:grid-cols-5">
                     <TabsTrigger value="content">Content</TabsTrigger>
                     <TabsTrigger value="enrollments">Enrollments</TabsTrigger>
                     <TabsTrigger value="scholarships">Scholarships</TabsTrigger>
                     <TabsTrigger value="kids_tube">Kids Tube</TabsTrigger>
+                    <TabsTrigger value="html_editor">HTML Editor</TabsTrigger>
                 </TabsList>
                 
                 <TabsContent value="content" className="mt-6">
@@ -104,7 +106,13 @@ export default function AdminPage() {
                     </div>
                 </TabsContent>
 
+                <TabsContent value="html_editor" className="mt-6">
+                    <HtmlEditor />
+                </TabsContent>
+
             </Tabs>
         </div>
     );
 }
+
+    
