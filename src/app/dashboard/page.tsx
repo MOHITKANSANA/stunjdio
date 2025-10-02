@@ -220,9 +220,22 @@ const MainDashboard = () => {
         return name.charAt(0).toUpperCase();
     }
     
+    const getGreeting = () => {
+        if (!user) return "Welcome to Go Swami X!";
+        const creationTime = user.metadata.creationTime ? new Date(user.metadata.creationTime).getTime() : 0;
+        const lastSignInTime = user.metadata.lastSignInTime ? new Date(user.metadata.lastSignInTime).getTime() : 0;
+        
+        // If creation and last sign in are very close, consider it a new user session
+        if (Math.abs(lastSignInTime - creationTime) < 2 * 60 * 1000) { // 2 minutes threshold
+            return "Welcome to Go Swami X!";
+        }
+
+        return `Hello, ${user.displayName || 'Student'}!`;
+    }
+
     return (
         <div className="flex flex-col h-full bg-background space-y-6">
-            <h1 className="text-2xl font-bold">Hello, {user?.displayName || 'Student'}!</h1>
+            <h1 className="text-2xl font-bold">{getGreeting()}</h1>
             
             <div className="grid grid-cols-3 md:grid-cols-6 gap-3 md:gap-4">
                  {topGridItems.map((item) => (

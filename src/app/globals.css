@@ -84,11 +84,11 @@
 }
 
 @keyframes splash-logo-fade-in {
-  0% { opacity: 0; transform: scale(0.8); }
-  100% { opacity: 1; transform: scale(1); }
+  0% { opacity: 0; transform: scale(0.8) translateY(20px); }
+  100% { opacity: 1; transform: scale(1) translateY(0); }
 }
 
-@keyframes splash-name-fade-in {
+@keyframes splash-text-fade-in {
   0% { opacity: 0; transform: translateY(20px); }
   100% { opacity: 1; transform: translateY(0); }
 }
@@ -98,15 +98,20 @@
   100% { opacity: 0; }
 }
 
+.splash-container.fade-out {
+  animation: splash-fade-out 0.5s ease-in forwards;
+}
+
 .splash-logo {
-  animation: splash-logo-fade-in 0.8s ease-out forwards;
+  animation: splash-logo-fade-in 1s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
 }
 
 .splash-name {
   opacity: 0;
-  animation: splash-name-fade-in 0.8s ease-out 0.5s forwards;
+  animation: splash-text-fade-in 0.8s ease-out 0.5s forwards;
 }
 
-.splash-container.fade-out {
-  animation: splash-fade-out 0.5s ease-in forwards;
+.splash-tagline {
+  opacity: 0;
+  animation: splash-text-fade-in 0.8s ease-out 0.8s forwards;
 }

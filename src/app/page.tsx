@@ -8,11 +8,14 @@ import { useAuth } from "@/hooks/use-auth";
 import { BookOpenCheck } from "lucide-react";
 
 const AnimatedSplashScreen = () => (
-    <div className="flex flex-col items-center justify-center h-full w-full bg-gradient-to-br from-primary to-blue-700 text-white p-8">
+    <div className="splash-container flex flex-col items-center justify-center h-full w-full bg-gradient-to-br from-orange-400 via-white to-green-500 text-white p-8">
         <div className="splash-logo">
-            <BookOpenCheck className="h-20 w-20" />
+            <BookOpenCheck className="h-24 w-24 text-slate-800" />
         </div>
-        <h1 className="text-4xl font-bold font-headline mt-6 splash-name">Go Swami X</h1>
+        <h1 className="text-5xl font-bold font-headline text-slate-900 mt-6 splash-name">
+            Go Swami X
+        </h1>
+        <p className="mt-2 text-lg text-slate-700 splash-tagline">The Future of Learning</p>
     </div>
 );
 
@@ -30,16 +33,17 @@ export default function WelcomePage() {
     const [isSplashVisible, setIsSplashVisible] = useState(true);
 
     useEffect(() => {
+        const splashContainer = document.querySelector('.splash-container');
+        
         const splashTimer = setTimeout(() => {
-            const splashContainer = document.querySelector('.splash-container');
             splashContainer?.classList.add('fade-out');
             
             const fadeOutTimer = setTimeout(() => {
                 setIsSplashVisible(false);
-            }, 500); // Corresponds to the fade-out animation duration
+            }, 500); 
 
             return () => clearTimeout(fadeOutTimer);
-        }, 2000); // Total splash screen duration before starting to fade
+        }, 2500); 
 
         return () => clearTimeout(splashTimer);
     }, []);
@@ -56,13 +60,13 @@ export default function WelcomePage() {
     }, [user, authLoading, router, isSplashVisible]);
 
     return (
-        <div className="flex min-h-screen w-full items-center justify-center bg-background">
+        <div className="h-screen w-screen bg-background">
              {isSplashVisible ? (
-                <div className="splash-container h-full w-full">
-                    <AnimatedSplashScreen />
-                </div>
+                <AnimatedSplashScreen />
              ) : (
-                <LoadingSpinner />
+                <div className="flex min-h-screen w-full items-center justify-center">
+                    <LoadingSpinner />
+                </div>
              )}
         </div>
     );
