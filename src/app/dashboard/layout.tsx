@@ -59,6 +59,7 @@ const sidebarNavItems = [
     { href: '/dashboard/my-learning', icon: Library, label: 'My Learning' },
     { href: '/dashboard/profile', icon: User, label: 'profile' },
     { href: '/dashboard/courses', icon: Book, label: 'courses' },
+    { href: '/dashboard/live-classes', icon: Clapperboard, label: 'Live Classes' },
     { href: '/dashboard/courses/free', icon: BookCopy, label: 'Free Courses' },
     { href: '/dashboard/downloads', icon: Download, label: 'My Downloads' },
     { href: '/dashboard/scholarship', icon: Award, label: 'scholarship' },
