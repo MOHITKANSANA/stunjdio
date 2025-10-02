@@ -311,7 +311,7 @@ export function ApplyForm({ onFormSubmit }: { onFormSubmit: () => void }) {
                                 </div>
                             )}
                         </div>
-                    </>
+                    </div>
                 );
             case STEPS.CONFIRMATION_REVIEW:
                 return (
