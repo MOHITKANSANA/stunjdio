@@ -8,7 +8,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { BookOpenCheck } from "lucide-react";
 
 const AnimatedSplashScreen = () => (
-    <div className="splash-container flex flex-col items-center justify-center h-full w-full bg-gradient-to-br from-orange-400 via-white to-green-500 text-white p-8">
+    <div className="splash-container flex flex-col items-center justify-center h-full w-full text-white p-8">
         <div className="splash-logo">
             <BookOpenCheck className="h-24 w-24 text-slate-800" />
         </div>

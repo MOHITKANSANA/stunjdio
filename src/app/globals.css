@@ -98,6 +98,10 @@
   100% { opacity: 0; }
 }
 
+.splash-container {
+  background: linear-gradient(to bottom, #FF9933, #FFFFFF, #138808);
+}
+
 .splash-container.fade-out {
   animation: splash-fade-out 0.5s ease-in forwards;
 }

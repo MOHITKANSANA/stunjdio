@@ -113,24 +113,26 @@ const ReviewCard = ({ review }: { review: any }) => {
 
 
     return (
-        <Card className="bg-muted/50 w-64 shrink-0">
-             <CardContent className="p-4 flex flex-col h-full gap-3">
-                <div className="flex items-center gap-3">
-                     <Avatar className="h-10 w-10 border-2 border-primary">
-                        <AvatarImage src={review.userPhoto} />
-                        <AvatarFallback>{getInitials(review.userName)}</AvatarFallback>
-                    </Avatar>
-                    <div>
-                        <p className="font-semibold text-sm">{review.userName}</p>
-                        <p className="text-xs text-muted-foreground">Student</p>
+        <CarouselItem className="pl-4 basis-full md:basis-1/2 lg:basis-1/3">
+            <Card className="bg-muted/50 h-full">
+                 <CardContent className="p-4 flex flex-col h-full gap-3">
+                    <div className="flex items-center gap-3">
+                         <Avatar className="h-10 w-10 border-2 border-primary">
+                            <AvatarImage src={review.userPhoto} />
+                            <AvatarFallback>{getInitials(review.userName)}</AvatarFallback>
+                        </Avatar>
+                        <div>
+                            <p className="font-semibold text-sm">{review.userName}</p>
+                            <p className="text-xs text-muted-foreground">Student</p>
+                        </div>
                     </div>
-                </div>
-                <p className="text-sm text-foreground/80 leading-relaxed line-clamp-3">
-                    <span className="text-2xl font-bold text-primary/50 mr-1 leading-none">“</span>
-                    {review.text}
-                </p>
-            </CardContent>
-        </Card>
+                    <p className="text-sm text-foreground/80 leading-relaxed line-clamp-3 flex-grow">
+                        <span className="text-2xl font-bold text-primary/50 mr-1 leading-none">“</span>
+                        {review.text}
+                    </p>
+                </CardContent>
+            </Card>
+        </CarouselItem>
     );
 };
 
@@ -144,9 +146,7 @@ const MainDashboard = () => {
     const [loadingReviews, setLoadingReviews] = useState(true);
     const [newReview, setNewReview] = useState("");
     const { toast } = useToast();
-    const [carouselItems, setCarouselItems] = useState<any[]>([]);
-    const [loadingCarousel, setLoadingCarousel] = useState(true);
-
+    
      useEffect(() => {
         const q = query(
             collection(firestore, 'live_classes'),
@@ -222,12 +222,11 @@ const MainDashboard = () => {
     
     const getGreeting = () => {
         if (!user) return "Welcome to Go Swami X!";
-        const creationTime = user.metadata.creationTime ? new Date(user.metadata.creationTime).getTime() : 0;
-        const lastSignInTime = user.metadata.lastSignInTime ? new Date(user.metadata.lastSignInTime).getTime() : 0;
         
-        // If creation and last sign in are very close, consider it a new user session
-        if (Math.abs(lastSignInTime - creationTime) < 2 * 60 * 1000) { // 2 minutes threshold
-            return "Welcome to Go Swami X!";
+        const isNewUser = user.metadata.creationTime === user.metadata.lastSignInTime;
+
+        if (isNewUser) {
+             return "Welcome to Go Swami X!";
         }
 
         return `Hello, ${user.displayName || 'Student'}!`;
@@ -289,29 +288,37 @@ const MainDashboard = () => {
             
             <div>
                  <h2 className="text-xl font-bold mb-3">What Our Students Say</h2>
-                 <div className="relative">
-                    <div className="flex overflow-x-auto space-x-4 pb-4 -ml-4 pl-4">
+                 <Carousel opts={{ align: "start" }} className="w-full">
+                    <CarouselContent className="-ml-4">
                         {loadingReviews ? (
-                            [...Array(3)].map((_, i) => <Skeleton key={i} className="h-40 w-64 rounded-lg" />)
+                            [...Array(3)].map((_, i) => (
+                                <CarouselItem key={i} className="pl-4 basis-full md:basis-1/2 lg:basis-1/3">
+                                    <Skeleton className="h-40 w-full rounded-lg" />
+                                </CarouselItem>
+                            ))
                         ) : (
-                            reviews.map((review, index) => <ReviewCard key={index} review={review} />)
+                            reviews.map((review) => <ReviewCard key={review.id} review={review} />)
                         )}
-                         <Card className="bg-muted/50 w-64 shrink-0 h-full">
-                            <CardContent className="p-4 flex flex-col justify-center h-full">
-                                    <h3 className="font-semibold mb-2 text-center">Leave a review</h3>
-                                    <form onSubmit={handleReviewSubmit} className="flex flex-col items-start gap-3">
-                                    <Textarea 
-                                        value={newReview} 
-                                        onChange={(e) => setNewReview(e.target.value)} 
-                                        placeholder="Write your review here..."
-                                        className="h-20"
-                                    />
-                                    <Button type="submit" size="sm"><Send className="mr-2 h-4 w-4"/>Submit</Button>
-                                </form>
-                            </CardContent>
-                        </Card>
-                    </div>
-                 </div>
+                         <CarouselItem className="pl-4 basis-full md:basis-1/2 lg:basis-1/3">
+                            <Card className="bg-muted/50 h-full">
+                                <CardContent className="p-4 flex flex-col justify-center h-full">
+                                        <h3 className="font-semibold mb-2 text-center">Leave a review</h3>
+                                        <form onSubmit={handleReviewSubmit} className="flex flex-col items-start gap-3">
+                                        <Textarea 
+                                            value={newReview} 
+                                            onChange={(e) => setNewReview(e.target.value)} 
+                                            placeholder="Write your review here..."
+                                            className="h-20"
+                                        />
+                                        <Button type="submit" size="sm"><Send className="mr-2 h-4 w-4"/>Submit</Button>
+                                    </form>
+                                </CardContent>
+                            </Card>
+                         </CarouselItem>
+                    </CarouselContent>
+                    <CarouselPrevious className="hidden sm:flex" />
+                    <CarouselNext className="hidden sm:flex" />
+                </Carousel>
             </div>
         </div>
     );
