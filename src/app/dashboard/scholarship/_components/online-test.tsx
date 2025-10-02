@@ -59,7 +59,12 @@ export function OnlineTest() {
      const qrCodeUrl = qrCodeDoc?.docs.find(d => d.id === 'paymentQrCode')?.data().url;
 
     const regForm = useForm<RegFormValues>({ resolver: zodResolver(regSchema) });
-    const paymentForm = useForm<PaymentFormValues>({ resolver: zodResolver(paymentSchema) });
+    const paymentForm = useForm<PaymentFormValues>({ 
+        resolver: zodResolver(paymentSchema),
+        defaultValues: {
+            paymentScreenshot: undefined,
+        }
+    });
     const answeringForm = useForm<TestAnsweringValues>({
         resolver: zodResolver(testAnsweringSchema),
     });
