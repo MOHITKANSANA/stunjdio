@@ -88,7 +88,7 @@ const DownloadCard = ({ item }: { item: any }) => {
                 await deleteDoc(doc(firestore, 'userDownloads', id));
                 toast({ description: "Item removed from downloads." });
             } catch (error) {
-                toast({ variant: 'destructive', description: "Failed to remove item." });
+                toast({ variant: "destructive", description: "Failed to remove item." });
             }
         }
     };
