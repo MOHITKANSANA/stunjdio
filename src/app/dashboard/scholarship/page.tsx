@@ -114,7 +114,8 @@ export default function ScholarshipPage() {
   // Use a key to force re-render of history component
   const [historyKey, setHistoryKey] = useState(0);
 
-  const fetchSettings = useCallback(async () => {
+  useEffect(() => {
+    const fetchSettings = async () => {
         try {
             const settingsDoc = await getDoc(doc(firestore, 'settings', 'scholarship'));
             if (settingsDoc.exists()) {
@@ -143,11 +144,10 @@ export default function ScholarshipPage() {
         } finally {
             setLoading(false);
         }
-    }, []);
-  
-  useEffect(() => {
+    };
+    
     fetchSettings();
-  }, [fetchSettings]);
+  }, []);
 
   const handleFormSubmit = () => {
     // Increment key to force ScholarshipHistory to re-fetch data
@@ -174,7 +174,7 @@ export default function ScholarshipPage() {
                     <CardHeader><CardTitle>Applications Open Soon!</CardTitle></CardHeader>
                     <CardContent>
                         <p className="mb-4">Applications will open on {settings.startDate.toDate().toLocaleString()}.</p>
-                        <CountdownTimer targetDate={settings.startDate.toDate()} onEnd={fetchSettings} />
+                        <CountdownTimer targetDate={settings.startDate.toDate()} onEnd={() => window.location.reload()} />
                     </CardContent>
                 </Card>
             );
@@ -200,7 +200,7 @@ export default function ScholarshipPage() {
                     <CardHeader><CardTitle>Online Test Starts Soon!</CardTitle></CardHeader>
                     <CardContent>
                         <p className="mb-4">The online test will be available from {settings.testStartDate.toDate().toLocaleString()}.</p>
-                         <CountdownTimer targetDate={settings.testStartDate.toDate()} onEnd={fetchSettings} />
+                         <CountdownTimer targetDate={settings.testStartDate.toDate()} onEnd={() => window.location.reload()} />
                     </CardContent>
                 </Card>
             );
