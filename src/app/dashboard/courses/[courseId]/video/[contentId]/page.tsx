@@ -1,10 +1,11 @@
 
+
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/hooks/use-auth';
 import { firestore } from '@/lib/firebase';
-import { doc, collection, query, orderBy, onSnapshot, where, getDoc, addDoc, serverTimestamp, deleteDoc } from 'firebase/firestore';
+import { doc, collection, query, orderBy, onSnapshot, where, getDoc, addDoc, serverTimestamp, deleteDoc, limit } from 'firebase/firestore';
 import { useDocument } from 'react-firebase-hooks/firestore';
 import { notFound, useParams } from 'next/navigation';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -14,7 +15,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Send, MessageSquare, BookText, Save, Download } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { saveNoteAction } from '@/app/actions/live-class';
+import { saveNoteAction } from '@/app/actions/doubts';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 

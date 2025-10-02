@@ -22,7 +22,6 @@ import { AiTestGenerator } from '@/app/dashboard/ai-test/page';
 import { addDoubtReplyAction } from '@/app/actions/doubts';
 import type { GenerateAiTestOutput } from '@/ai/flows/generate-ai-test';
 import { Input } from '@/components/ui/input';
-import { saveNoteAction } from '@/app/actions/live-class';
 import { cn } from '@/lib/utils';
 import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';

@@ -11,6 +11,10 @@ import {
   writeBatch,
   DocumentReference,
   runTransaction,
+  setDoc,
+  query,
+  where,
+  getDocs
 } from 'firebase/firestore';
 
 interface Reply {
@@ -64,4 +68,44 @@ export async function addDoubtReplyAction(input: AddReplyInput): Promise<{ succe
     console.error('Error adding reply:', error);
     return { success: false, error: error.message || 'Failed to add reply.' };
   }
+}
+
+
+export async function saveNoteAction(classId: string, userId: string, content: string): Promise<{ success: boolean, error?: string }> {
+    if (!userId) {
+        return { success: false, error: 'User not authenticated.' };
+    }
+    try {
+        const notesQuery = query(
+            collection(firestore, 'liveClassNotes'),
+            where('classId', '==', classId),
+            where('userId', '==', userId)
+        );
+
+        const querySnapshot = await getDocs(notesQuery);
+
+        if (querySnapshot.empty) {
+            // No existing note, create new
+            const newNoteRef = doc(collection(firestore, 'liveClassNotes'));
+            await setDoc(newNoteRef, {
+                classId,
+                userId,
+                content,
+                createdAt: serverTimestamp(),
+                updatedAt: serverTimestamp(),
+            });
+        } else {
+            // Existing note found, update it
+            const noteDocRef = querySnapshot.docs[0].ref;
+            await setDoc(noteDocRef, {
+                content,
+                updatedAt: serverTimestamp(),
+            }, { merge: true });
+        }
+        
+        return { success: true };
+    } catch (error: any) {
+        console.error('Error saving note:', error);
+        return { success: false, error: error.message || 'Failed to save note.' };
+    }
 }
