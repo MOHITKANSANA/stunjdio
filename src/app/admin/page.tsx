@@ -93,7 +93,7 @@ export default function AdminPage() {
                         <CardHeader>
                             <CardTitle>Manage Test Series Enrollments</CardTitle>
                             <CardDescription>Approve or reject student test series enrollment requests.</CardDescription>
-                        </Header>
+                        </CardHeader>
                         <CardContent>
                             <ManageTestSeriesEnrollments />
                         </CardContent>
