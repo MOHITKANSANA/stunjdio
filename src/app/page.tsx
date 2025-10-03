@@ -6,35 +6,57 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/use-auth";
 import { Shield } from "lucide-react";
+import { onSnapshot, doc } from "firebase/firestore";
+import { firestore } from "@/lib/firebase";
+import Image from "next/image";
 
-const AnimatedSplashScreen = () => (
-    <div className="splash-container flex flex-col items-center justify-between h-full w-full text-white p-8">
-        <div className="text-center w-full splash-item splash-item-1">
-            <p className="text-sm text-gray-300">Made with ❤️ in India</p>
-        </div>
-        <div className="flex flex-col items-center text-center">
-             <div className="splash-item splash-item-2 font-headline text-8xl font-bold flex items-center">
-                <span className="text-saffron">G</span>
-                <span className="text-green">S</span>
-             </div>
+const AnimatedSplashScreen = () => {
+    const [logoUrl, setLogoUrl] = useState<string | null>(null);
 
-            <h1 className="text-5xl font-bold font-headline text-white mt-4 splash-item splash-item-3 metallic-text">
-                GoSwamiX
-            </h1>
-            <p className="mt-2 text-lg text-gray-300 splash-item splash-item-4">Your Path to Success Starts Here</p>
+    useEffect(() => {
+        const unsub = onSnapshot(doc(firestore, 'settings', 'appConfig'), (doc) => {
+            if (doc.exists()) {
+                setLogoUrl(doc.data().appLogoUrl || null);
+            }
+        });
+        return () => unsub();
+    }, []);
+
+    return (
+        <div className="splash-container flex flex-col items-center justify-between h-full w-full text-white p-8">
+            <div className="text-center w-full splash-item splash-item-1">
+                <p className="text-sm text-gray-300">Made with ❤️ in India</p>
+            </div>
+            <div className="flex flex-col items-center text-center">
+                {logoUrl ? (
+                    <div className="splash-item splash-item-2 relative h-40 w-40">
+                       <Image src={logoUrl} alt="App Logo" fill className="rounded-full object-cover" />
+                    </div>
+                ) : (
+                    <div className="splash-item splash-item-2 font-headline text-8xl font-bold flex items-center">
+                        <span className="text-saffron">G</span>
+                        <span className="text-green">S</span>
+                    </div>
+                )}
+                
+                <h1 className="text-5xl font-bold font-headline text-white mt-4 splash-item splash-item-3 metallic-text">
+                    GoSwamiX
+                </h1>
+                <p className="mt-2 text-lg text-gray-300 splash-item splash-item-4">Your Path to Success Starts Here</p>
+            </div>
+            <div className="text-center w-full space-y-2">
+            <p className="text-sm text-gray-400 splash-item splash-item-5">Live Classes • AI Tests • Personal Mentorship</p>
+            <div className="flex justify-center gap-4 text-xs text-gray-500">
+                    <span className="splash-item splash-item-6 feature-text-1">UPSC</span>
+                    <span className="splash-item splash-item-6">•</span>
+                    <span className="splash-item splash-item-7 feature-text-2">SSC</span>
+                    <span className="splash-item splash-item-7">•</span>
+                    <span className="splash-item splash-item-7 feature-text-3">Defence</span>
+            </div>
+            </div>
         </div>
-        <div className="text-center w-full space-y-2">
-           <p className="text-sm text-gray-400 splash-item splash-item-5">Live Classes • AI Tests • Personal Mentorship</p>
-           <div className="flex justify-center gap-4 text-xs text-gray-500">
-                <span className="splash-item splash-item-6 feature-text-1">UPSC</span>
-                <span className="splash-item splash-item-6">•</span>
-                <span className="splash-item splash-item-7 feature-text-2">SSC</span>
-                 <span className="splash-item splash-item-7">•</span>
-                <span className="splash-item splash-item-7 feature-text-3">Defence</span>
-           </div>
-        </div>
-    </div>
-);
+    );
+};
 
 
 const LoadingSpinner = () => (

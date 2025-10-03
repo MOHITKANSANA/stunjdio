@@ -34,7 +34,7 @@ import {
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useAuth } from '@/hooks/use-auth';
-import { doc, getDoc, collection, query, orderBy, limit, onSnapshot, addDoc, serverTimestamp, updateDoc, arrayUnion, where } from 'firebase/firestore';
+import { doc, getDoc, collection, query, orderBy, limit, onSnapshot, addDoc, serverTimestamp, updateDoc, arrayUnion, where, getDocs } from 'firebase/firestore';
 import { firestore } from '@/lib/firebase';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -133,19 +133,24 @@ const StudentReviews = () => {
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [isReviewOpen, setIsReviewOpen] = useState(false);
     const [selectedReview, setSelectedReview] = useState<any>(null);
+    const [reviews, setReviews] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const q = query(collection(firestore, 'reviews'), orderBy('createdAt', 'desc'));
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+            const fetchedReviews = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            setReviews(fetchedReviews);
+            setLoading(false);
+        });
+        return () => unsubscribe();
+    }, []);
 
     const openReview = (review: any) => {
       setSelectedReview(review);
       setIsReviewOpen(true);
     }
     
-    // Dummy reviews, should be replaced with Firestore data
-    const reviews = [
-      { id: '1', name: 'Priya Sharma', text: "This platform transformed my preparation. The live classes are amazing! The teachers are very supportive and the doubt sessions are extremely helpful. I highly recommend it to all aspirants." },
-      { id: '2', name: 'Rahul Kumar', text: "I love the AI tests. They help me identify my weak areas instantly and provide detailed analysis. It's like having a personal tutor available 24/7." },
-      { id: '3', name: 'Anjali Singh', text: "The study material is comprehensive and up-to-date. The daily quizzes keep me on my toes. A must-have app for anyone serious about competitive exams." },
-    ];
-
     return (
         <>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -178,16 +183,18 @@ const StudentReviews = () => {
                 <CardTitle>What Our Students Say</CardTitle>
             </CardHeader>
             <CardContent>
-                <div className="flex space-x-4 overflow-x-auto pb-4">
-                {reviews.map(review => (
-                    <Card key={review.id} className="min-w-[280px] cursor-pointer" onClick={() => openReview(review)}>
-                        <CardContent className="p-4">
-                            <p className="italic line-clamp-3">"{review.text}"</p>
-                            <p className="font-semibold mt-2 text-right">- {review.name}</p>
-                        </CardContent>
-                    </Card>
-                ))}
-                </div>
+                {loading ? <Skeleton className="h-24 w-full" /> : (
+                    <div className="flex space-x-4 overflow-x-auto pb-4">
+                    {reviews.map(review => (
+                        <Card key={review.id} className="min-w-[280px] cursor-pointer" onClick={() => openReview(review)}>
+                            <CardContent className="p-4">
+                                <p className="italic line-clamp-3">"{review.text}"</p>
+                                <p className="font-semibold mt-2 text-right">- {review.name}</p>
+                            </CardContent>
+                        </Card>
+                    ))}
+                    </div>
+                )}
                  <div className="mt-4 p-3 rounded-lg bg-muted/50 text-center cursor-pointer hover:bg-muted" onClick={() => setIsDialogOpen(true)}>
                     <p className="font-medium text-primary">Write your review...</p>
                 </div>
@@ -196,6 +203,19 @@ const StudentReviews = () => {
         </>
     )
 };
+
+const hashCode = (str: string) => {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+       hash = str.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    return hash;
+}
+
+const intToRGB = (i: number) => {
+    const c = (i & 0x00FFFFFF).toString(16).toUpperCase();
+    return "00000".substring(0, 6 - c.length) + c;
+}
 
 const TopStudentsSection = () => {
     const [usersCollection, usersLoading] = useCollection(
@@ -210,11 +230,12 @@ const TopStudentsSection = () => {
                  <div className="flex space-x-6 overflow-x-auto pb-2">
                     {usersCollection?.docs.map((userDoc, i) => {
                         const student = userDoc.data();
+                        const avatarColor = `#${intToRGB(hashCode(student.displayName || 'U'))}`;
                         return (
                             <div key={userDoc.id} className="text-center flex-shrink-0 w-24">
                                 <Avatar className="h-16 w-16 mx-auto mb-2 border-2 border-yellow-400">
                                     <AvatarImage src={student.photoURL} />
-                                    <AvatarFallback>{student.displayName?.charAt(0) || 'S'}</AvatarFallback>
+                                    <AvatarFallback style={{ backgroundColor: avatarColor }}>{student.displayName?.charAt(0) || 'S'}</AvatarFallback>
                                 </Avatar>
                                 <Badge variant="secondary" className="text-sm bg-yellow-400 text-black">{i+1}</Badge>
                                 <p className="text-sm font-medium mt-1 truncate">{student.displayName}</p>
@@ -232,7 +253,37 @@ const EducatorsSection = () => {
     const [educators, loading] = useCollection(
         query(collection(firestore, 'educators'), orderBy('createdAt', 'desc'))
     );
+    const [isDialogOpen, setIsDialogOpen] = useState(false);
+    const [selectedEducator, setSelectedEducator] = useState<any>(null);
+
+    const openEducatorDetails = (educator: any) => {
+        setSelectedEducator(educator);
+        setIsDialogOpen(true);
+    };
+
     return (
+        <>
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogContent>
+                {selectedEducator && (
+                    <>
+                    <DialogHeader>
+                        <DialogTitle>{selectedEducator.name}</DialogTitle>
+                        <DialogDescription>{selectedEducator.expertise}</DialogDescription>
+                    </DialogHeader>
+                    <div className="py-4 flex justify-center">
+                        <Avatar className="h-40 w-40">
+                            <AvatarImage src={selectedEducator.photoUrl} alt={selectedEducator.name} />
+                            <AvatarFallback className="text-4xl">{selectedEducator.name.charAt(0)}</AvatarFallback>
+                        </Avatar>
+                    </div>
+                    </>
+                )}
+                <DialogClose asChild>
+                    <Button variant="outline">Close</Button>
+                </DialogClose>
+            </DialogContent>
+        </Dialog>
         <Card>
             <CardHeader><CardTitle>Meet Our Educators</CardTitle></CardHeader>
             <CardContent>
@@ -241,7 +292,7 @@ const EducatorsSection = () => {
                     {educators?.docs.map(doc => {
                         const educator = doc.data();
                         return (
-                             <div key={doc.id} className="text-center">
+                             <div key={doc.id} className="text-center cursor-pointer" onClick={() => openEducatorDetails(educator)}>
                                 <Avatar className="h-20 w-20 mx-auto">
                                     <AvatarImage src={educator.photoUrl} />
                                     <AvatarFallback>{educator.name.charAt(0)}</AvatarFallback>
@@ -254,6 +305,7 @@ const EducatorsSection = () => {
                 </div>
             </CardContent>
         </Card>
+        </>
     )
 }
 

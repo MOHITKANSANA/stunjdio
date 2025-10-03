@@ -15,8 +15,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 export function ManageTestSeriesEnrollments() {
     const { toast } = useToast();
 
+    // The composite index error comes from using where() with orderBy() on different fields.
+    // To fix this without creating an index, we can do client-side filtering and sorting.
     const [enrollments, loading, error] = useCollection(
-        query(collection(firestore, 'enrollments'), where('enrollmentType', '==', 'Test Series'), orderBy('createdAt', 'desc'))
+        query(collection(firestore, 'enrollments'), where('enrollmentType', '==', 'Test Series'))
     );
 
     const handleUpdateStatus = async (id: string, status: 'approved' | 'rejected') => {
@@ -33,7 +35,13 @@ export function ManageTestSeriesEnrollments() {
     };
 
     const renderTable = (status: string) => {
-        const filteredEnrollments = enrollments?.docs.filter(doc => doc.data().status === status);
+        const sortedEnrollments = enrollments?.docs.sort((a,b) => {
+            const dateA = a.data().createdAt?.toDate() || 0;
+            const dateB = b.data().createdAt?.toDate() || 0;
+            return dateB - dateA;
+        });
+
+        const filteredEnrollments = sortedEnrollments?.filter(doc => doc.data().status === status);
 
         if (loading) return <Skeleton className="h-48 w-full" />;
         if (!filteredEnrollments || filteredEnrollments.length === 0) {

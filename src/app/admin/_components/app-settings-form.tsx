@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useRef, ChangeEvent, useEffect } from 'react';
@@ -25,6 +26,11 @@ const carouselSchema = z.object({
 });
 type CarouselFormValues = z.infer<typeof carouselSchema>;
 
+const logoSchema = z.object({
+  logoFile: z.any().refine(file => file, 'Logo image is required.'),
+});
+type LogoFormValues = z.infer<typeof logoSchema>;
+
 function fileToDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -38,8 +44,13 @@ export function AppSettingsForm() {
   const { toast } = useToast();
   const [isQrLoading, setIsQrLoading] = useState(false);
   const [isCarouselLoading, setIsCarouselLoading] = useState(false);
+  const [isLogoLoading, setIsLogoLoading] = useState(false);
+  
   const [qrPreview, setQrPreview] = useState<string | null>(null);
   const qrFileInputRef = useRef<HTMLInputElement>(null);
+  
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const logoFileInputRef = useRef<HTMLInputElement>(null);
   
   const [carouselImages, setCarouselImages] = useState<string[]>([]);
   const [settingsLoading, setSettingsLoading] = useState(true);
@@ -50,6 +61,7 @@ export function AppSettingsForm() {
         const data = doc.data();
         setQrPreview(data.paymentQrCodeUrl || null);
         setCarouselImages(data.carouselImages || []);
+        setLogoPreview(data.appLogoUrl || null);
       }
       setSettingsLoading(false);
     });
@@ -57,14 +69,9 @@ export function AppSettingsForm() {
   }, []);
 
 
-  const qrForm = useForm<QrCodeFormValues>({
-    resolver: zodResolver(qrCodeSchema),
-  });
-
-  const carouselForm = useForm<CarouselFormValues>({
-    resolver: zodResolver(carouselSchema),
-    defaultValues: { imageUrl: '' },
-  });
+  const qrForm = useForm<QrCodeFormValues>({ resolver: zodResolver(qrCodeSchema) });
+  const carouselForm = useForm<CarouselFormValues>({ resolver: zodResolver(carouselSchema), defaultValues: { imageUrl: '' } });
+  const logoForm = useForm<LogoFormValues>({ resolver: zodResolver(logoSchema) });
   
   const handleQrFileChange = (e: ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -74,13 +81,19 @@ export function AppSettingsForm() {
     }
   };
 
+  const handleLogoFileChange = (e: ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      logoForm.setValue('logoFile', file);
+      setLogoPreview(URL.createObjectURL(file));
+    }
+  };
+
   const onQrSubmit = async (data: QrCodeFormValues) => {
     setIsQrLoading(true);
     try {
       const dataUrl = await fileToDataUrl(data.qrCodeFile);
-      await setDoc(doc(firestore, 'settings', 'appConfig'), {
-        paymentQrCodeUrl: dataUrl
-      }, { merge: true });
+      await setDoc(doc(firestore, 'settings', 'appConfig'), { paymentQrCodeUrl: dataUrl }, { merge: true });
       toast({ title: 'Success', description: 'Payment QR code updated.' });
     } catch (error: any) {
       toast({ variant: 'destructive', title: 'Error', description: error.message });
@@ -89,12 +102,23 @@ export function AppSettingsForm() {
     }
   };
   
+  const onLogoSubmit = async (data: LogoFormValues) => {
+    setIsLogoLoading(true);
+    try {
+      const dataUrl = await fileToDataUrl(data.logoFile);
+      await setDoc(doc(firestore, 'settings', 'appConfig'), { appLogoUrl: dataUrl }, { merge: true });
+      toast({ title: 'Success', description: 'App logo updated.' });
+    } catch (error: any) {
+      toast({ variant: 'destructive', title: 'Error', description: error.message });
+    } finally {
+      setIsLogoLoading(false);
+    }
+  }
+
   const onCarouselSubmit = async (data: CarouselFormValues) => {
     setIsCarouselLoading(true);
     try {
-        await updateDoc(doc(firestore, 'settings', 'appConfig'), {
-            carouselImages: arrayUnion(data.imageUrl)
-        });
+        await updateDoc(doc(firestore, 'settings', 'appConfig'), { carouselImages: arrayUnion(data.imageUrl) });
         toast({ title: 'Success', description: 'Carousel image added.' });
         carouselForm.reset();
     } catch (error: any) {
@@ -106,9 +130,7 @@ export function AppSettingsForm() {
 
   const handleRemoveCarouselImage = async (imageUrlToRemove: string) => {
       try {
-        await updateDoc(doc(firestore, 'settings', 'appConfig'), {
-            carouselImages: arrayRemove(imageUrlToRemove)
-        });
+        await updateDoc(doc(firestore, 'settings', 'appConfig'), { carouselImages: arrayRemove(imageUrlToRemove) });
         toast({ title: 'Success', description: 'Carousel image removed.' });
       } catch (error: any) {
         toast({ variant: 'destructive', title: 'Error', description: 'Could not remove image.' });
@@ -117,87 +139,84 @@ export function AppSettingsForm() {
 
   if (settingsLoading) {
       return (
-          <div className="space-y-6">
-              <Skeleton className="h-48 w-full" />
+          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-8">
+              <Skeleton className="h-64 w-full" />
+              <Skeleton className="h-64 w-full" />
               <Skeleton className="h-64 w-full" />
           </div>
       )
   }
 
   return (
-    <div className="grid lg:grid-cols-2 gap-8">
+    <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-8">
         <Card>
-            <CardHeader>
-                <CardTitle>Payment QR Code</CardTitle>
-                <CardDescription>Upload the QR code to be displayed on payment pages.</CardDescription>
-            </CardHeader>
+            <CardHeader><CardTitle>App Logo</CardTitle><CardDescription>Update the main logo for the splash screen.</CardDescription></CardHeader>
             <CardContent>
-                <Form {...qrForm}>
-                    <form onSubmit={qrForm.handleSubmit(onQrSubmit)} className="space-y-4">
+                <Form {...logoForm}>
+                    <form onSubmit={logoForm.handleSubmit(onLogoSubmit)} className="space-y-4">
                         <FormField
-                            control={qrForm.control}
-                            name="qrCodeFile"
+                            control={logoForm.control} name="logoFile"
                             render={({ field }) => (
-                                <FormItem>
-                                <FormLabel>QR Code Image</FormLabel>
+                                <FormItem><FormLabel>Logo Image</FormLabel>
                                 <FormControl>
                                     <div>
-                                        <Button type="button" variant="outline" className="w-full" onClick={() => qrFileInputRef.current?.click()}>
-                                            <Upload className="mr-2 h-4 w-4" />
-                                            {qrPreview ? 'Change QR Code' : 'Upload QR Code'}
-                                        </Button>
-                                        <input
-                                            type="file"
-                                            ref={qrFileInputRef}
-                                            onChange={handleQrFileChange}
-                                            className="hidden"
-                                            accept="image/*"
-                                        />
+                                        <Button type="button" variant="outline" className="w-full" onClick={() => logoFileInputRef.current?.click()}><Upload className="mr-2 h-4 w-4" />{logoPreview ? 'Change Logo' : 'Upload Logo'}</Button>
+                                        <input type="file" ref={logoFileInputRef} onChange={handleLogoFileChange} className="hidden" accept="image/*" />
                                     </div>
                                 </FormControl>
-                                {qrPreview && <Image src={qrPreview} alt="QR Code preview" width={200} height={200} className="mt-4 rounded-md mx-auto" />}
-                                <FormMessage />
-                                </FormItem>
+                                {logoPreview && <Image src={logoPreview} alt="Logo preview" width={120} height={120} className="mt-4 rounded-full mx-auto" />}
+                                <FormMessage /></FormItem>
                             )}
                         />
-                        <Button type="submit" disabled={isQrLoading}>
-                            {isQrLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                            Save QR Code
-                        </Button>
+                        <Button type="submit" disabled={isLogoLoading}> {isLogoLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Save Logo </Button>
                     </form>
                 </Form>
             </CardContent>
         </Card>
-        
         <Card>
-            <CardHeader>
-                <CardTitle>Home Page Carousel</CardTitle>
-                <CardDescription>Manage images for the main dashboard image slider.</CardDescription>
-            </CardHeader>
+            <CardHeader><CardTitle>Payment QR Code</CardTitle><CardDescription>Upload the QR code for payment pages.</CardDescription></CardHeader>
+            <CardContent>
+                <Form {...qrForm}>
+                    <form onSubmit={qrForm.handleSubmit(onQrSubmit)} className="space-y-4">
+                        <FormField
+                            control={qrForm.control} name="qrCodeFile"
+                            render={({ field }) => (
+                                <FormItem><FormLabel>QR Code Image</FormLabel>
+                                <FormControl>
+                                    <div>
+                                        <Button type="button" variant="outline" className="w-full" onClick={() => qrFileInputRef.current?.click()}><Upload className="mr-2 h-4 w-4" />{qrPreview ? 'Change QR Code' : 'Upload QR Code'}</Button>
+                                        <input type="file" ref={qrFileInputRef} onChange={handleQrFileChange} className="hidden" accept="image/*" />
+                                    </div>
+                                </FormControl>
+                                {qrPreview && <Image src={qrPreview} alt="QR Code preview" width={200} height={200} className="mt-4 rounded-md mx-auto" />}
+                                <FormMessage /></FormItem>
+                            )}
+                        />
+                        <Button type="submit" disabled={isQrLoading}> {isQrLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Save QR Code </Button>
+                    </form>
+                </Form>
+            </CardContent>
+        </Card>
+        <Card>
+            <CardHeader><CardTitle>Home Page Carousel</CardTitle><CardDescription>Manage images for the dashboard slider.</CardDescription></CardHeader>
             <CardContent>
                 <Form {...carouselForm}>
                      <form onSubmit={carouselForm.handleSubmit(onCarouselSubmit)} className="space-y-4 mb-6">
                          <FormField
-                            control={carouselForm.control}
-                            name="imageUrl"
+                            control={carouselForm.control} name="imageUrl"
                             render={({ field }) => (
-                                <FormItem>
-                                <FormLabel>New Image URL</FormLabel>
+                                <FormItem><FormLabel>New Image URL</FormLabel>
                                 <FormControl>
                                     <div className="flex gap-2">
                                     <Input {...field} placeholder="https://example.com/image.png" />
-                                    <Button type="submit" disabled={isCarouselLoading}>
-                                        {isCarouselLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Add'}
-                                    </Button>
+                                    <Button type="submit" disabled={isCarouselLoading}> {isCarouselLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Add'} </Button>
                                     </div>
                                 </FormControl>
-                                <FormMessage />
-                                </FormItem>
+                                <FormMessage /></FormItem>
                             )}
                         />
                      </form>
                 </Form>
-
                 <div className="space-y-2">
                     <h4 className="font-semibold">Current Images</h4>
                     {carouselImages.length === 0 && <p className="text-sm text-muted-foreground">No images added yet.</p>}

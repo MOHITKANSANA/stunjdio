@@ -28,8 +28,8 @@ export default function AdminPage() {
                 <p className="text-muted-foreground mt-2">Manage your application content and users.</p>
             </div>
             
-             <Tabs defaultValue="content" className="w-full">
-                <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-8">
+             <Tabs defaultValue="content" className="w-full" orientation="vertical">
+                <TabsList className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-1 md:w-48 lg:w-56 shrink-0 h-max">
                     <TabsTrigger value="content">Content</TabsTrigger>
                     <TabsTrigger value="course_enrollments">Course Enrollments</TabsTrigger>
                     <TabsTrigger value="test_enrollments">Test Enrollments</TabsTrigger>
@@ -40,7 +40,7 @@ export default function AdminPage() {
                     <TabsTrigger value="settings">App Settings</TabsTrigger>
                 </TabsList>
                 
-                <TabsContent value="content" className="mt-6">
+                <TabsContent value="content" className="mt-6 md:mt-0">
                     <div className="grid gap-8 lg:grid-cols-2">
                         <div className="space-y-8">
                             <Card>
@@ -77,7 +77,7 @@ export default function AdminPage() {
                     </div>
                 </TabsContent>
 
-                <TabsContent value="course_enrollments" className="mt-6">
+                <TabsContent value="course_enrollments" className="mt-6 md:mt-0">
                     <Card>
                         <CardHeader>
                             <CardTitle>Manage Course Enrollments</CardTitle>
@@ -89,7 +89,7 @@ export default function AdminPage() {
                     </Card>
                 </TabsContent>
 
-                <TabsContent value="test_enrollments" className="mt-6">
+                <TabsContent value="test_enrollments" className="mt-6 md:mt-0">
                      <Card>
                         <CardHeader>
                             <CardTitle>Manage Test Series Enrollments</CardTitle>
@@ -101,11 +101,11 @@ export default function AdminPage() {
                     </Card>
                 </TabsContent>
 
-                <TabsContent value="scholarships" className="mt-6">
+                <TabsContent value="scholarships" className="mt-6 md:mt-0">
                     <ManageScholarships />
                 </TabsContent>
 
-                <TabsContent value="kids_tube" className="mt-6">
+                <TabsContent value="kids_tube" className="mt-6 md:mt-0">
                      <div className="grid gap-8 lg:grid-cols-2">
                         <Card>
                             <CardHeader>
@@ -128,7 +128,7 @@ export default function AdminPage() {
                     </div>
                 </TabsContent>
 
-                <TabsContent value="battle_quiz" className="mt-6">
+                <TabsContent value="battle_quiz" className="mt-6 md:mt-0">
                     <Card>
                         <CardHeader>
                             <CardTitle>Manage Battle Quiz</CardTitle>
@@ -140,11 +140,11 @@ export default function AdminPage() {
                     </Card>
                 </TabsContent>
 
-                <TabsContent value="html_editor" className="mt-6">
+                <TabsContent value="html_editor" className="mt-6 md:mt-0">
                     <HtmlEditor />
                 </TabsContent>
 
-                <TabsContent value="settings" className="mt-6">
+                <TabsContent value="settings" className="mt-6 md:mt-0">
                     <AppSettingsForm />
                 </TabsContent>
 
