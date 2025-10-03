@@ -1,6 +1,5 @@
 
 
-
 "use client";
 import React, { useEffect, useState } from 'react';
 import {
@@ -21,6 +20,7 @@ import {
   Trophy,
   Calendar,
   BookOpen,
+  Shield,
 } from 'lucide-react';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
