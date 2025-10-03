@@ -4,13 +4,14 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Library, Bot, User, Search, HelpCircle, Users, BookOpen, Calendar } from 'lucide-react';
+import { Home, Library, Bot, User, Search, HelpCircle, Users, BookOpen, Calendar, Download } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const mainBottomNavItems = [
     { href: '/dashboard', icon: Home, label: 'Home' },
-    { href: '/dashboard/my-learning', icon: Library, label: 'Library' },
-    { href: '/dashboard/tutor', icon: Bot, label: 'AI Tutor' },
+    { href: '/dashboard/my-learning', icon: BookOpen, label: 'My Courses' },
+    { href: '/dashboard/live-classes', icon: Calendar, label: 'Live Class' },
+    { href: '/dashboard/downloads', icon: Download, label: 'Downloads' },
     { href: '/dashboard/profile', icon: User, label: 'Profile' },
 ];
 

@@ -22,6 +22,9 @@ import {
   BookOpen,
   Shield,
   User,
+  FileText,
+  Briefcase,
+  Puzzle,
 } from 'lucide-react';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -55,20 +58,24 @@ import {
 import Image from 'next/image';
 import { useCollection } from 'react-firebase-hooks/firestore';
 
-const carouselImages = [
-    { src: 'https://picsum.photos/seed/promo1/1200/600', alt: 'Promotion 1', 'data-ai-hint': 'study class' },
-    { src: 'https://picsum.photos/seed/promo2/1200/600', alt: 'Promotion 2', 'data-ai-hint': 'teacher lecture' },
-    { src: 'https://picsum.photos/seed/promo3/1200/600', alt: 'Promotion 3', 'data-ai-hint': 'students writing' },
+const topGridItems = [
+    { label: "Today's Course", icon: BookOpen, href: "/dashboard/my-learning", color: "bg-red-500" },
+    { label: "Upcoming Live Class", icon: Clapperboard, href: "/dashboard/live-classes", color: "bg-blue-500" },
+    { label: "New Test Series", icon: FileText, href: "/dashboard/tests?tab=series", color: "bg-green-500" },
+    { label: "Top Scorer of the Week", icon: Trophy, href: "/dashboard/leaderboard", color: "bg-yellow-500" },
 ];
 
-const dashboardGridItems: { label: string; icon: React.ElementType; href: string }[] = [
-  { label: "My Learning", icon: Library, href: "/dashboard/my-learning" },
-  { label: "Courses", icon: Book, href: "/dashboard/courses" },
-  { label: "Live Classes", icon: Clapperboard, href: "/dashboard/live-classes" },
-  { label: "AI Tests", icon: Shield, href: "/dashboard/tests" },
-  { label: "Previous Papers", icon: Newspaper, href: "/dashboard/papers" },
-  { label: "Scholarship", icon: Award, href: "/dashboard/scholarship" },
+const quickAccessItems = [
+  { label: "Paid Courses", icon: Book, href: "/dashboard/courses" },
+  { label: "Test Series", icon: Shield, href: "/dashboard/tests?tab=series" },
+  { label: "Free Classes", icon: Video, href: "/dashboard/courses/free" },
+  { label: "Previous Year Papers", icon: Newspaper, href: "/dashboard/papers" },
+  { label: "Current Affairs", icon: Globe, href: "/dashboard/current-affairs" },
+  { label: "Quiz & Games", icon: Puzzle, href: "/dashboard/quiz" },
+  { label: "Our Books Notes PDF", icon: BookCopy, href: "/dashboard/my-learning?tab=ebooks" },
+  { label: "Job Alerts", icon: Briefcase, href: "/dashboard/jobs" },
 ];
+
 
 const LiveClassTimer = () => {
     const [liveClass, setLiveClass] = useState<any>(null);
@@ -111,12 +118,12 @@ const LiveClassTimer = () => {
     if (!liveClass) return null;
 
     return (
-        <Card className="bg-gradient-to-r from-purple-600 to-blue-500 text-white">
+        <Card>
             <Link href={`/dashboard/live-class/${liveClass.id}`}>
             <CardContent className="p-4 flex items-center justify-between">
                 <div>
-                    <CardTitle className="text-lg">{liveClass.title}</CardTitle>
-                    <CardDescription className="text-white/80">Next live class starts in:</CardDescription>
+                    <CardTitle className="text-lg">Next Live Class Starts In:</CardTitle>
+                    <CardDescription>{liveClass.title}</CardDescription>
                 </div>
                 <div className="text-2xl font-bold">{timeLeft}</div>
             </CardContent>
@@ -125,23 +132,61 @@ const LiveClassTimer = () => {
     );
 };
 
-const StudentReviews = () => (
-    <Card>
-        <CardHeader>
-            <CardTitle>What Our Students Say</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-            <div className="p-4 border rounded-lg">
-                <p>"This platform transformed my preparation. The live classes are amazing!"</p>
-                <p className="font-semibold mt-2 text-right">- Priya Sharma</p>
-            </div>
-             <div className="p-4 border rounded-lg">
-                <p>"I love the AI tests. They help me identify my weak areas instantly."</p>
-                <p className="font-semibold mt-2 text-right">- Rahul Kumar</p>
-            </div>
-        </CardContent>
-    </Card>
-);
+const StudentReviews = () => {
+    const [isDialogOpen, setIsDialogOpen] = useState(false);
+    
+    return (
+        <>
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Write a Review</DialogTitle>
+                    <DialogDescription>Share your experience with us.</DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                    <Textarea placeholder="Write your review here..." />
+                    <Button onClick={() => setIsDialogOpen(false)}>Submit Review</Button>
+                </div>
+            </DialogContent>
+        </Dialog>
+        <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle>What Our Students Say</CardTitle>
+                <Button variant="outline" onClick={() => setIsDialogOpen(true)}>Write a Review</Button>
+            </CardHeader>
+            <CardContent className="space-y-4">
+                <div className="p-4 border rounded-lg bg-muted/50">
+                    <p className="italic">"This platform transformed my preparation. The live classes are amazing!"</p>
+                    <p className="font-semibold mt-2 text-right">- Priya Sharma</p>
+                </div>
+                 <div className="p-4 border rounded-lg bg-muted/50">
+                    <p className="italic">"I love the AI tests. They help me identify my weak areas instantly."</p>
+                    <p className="font-semibold mt-2 text-right">- Rahul Kumar</p>
+                </div>
+            </CardContent>
+        </Card>
+        </>
+    )
+};
+
+const TopStudentsSection = () => {
+    return (
+        <Card>
+            <CardHeader><CardTitle>Top 10 Students of the Week</CardTitle></CardHeader>
+            <CardContent className="grid grid-cols-3 sm:grid-cols-5 gap-4 text-center">
+                {[...Array(3)].map((_, i) => (
+                    <div key={i}>
+                        <Avatar className="h-16 w-16 mx-auto mb-2 border-2 border-yellow-400">
+                            <AvatarImage src={`https://picsum.photos/seed/student${i+1}/100`} />
+                            <AvatarFallback>{i+1}</AvatarFallback>
+                        </Avatar>
+                        <Badge variant="secondary" className="text-lg bg-yellow-400 text-black">{i+1}</Badge>
+                    </div>
+                ))}
+            </CardContent>
+        </Card>
+    )
+}
 
 const EducatorsSection = () => {
     const [educators, loading] = useCollection(
@@ -178,71 +223,53 @@ const MainDashboard = () => {
     const getGreeting = () => {
         if (!user) return "Welcome!";
         const isNewUser = user.metadata.creationTime === user.metadata.lastSignInTime;
-        if (isNewUser) return "Welcome to Go Swami Coaching!";
-        return `Hello, ${user.displayName || 'Student'}!`;
+        if (isNewUser) return "Welcome to Go Swami X!";
+        
+        const name = user.displayName?.split(' ')[0] || 'Student';
+        const hour = new Date().getHours();
+        if (hour < 12) return `Good Morning, ${name}!`;
+        if (hour < 18) return `Good Afternoon, ${name}!`;
+        return `Good Evening, ${name}!`;
     }
 
     return (
         <div className="space-y-6">
             <h1 className="text-2xl font-bold">{getGreeting()}</h1>
-            
-            <Carousel 
-                opts={{ loop: true }} 
-                plugins={[Autoplay({ delay: 4000, stopOnInteraction: true })]}
-                className="w-full"
-            >
-                <CarouselContent>
-                  {carouselImages.map((image, index) => (
-                    <CarouselItem key={index}>
-                      <Card className="overflow-hidden">
-                        <CardContent className="p-0">
-                          <div className="aspect-w-16 aspect-h-9">
-                            <Image
-                              src={image.src}
-                              alt={image.alt}
-                              fill
-                              style={{objectFit: 'cover'}}
-                              priority={index === 0}
-                              data-ai-hint={image['data-ai-hint']}
-                            />
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </CarouselItem>
-                  ))}
-                </CarouselContent>
-                <CarouselPrevious className="hidden sm:flex" />
-                <CarouselNext className="hidden sm:flex" />
-            </Carousel>
-            
-            <LiveClassTimer />
 
-             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                {dashboardGridItems.map((item, index) => (
-                    <Link href={item.href} key={index}>
-                        <Card className="hover:bg-muted/50 transition-colors h-full">
-                            <CardContent className="flex flex-col items-center justify-center p-6 text-center">
-                                <item.icon className="h-8 w-8 text-primary mb-2" />
+            <div className="grid grid-cols-2 gap-4">
+                {topGridItems.map((item) => (
+                     <Link href={item.href} key={item.label}>
+                        <Card className={cn("text-white h-full hover:opacity-90 transition-opacity", item.color)}>
+                            <CardContent className="p-4 flex flex-col items-center justify-center text-center gap-2">
+                                <item.icon className="h-8 w-8" />
                                 <span className="font-semibold">{item.label}</span>
                             </CardContent>
                         </Card>
                     </Link>
                 ))}
             </div>
-
-            <div className="grid md:grid-cols-2 gap-6">
-                <StudentReviews />
-                <EducatorsSection />
+            
+            <div>
+                <h2 className="text-xl font-bold mb-4">Quick Access</h2>
+                <div className="grid grid-cols-4 gap-3">
+                    {quickAccessItems.map(item => (
+                        <Link href={item.href} key={item.label}>
+                            <Card className="hover:bg-muted/50 transition-colors h-full">
+                                 <CardContent className="p-3 flex flex-col items-center justify-center text-center gap-1">
+                                    <item.icon className="h-7 w-7 text-primary mb-1" />
+                                    <span className="text-xs font-semibold">{item.label}</span>
+                                </CardContent>
+                            </Card>
+                        </Link>
+                    ))}
+                </div>
             </div>
 
-            <Card>
-                <CardHeader>
-                    <CardTitle>Announcements</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <p>New batches starting soon. Stay tuned!</p>
-                </CardContent>
-            </Card>
+            <TopStudentsSection />
+            <LiveClassTimer />
+            <EducatorsSection />
+            <StudentReviews />
+
         </div>
     );
 };

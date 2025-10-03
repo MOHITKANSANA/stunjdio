@@ -151,7 +151,7 @@ const AppSidebar = ({ isKidsMode, isMindSphereMode }: { isKidsMode: boolean, isM
                 <SidebarHeader>
                      <div className='flex items-center gap-2'>
                         <Shield className="h-7 w-7 text-white" />
-                        <span className="text-lg font-semibold font-headline">Go Swami Coaching</span>
+                        <span className="text-lg font-semibold font-headline">Go Swami X</span>
                     </div>
                 </SidebarHeader>
                 <SidebarMenu>
@@ -219,17 +219,14 @@ const AppSidebar = ({ isKidsMode, isMindSphereMode }: { isKidsMode: boolean, isM
 
 const AppHeader = () => {
   return (
-      <header className={cn("flex h-16 shrink-0 items-center justify-between gap-4 px-4 md:px-6 bg-primary text-white sticky top-0 z-20")}>
+      <header className={cn("flex h-16 shrink-0 items-center justify-between gap-4 px-4 md:px-6 bg-red-600 text-white sticky top-0 z-20 shadow-md")}>
             <div className='flex items-center gap-2'>
                 <div className='md:hidden'>
                     <SidebarTrigger />
                 </div>
                  <div className="flex items-center gap-2 sm:gap-4 text-lg font-semibold font-headline">
                     <Link href="/dashboard">
-                        <Button className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-bold text-xs sm:text-sm">Go Swami Coaching</Button>
-                    </Link>
-                     <Link href="/dashboard/mindsphere">
-                        <Button className="bg-gradient-to-r from-green-500 to-teal-600 hover:from-green-600 hover:to-teal-700 text-white font-bold text-xs sm:text-sm">MindSphere</Button>
+                       GoSwami Defence Academy
                     </Link>
                  </div>
             </div>
