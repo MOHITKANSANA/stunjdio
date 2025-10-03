@@ -39,6 +39,7 @@ import {
   CarouselNext,
   CarouselPrevious,
 } from "@/components/ui/carousel"
+import Autoplay from "embla-carousel-autoplay"
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
@@ -52,6 +53,21 @@ import {
 } from '@/components/ui/dialog';
 import Image from 'next/image';
 
+const carouselImages = [
+    { src: 'https://picsum.photos/seed/promo1/1200/600', alt: 'Promotion 1', 'data-ai-hint': 'study class' },
+    { src: 'https://picsum.photos/seed/promo2/1200/600', alt: 'Promotion 2', 'data-ai-hint': 'teacher lecture' },
+    { src: 'https://picsum.photos/seed/promo3/1200/600', alt: 'Promotion 3', 'data-ai-hint': 'students writing' },
+];
+
+const dashboardGridItems: { label: string; icon: React.ElementType; href: string }[] = [
+  { label: "My Learning", icon: Library, href: "/dashboard/my-learning" },
+  { label: "Courses", icon: Book, href: "/dashboard/courses" },
+  { label: "Live Classes", icon: Clapperboard, href: "/dashboard/live-classes" },
+  { label: "AI Tests", icon: Shield, href: "/dashboard/tests" },
+  { label: "Previous Papers", icon: Newspaper, href: "/dashboard/papers" },
+  { label: "Scholarship", icon: Award, href: "/dashboard/scholarship" },
+];
+
 const MainDashboard = () => {
     const { user } = useAuth();
     
@@ -62,20 +78,41 @@ const MainDashboard = () => {
         return `Hello, ${user.displayName || 'Student'}!`;
     }
 
-    const mainDashboardItems = [
-      { label: "My Learning", icon: Library, href: "/dashboard/my-learning" },
-      { label: "Courses", icon: Book, href: "/dashboard/courses" },
-      { label: "Live Classes", icon: Clapperboard, href: "/dashboard/live-classes" },
-      { label: "AI Tests", icon: Shield, href: "/dashboard/tests" },
-    ];
-
-
     return (
         <div className="space-y-6">
             <h1 className="text-2xl font-bold">{getGreeting()}</h1>
             
-             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                {mainDashboardItems.map((item, index) => (
+            <Carousel 
+                opts={{ loop: true }} 
+                plugins={[Autoplay({ delay: 4000, stopOnInteraction: true })]}
+                className="w-full"
+            >
+                <CarouselContent>
+                  {carouselImages.map((image, index) => (
+                    <CarouselItem key={index}>
+                      <Card className="overflow-hidden">
+                        <CardContent className="p-0">
+                          <div className="aspect-w-16 aspect-h-9">
+                            <Image
+                              src={image.src}
+                              alt={image.alt}
+                              fill
+                              style={{objectFit: 'cover'}}
+                              priority={index === 0}
+                              data-ai-hint={image['data-ai-hint']}
+                            />
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </CarouselItem>
+                  ))}
+                </CarouselContent>
+                <CarouselPrevious className="hidden sm:flex" />
+                <CarouselNext className="hidden sm:flex" />
+            </Carousel>
+
+             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                {dashboardGridItems.map((item, index) => (
                     <Link href={item.href} key={index}>
                         <Card className="hover:bg-muted/50 transition-colors">
                             <CardContent className="flex flex-col items-center justify-center p-6">
