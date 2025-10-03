@@ -1,3 +1,4 @@
+
 'use client';
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import {
@@ -27,6 +28,8 @@ import {
   Loader2,
   CheckCircle,
   X,
+  Check,
+  Bot,
 } from 'lucide-react';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
