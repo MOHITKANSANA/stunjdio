@@ -20,7 +20,6 @@ import { AppSettingsForm } from "./_components/app-settings-form";
 
 
 export default function AdminPage() {
-
     return (
         <div className="space-y-8 p-4 md:p-8">
             <div>
@@ -29,7 +28,7 @@ export default function AdminPage() {
             </div>
             
              <Tabs defaultValue="content" className="w-full">
-                <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-7">
+                <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-8">
                     <TabsTrigger value="content">Content</TabsTrigger>
                     <TabsTrigger value="course_enrollments">Course Enrollments</TabsTrigger>
                     <TabsTrigger value="test_enrollments">Test Enrollments</TabsTrigger>
