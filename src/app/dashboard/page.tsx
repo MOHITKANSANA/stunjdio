@@ -1,7 +1,5 @@
-
-
-"use client";
-import React, { useEffect, useState } from 'react';
+'use client';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import {
   Book,
   Video,
@@ -26,6 +24,9 @@ import {
   Briefcase,
   Puzzle,
   Globe,
+  Loader2,
+  CheckCircle,
+  X,
 } from 'lucide-react';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -54,33 +55,19 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogDescription
+  DialogDescription,
+  DialogClose
 } from '@/components/ui/dialog';
 import Image from 'next/image';
 import { useCollection } from 'react-firebase-hooks/firestore';
 
-const topGridItems = [
-    { label: "Today's Course", icon: BookOpen, href: "/dashboard/my-learning", color: "bg-red-500" },
-    { label: "Upcoming Live Class", icon: Clapperboard, href: "/dashboard/live-classes", color: "bg-blue-500" },
-    { label: "New Test Series", icon: FileText, href: "/dashboard/tests?tab=series", color: "bg-green-500" },
-    { label: "Top Scorer of the Week", icon: Trophy, href: "/dashboard/leaderboard", color: "bg-yellow-500" },
-];
-
-const carouselImages = [
-    { src: 'https://picsum.photos/seed/promo1/1200/600', alt: 'Promotion 1', 'data-ai-hint': 'study class' },
-    { src: 'https://picsum.photos/seed/promo2/1200/600', alt: 'Promotion 2', 'data-ai-hint': 'teacher lecture' },
-    { src: 'https://picsum.photos/seed/promo3/1200/600', alt: 'Promotion 3', 'data-ai-hint': 'students writing' },
-]
-
-const quickAccessItems = [
-  { label: "Paid Courses", icon: Book, href: "/dashboard/courses" },
-  { label: "Test Series", icon: Shield, href: "/dashboard/tests?tab=series" },
-  { label: "Free Classes", icon: Video, href: "/dashboard/courses/free" },
-  { label: "Previous Year Papers", icon: Newspaper, href: "/dashboard/papers" },
-  { label: "Current Affairs", icon: Globe, href: "/dashboard/current-affairs" },
-  { label: "Quiz & Games", icon: Puzzle, href: "/dashboard/quiz" },
-  { label: "Our Books Notes PDF", icon: BookCopy, href: "/dashboard/my-learning?tab=ebooks" },
-  { label: "Job Alerts", icon: Briefcase, href: "/dashboard/jobs" },
+const mainGridItems = [
+  { label: "My Learning", icon: Library, href: "/dashboard/my-learning", color: "from-blue-500 to-indigo-600" },
+  { label: "Live Classes", icon: Clapperboard, href: "/dashboard/live-classes", color: "from-purple-500 to-violet-600" },
+  { label: "Test Hub", icon: Shield, href: "/dashboard/tests", color: "from-green-500 to-emerald-600" },
+  { label: "AI Tutor", icon: Bot, href: "/dashboard/tutor", color: "from-red-500 to-rose-600" },
+  { label: "Scholarship", icon: Award, href: "/dashboard/scholarship", color: "from-yellow-500 to-amber-600" },
+  { label: "Previous Papers", icon: Newspaper, href: "/dashboard/papers", color: "from-pink-500 to-rose-500" },
 ];
 
 
@@ -132,7 +119,7 @@ const LiveClassTimer = () => {
                     <CardTitle className="text-lg">Next Live Class Starts In:</CardTitle>
                     <CardDescription>{liveClass.title}</CardDescription>
                 </div>
-                <div className="text-2xl font-bold">{timeLeft}</div>
+                <div className="text-2xl font-bold text-primary">{timeLeft}</div>
             </CardContent>
             </Link>
         </Card>
@@ -141,7 +128,21 @@ const LiveClassTimer = () => {
 
 const StudentReviews = () => {
     const [isDialogOpen, setIsDialogOpen] = useState(false);
+    const [isReviewOpen, setIsReviewOpen] = useState(false);
+    const [selectedReview, setSelectedReview] = useState<any>(null);
+
+    const openReview = (review: any) => {
+      setSelectedReview(review);
+      setIsReviewOpen(true);
+    }
     
+    // Dummy reviews, should be replaced with Firestore data
+    const reviews = [
+      { id: '1', name: 'Priya Sharma', text: "This platform transformed my preparation. The live classes are amazing! The teachers are very supportive and the doubt sessions are extremely helpful. I highly recommend it to all aspirants." },
+      { id: '2', name: 'Rahul Kumar', text: "I love the AI tests. They help me identify my weak areas instantly and provide detailed analysis. It's like having a personal tutor available 24/7." },
+      { id: '3', name: 'Anjali Singh', text: "The study material is comprehensive and up-to-date. The daily quizzes keep me on my toes. A must-have app for anyone serious about competitive exams." },
+    ];
+
     return (
         <>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -152,23 +153,40 @@ const StudentReviews = () => {
                 </DialogHeader>
                 <div className="space-y-4 py-4">
                     <Textarea placeholder="Write your review here..." />
-                    <Button onClick={() => setIsDialogOpen(false)}>Submit Review</Button>
+                    <Button onClick={() => {setIsDialogOpen(false);}}>Submit Review</Button>
                 </div>
             </DialogContent>
         </Dialog>
+
+        <Dialog open={isReviewOpen} onOpenChange={setIsReviewOpen}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>{selectedReview?.name}'s Review</DialogTitle>
+                </DialogHeader>
+                <p className="py-4">{selectedReview?.text}</p>
+                 <DialogClose asChild>
+                    <Button variant="outline">Close</Button>
+                </DialogClose>
+            </DialogContent>
+        </Dialog>
+        
         <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
+            <CardHeader>
                 <CardTitle>What Our Students Say</CardTitle>
-                <Button variant="outline" onClick={() => setIsDialogOpen(true)}>Write a Review</Button>
             </CardHeader>
-            <CardContent className="space-y-4">
-                <div className="p-4 border rounded-lg bg-muted/50">
-                    <p className="italic">"This platform transformed my preparation. The live classes are amazing!"</p>
-                    <p className="font-semibold mt-2 text-right">- Priya Sharma</p>
+            <CardContent>
+                <div className="flex space-x-4 overflow-x-auto pb-4">
+                {reviews.map(review => (
+                    <Card key={review.id} className="min-w-[280px] cursor-pointer" onClick={() => openReview(review)}>
+                        <CardContent className="p-4">
+                            <p className="italic line-clamp-3">"{review.text}"</p>
+                            <p className="font-semibold mt-2 text-right">- {review.name}</p>
+                        </CardContent>
+                    </Card>
+                ))}
                 </div>
-                 <div className="p-4 border rounded-lg bg-muted/50">
-                    <p className="italic">"I love the AI tests. They help me identify my weak areas instantly."</p>
-                    <p className="font-semibold mt-2 text-right">- Rahul Kumar</p>
+                 <div className="mt-4 p-3 rounded-lg bg-muted/50 text-center cursor-pointer hover:bg-muted" onClick={() => setIsDialogOpen(true)}>
+                    <p className="font-medium text-primary">Write your review...</p>
                 </div>
             </CardContent>
         </Card>
@@ -177,19 +195,31 @@ const StudentReviews = () => {
 };
 
 const TopStudentsSection = () => {
+    const [usersCollection, usersLoading] = useCollection(
+        query(collection(firestore, 'users'), limit(10))
+    );
+    
     return (
         <Card>
             <CardHeader><CardTitle>Top 10 Students of the Week</CardTitle></CardHeader>
-            <CardContent className="grid grid-cols-3 sm:grid-cols-5 gap-4 text-center">
-                {[...Array(3)].map((_, i) => (
-                    <div key={i}>
-                        <Avatar className="h-16 w-16 mx-auto mb-2 border-2 border-yellow-400">
-                            <AvatarImage src={`https://picsum.photos/seed/student${i+1}/100`} />
-                            <AvatarFallback>{i+1}</AvatarFallback>
-                        </Avatar>
-                        <Badge variant="secondary" className="text-lg bg-yellow-400 text-black">{i+1}</Badge>
-                    </div>
-                ))}
+            <CardContent>
+                {usersLoading && <Skeleton className="h-24 w-full" />}
+                 <div className="flex space-x-6 overflow-x-auto pb-2">
+                    {usersCollection?.docs.map((userDoc, i) => {
+                        const student = userDoc.data();
+                        return (
+                            <div key={userDoc.id} className="text-center flex-shrink-0 w-24">
+                                <Avatar className="h-16 w-16 mx-auto mb-2 border-2 border-yellow-400">
+                                    <AvatarImage src={student.photoURL} />
+                                    <AvatarFallback>{student.displayName?.charAt(0) || 'S'}</AvatarFallback>
+                                </Avatar>
+                                <Badge variant="secondary" className="text-sm bg-yellow-400 text-black">{i+1}</Badge>
+                                <p className="text-sm font-medium mt-1 truncate">{student.displayName}</p>
+                            </div>
+                        )
+                    })}
+                    {!usersLoading && usersCollection?.empty && <p className="text-muted-foreground">No students found.</p>}
+                 </div>
             </CardContent>
         </Card>
     )
@@ -226,7 +256,17 @@ const EducatorsSection = () => {
 
 const MainDashboard = () => {
     const { user } = useAuth();
+    const [settings, setSettings] = useState<any>(null);
     
+    useEffect(() => {
+      const unsub = onSnapshot(doc(firestore, 'settings', 'appConfig'), (doc) => {
+        if (doc.exists()) {
+          setSettings(doc.data());
+        }
+      });
+      return () => unsub();
+    }, []);
+
     const getGreeting = () => {
         if (!user) return "Welcome!";
         const isNewUser = user.metadata.creationTime === user.metadata.lastSignInTime;
@@ -243,24 +283,24 @@ const MainDashboard = () => {
         <div className="space-y-6">
             <h1 className="text-2xl font-bold">{getGreeting()}</h1>
 
-             <Carousel 
+            {settings?.carouselImages ? (
+              <Carousel 
                 opts={{ loop: true }} 
                 plugins={[Autoplay({ delay: 4000, stopOnInteraction: true })]}
                 className="w-full"
               >
                 <CarouselContent>
-                  {carouselImages.map((image, index) => (
+                  {settings.carouselImages.map((url: string, index: number) => (
                     <CarouselItem key={index}>
                       <Card className="overflow-hidden">
                         <CardContent className="p-0">
                           <div className="aspect-w-16 aspect-h-9 relative h-48">
                             <Image
-                              src={image.src}
-                              alt={image.alt}
+                              src={url}
+                              alt={`Carousel Image ${index + 1}`}
                               fill
                               style={{objectFit: 'cover'}}
                               priority={index === 0}
-                              data-ai-hint={image['data-ai-hint']}
                             />
                           </div>
                         </CardContent>
@@ -271,34 +311,19 @@ const MainDashboard = () => {
                 <CarouselPrevious className="hidden sm:flex" />
                 <CarouselNext className="hidden sm:flex" />
               </Carousel>
-
-            <div className="grid grid-cols-2 gap-4">
-                {topGridItems.map((item) => (
-                     <Link href={item.href} key={item.label}>
+            ) : <Skeleton className="h-48 w-full" />}
+            
+            <div className="grid grid-cols-3 gap-3">
+                {mainGridItems.map(item => (
+                    <Link href={item.href} key={item.label}>
                         <Card className={cn("text-white h-full hover:opacity-90 transition-opacity", item.color)}>
-                            <CardContent className="p-4 flex flex-col items-center justify-center text-center gap-2">
-                                <item.icon className="h-8 w-8" />
-                                <span className="font-semibold">{item.label}</span>
+                             <CardContent className="p-3 flex flex-col items-center justify-center text-center gap-1 h-24">
+                                <item.icon className="h-7 w-7" />
+                                <span className="text-xs font-semibold">{item.label}</span>
                             </CardContent>
                         </Card>
                     </Link>
                 ))}
-            </div>
-            
-            <div>
-                <h2 className="text-xl font-bold mb-4">Quick Access</h2>
-                <div className="grid grid-cols-4 gap-3">
-                    {quickAccessItems.map(item => (
-                        <Link href={item.href} key={item.label}>
-                            <Card className="hover:bg-muted/50 transition-colors h-full">
-                                 <CardContent className="p-3 flex flex-col items-center justify-center text-center gap-1">
-                                    <item.icon className="h-7 w-7 text-primary mb-1" />
-                                    <span className="text-xs font-semibold">{item.label}</span>
-                                </CardContent>
-                            </Card>
-                        </Link>
-                    ))}
-                </div>
             </div>
 
             <TopStudentsSection />

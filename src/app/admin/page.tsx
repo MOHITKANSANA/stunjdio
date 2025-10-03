@@ -15,6 +15,8 @@ import { AddContentToCourseForm } from "./_components/add-content-to-course-form
 import { HtmlEditor } from "./_components/html-editor";
 import { AddEducatorForm } from "./_components/add-educator-form";
 import { ManageTestSeriesEnrollments } from "./_components/manage-test-series-enrollment";
+import { AddBattleQuizForm } from "./_components/add-battle-quiz-form";
+import { AppSettingsForm } from "./_components/app-settings-form";
 
 
 export default function AdminPage() {
@@ -27,13 +29,15 @@ export default function AdminPage() {
             </div>
             
              <Tabs defaultValue="content" className="w-full">
-                <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-6">
+                <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-7">
                     <TabsTrigger value="content">Content</TabsTrigger>
                     <TabsTrigger value="course_enrollments">Course Enrollments</TabsTrigger>
                     <TabsTrigger value="test_enrollments">Test Enrollments</TabsTrigger>
                     <TabsTrigger value="scholarships">Scholarships</TabsTrigger>
                     <TabsTrigger value="kids_tube">Kids Tube</TabsTrigger>
+                    <TabsTrigger value="battle_quiz">Battle Quiz</TabsTrigger>
                     <TabsTrigger value="html_editor">HTML Editor</TabsTrigger>
+                    <TabsTrigger value="settings">App Settings</TabsTrigger>
                 </TabsList>
                 
                 <TabsContent value="content" className="mt-6">
@@ -90,7 +94,7 @@ export default function AdminPage() {
                         <CardHeader>
                             <CardTitle>Manage Test Series Enrollments</CardTitle>
                             <CardDescription>Approve or reject student test series enrollment requests.</CardDescription>
-                        </CardHeader>
+                        </Header>
                         <CardContent>
                             <ManageTestSeriesEnrollments />
                         </CardContent>
@@ -124,8 +128,24 @@ export default function AdminPage() {
                     </div>
                 </TabsContent>
 
+                <TabsContent value="battle_quiz" className="mt-6">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Manage Battle Quiz</CardTitle>
+                            <CardDescription>Add and manage questions for the Battle Quiz.</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <AddBattleQuizForm />
+                        </CardContent>
+                    </Card>
+                </TabsContent>
+
                 <TabsContent value="html_editor" className="mt-6">
                     <HtmlEditor />
+                </TabsContent>
+
+                <TabsContent value="settings" className="mt-6">
+                    <AppSettingsForm />
                 </TabsContent>
 
             </Tabs>

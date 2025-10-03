@@ -1,6 +1,4 @@
-
-
-"use client"
+'use client'
 import React, { useEffect, useState } from 'react';
 import {
   Book,
@@ -358,9 +356,9 @@ export default function DashboardLayout({
       <SidebarProvider>
           <div className="flex h-screen w-full flex-col bg-gray-50 dark:bg-gray-950">
              {isScreenLocked && <ScreenTimeLock />}
-             {!isVideoPlaybackPage && <AppSidebar isKidsMode={isKidsMode} isMindSphereMode={isMindSphereMode} />}
-             <div className={cn("flex flex-col w-full h-full overflow-hidden", !isVideoPlaybackPage && "md:pl-[var(--sidebar-width-icon)] group-data-[state=expanded]:md:pl-[var(--sidebar-width)]")}>
-                {!isVideoPlaybackPage && <AppHeader />}
+             {!isVideoPlaybackPage && <AppHeader />}
+             <div className={cn("flex flex-col md:flex-row w-full h-full overflow-hidden")}>
+                {!isVideoPlaybackPage && <AppSidebar isKidsMode={isKidsMode} isMindSphereMode={isMindSphereMode} />}
                  <main className="flex-1 overflow-y-auto h-full">
                     <SidebarInset>
                         <div className={cn(!isVideoPlaybackPage && 'p-4 md:p-6')}>
@@ -368,8 +366,8 @@ export default function DashboardLayout({
                         </div>
                     </SidebarInset>
                 </main>
-                {!isVideoPlaybackPage && <AppBottomNav isKidsMode={isKidsMode} isMindSphereMode={isMindSphereMode} />}
              </div>
+             {!isVideoPlaybackPage && <AppBottomNav isKidsMode={isKidsMode} isMindSphereMode={isMindSphereMode} />}
           </div>
       </SidebarProvider>
   );
