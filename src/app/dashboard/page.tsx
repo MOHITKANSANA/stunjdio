@@ -21,6 +21,7 @@ import {
   Calendar,
   BookOpen,
   Shield,
+  User,
 } from 'lucide-react';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -68,6 +69,108 @@ const dashboardGridItems: { label: string; icon: React.ElementType; href: string
   { label: "Scholarship", icon: Award, href: "/dashboard/scholarship" },
 ];
 
+const LiveClassTimer = () => {
+    const [liveClass, setLiveClass] = useState<any>(null);
+    const [timeLeft, setTimeLeft] = useState('');
+
+    useEffect(() => {
+        const q = query(collection(firestore, 'live_classes'), where('startTime', '>', new Date()), orderBy('startTime', 'asc'), limit(1));
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+            if (!snapshot.empty) {
+                const doc = snapshot.docs[0];
+                setLiveClass({ id: doc.id, ...doc.data() });
+            } else {
+                setLiveClass(null);
+            }
+        });
+        return () => unsubscribe();
+    }, []);
+
+    useEffect(() => {
+        if (!liveClass) return;
+        const interval = setInterval(() => {
+            const now = new Date();
+            const startTime = liveClass.startTime.toDate();
+            const diff = startTime.getTime() - now.getTime();
+            if (diff <= 0) {
+                setTimeLeft('Live now!');
+                clearInterval(interval);
+                return;
+            }
+            const d = Math.floor(diff / (1000 * 60 * 60 * 24));
+            const h = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            const m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+            const s = Math.floor((diff % (1000 * 60)) / 1000);
+            setTimeLeft(`${d}d ${h}h ${m}m ${s}s`);
+        }, 1000);
+
+        return () => clearInterval(interval);
+    }, [liveClass]);
+
+    if (!liveClass) return null;
+
+    return (
+        <Card className="bg-gradient-to-r from-purple-600 to-blue-500 text-white">
+            <Link href={`/dashboard/live-class/${liveClass.id}`}>
+            <CardContent className="p-4 flex items-center justify-between">
+                <div>
+                    <CardTitle className="text-lg">{liveClass.title}</CardTitle>
+                    <CardDescription className="text-white/80">Next live class starts in:</CardDescription>
+                </div>
+                <div className="text-2xl font-bold">{timeLeft}</div>
+            </CardContent>
+            </Link>
+        </Card>
+    );
+};
+
+const StudentReviews = () => (
+    <Card>
+        <CardHeader>
+            <CardTitle>What Our Students Say</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+            <div className="p-4 border rounded-lg">
+                <p>"This platform transformed my preparation. The live classes are amazing!"</p>
+                <p className="font-semibold mt-2 text-right">- Priya Sharma</p>
+            </div>
+             <div className="p-4 border rounded-lg">
+                <p>"I love the AI tests. They help me identify my weak areas instantly."</p>
+                <p className="font-semibold mt-2 text-right">- Rahul Kumar</p>
+            </div>
+        </CardContent>
+    </Card>
+);
+
+const EducatorsSection = () => {
+    const [educators, loading] = useCollection(
+        query(collection(firestore, 'educators'), orderBy('createdAt', 'desc'))
+    );
+    return (
+        <Card>
+            <CardHeader><CardTitle>Meet Our Educators</CardTitle></CardHeader>
+            <CardContent>
+                {loading && <Skeleton className="h-24 w-full" />}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    {educators?.docs.map(doc => {
+                        const educator = doc.data();
+                        return (
+                             <div key={doc.id} className="text-center">
+                                <Avatar className="h-20 w-20 mx-auto">
+                                    <AvatarImage src={educator.photoUrl} />
+                                    <AvatarFallback>{educator.name.charAt(0)}</AvatarFallback>
+                                </Avatar>
+                                <p className="font-semibold mt-2">{educator.name}</p>
+                                <p className="text-xs text-muted-foreground">{educator.expertise}</p>
+                            </div>
+                        )
+                    })}
+                </div>
+            </CardContent>
+        </Card>
+    )
+}
+
 const MainDashboard = () => {
     const { user } = useAuth();
     
@@ -110,21 +213,27 @@ const MainDashboard = () => {
                 <CarouselPrevious className="hidden sm:flex" />
                 <CarouselNext className="hidden sm:flex" />
             </Carousel>
+            
+            <LiveClassTimer />
 
              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                 {dashboardGridItems.map((item, index) => (
                     <Link href={item.href} key={index}>
-                        <Card className="hover:bg-muted/50 transition-colors">
-                            <CardContent className="flex flex-col items-center justify-center p-6">
+                        <Card className="hover:bg-muted/50 transition-colors h-full">
+                            <CardContent className="flex flex-col items-center justify-center p-6 text-center">
                                 <item.icon className="h-8 w-8 text-primary mb-2" />
-                                <span className="font-semibold text-center">{item.label}</span>
+                                <span className="font-semibold">{item.label}</span>
                             </CardContent>
                         </Card>
                     </Link>
                 ))}
             </div>
 
-            {/* Placeholder for other sections */}
+            <div className="grid md:grid-cols-2 gap-6">
+                <StudentReviews />
+                <EducatorsSection />
+            </div>
+
             <Card>
                 <CardHeader>
                     <CardTitle>Announcements</CardTitle>

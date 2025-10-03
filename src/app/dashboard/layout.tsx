@@ -224,7 +224,7 @@ const AppHeader = () => {
                 <div className='md:hidden'>
                     <SidebarTrigger />
                 </div>
-                 <div className="flex items-center gap-2 md:gap-4 text-lg font-semibold font-headline">
+                 <div className="flex items-center gap-2 sm:gap-4 text-lg font-semibold font-headline">
                     <Link href="/dashboard">
                         <Button className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-bold text-xs sm:text-sm">Go Swami Coaching</Button>
                     </Link>
