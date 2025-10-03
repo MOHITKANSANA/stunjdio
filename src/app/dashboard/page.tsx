@@ -25,6 +25,7 @@ import {
   FileText,
   Briefcase,
   Puzzle,
+  Globe,
 } from 'lucide-react';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -64,6 +65,12 @@ const topGridItems = [
     { label: "New Test Series", icon: FileText, href: "/dashboard/tests?tab=series", color: "bg-green-500" },
     { label: "Top Scorer of the Week", icon: Trophy, href: "/dashboard/leaderboard", color: "bg-yellow-500" },
 ];
+
+const carouselImages = [
+    { src: 'https://picsum.photos/seed/promo1/1200/600', alt: 'Promotion 1', 'data-ai-hint': 'study class' },
+    { src: 'https://picsum.photos/seed/promo2/1200/600', alt: 'Promotion 2', 'data-ai-hint': 'teacher lecture' },
+    { src: 'https://picsum.photos/seed/promo3/1200/600', alt: 'Promotion 3', 'data-ai-hint': 'students writing' },
+]
 
 const quickAccessItems = [
   { label: "Paid Courses", icon: Book, href: "/dashboard/courses" },
@@ -235,6 +242,35 @@ const MainDashboard = () => {
     return (
         <div className="space-y-6">
             <h1 className="text-2xl font-bold">{getGreeting()}</h1>
+
+             <Carousel 
+                opts={{ loop: true }} 
+                plugins={[Autoplay({ delay: 4000, stopOnInteraction: true })]}
+                className="w-full"
+              >
+                <CarouselContent>
+                  {carouselImages.map((image, index) => (
+                    <CarouselItem key={index}>
+                      <Card className="overflow-hidden">
+                        <CardContent className="p-0">
+                          <div className="aspect-w-16 aspect-h-9 relative h-48">
+                            <Image
+                              src={image.src}
+                              alt={image.alt}
+                              fill
+                              style={{objectFit: 'cover'}}
+                              priority={index === 0}
+                              data-ai-hint={image['data-ai-hint']}
+                            />
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </CarouselItem>
+                  ))}
+                </CarouselContent>
+                <CarouselPrevious className="hidden sm:flex" />
+                <CarouselNext className="hidden sm:flex" />
+              </Carousel>
 
             <div className="grid grid-cols-2 gap-4">
                 {topGridItems.map((item) => (
