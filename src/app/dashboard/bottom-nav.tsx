@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import Link from 'next/link';
@@ -9,8 +10,7 @@ import { cn } from '@/lib/utils';
 const mainBottomNavItems = [
     { href: '/dashboard', icon: Home, label: 'Home' },
     { href: '/dashboard/my-learning', icon: Library, label: 'Library' },
-    { href: '/dashboard/community', icon: Users, label: 'Community' },
-    { href: '/dashboard/planner', icon: Calendar, label: 'Planner' },
+    { href: '/dashboard/tutor', icon: Bot, label: 'AI Tutor' },
     { href: '/dashboard/profile', icon: User, label: 'Profile' },
 ];
 
@@ -21,9 +21,21 @@ const kidsBottomNavItems = [
     { href: '/dashboard/profile', icon: User, label: 'Profile' },
 ];
 
-export const AppBottomNav = ({ isKidsMode }: { isKidsMode: boolean }) => {
+const mindSphereBottomNavItems = [
+    { href: '/dashboard/mindsphere', icon: Home, label: 'Home' },
+    { href: '/dashboard/mindsphere/library', icon: Library, label: 'Library' },
+    { href: '/dashboard/mindsphere/community', icon: Users, label: 'Community' },
+    { href: '/dashboard/mindsphere/planner', icon: Calendar, label: 'Planner' },
+    { href: '/dashboard/profile', icon: User, label: 'Profile' },
+];
+
+export const AppBottomNav = ({ isKidsMode, isMindSphereMode }: { isKidsMode: boolean, isMindSphereMode: boolean }) => {
     const pathname = usePathname();
-    const items = isKidsMode ? kidsBottomNavItems : mainBottomNavItems;
+    const items = isKidsMode 
+        ? kidsBottomNavItems 
+        : isMindSphereMode
+        ? mindSphereBottomNavItems
+        : mainBottomNavItems;
 
     return (
          <footer className="sticky bottom-0 z-10 border-t border-border/50 bg-background/95 backdrop-blur-sm md:hidden shadow-[0_-2px_10px_rgba(0,0,0,0.1)]">

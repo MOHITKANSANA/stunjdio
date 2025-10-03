@@ -1,5 +1,6 @@
 
 
+
 "use client";
 import React, { useEffect, useState } from 'react';
 import {
@@ -57,32 +58,29 @@ const MainDashboard = () => {
     const getGreeting = () => {
         if (!user) return "Welcome!";
         const isNewUser = user.metadata.creationTime === user.metadata.lastSignInTime;
-        if (isNewUser) return "Welcome to MindSphere!";
+        if (isNewUser) return "Welcome to Go Swami Coaching!";
         return `Hello, ${user.displayName || 'Student'}!`;
     }
 
-    const featureCards = [
-        { label: "Daily Learning", icon: BookOpen, href: "/dashboard/daily-learning", color: "from-blue-500 to-indigo-600" },
-        { label: "Notes & PDFs", icon: Book, href: "/dashboard/my-learning", color: "from-green-500 to-emerald-600" },
-        { label: "Video Lectures", icon: Video, href: "/dashboard/courses", color: "from-red-500 to-rose-600" },
-        { label: "Motivation", icon: Lightbulb, href: "/dashboard/motivation", color: "from-yellow-500 to-amber-600" },
-        { label: "Battle Quiz", icon: Swords, href: "/dashboard/quiz", color: "from-orange-500 to-red-500" },
-        { label: "Leaderboard", icon: Trophy, href: "/dashboard/leaderboard", color: "from-purple-500 to-violet-600" },
-        { label: "Study Planner", icon: Calendar, href: "/dashboard/planner", color: "from-pink-500 to-rose-500" },
-        { label: "Community", icon: Users, href: "/dashboard/community", color: "from-teal-500 to-cyan-600" },
+    const mainDashboardItems = [
+      { label: "My Learning", icon: Library, href: "/dashboard/my-learning" },
+      { label: "Courses", icon: Book, href: "/dashboard/courses" },
+      { label: "Live Classes", icon: Clapperboard, href: "/dashboard/live-classes" },
+      { label: "AI Tests", icon: Shield, href: "/dashboard/tests" },
     ];
 
+
     return (
-        <div className="flex flex-col h-full bg-gradient-to-b from-primary/10 via-background to-background space-y-6">
+        <div className="space-y-6">
             <h1 className="text-2xl font-bold">{getGreeting()}</h1>
             
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                 {featureCards.map((item) => (
-                    <Link href={item.href} key={item.label}>
-                        <Card className={cn("transform-gpu text-white transition-transform duration-200 ease-in-out hover:-translate-y-1 hover:shadow-xl rounded-xl bg-gradient-to-br", item.color)}>
-                            <CardContent className="flex flex-col items-center justify-center gap-2 p-4 h-full aspect-square">
-                                <item.icon className="h-8 w-8" />
-                                <span className="text-sm font-semibold text-center">{item.label}</span>
+             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {mainDashboardItems.map((item, index) => (
+                    <Link href={item.href} key={index}>
+                        <Card className="hover:bg-muted/50 transition-colors">
+                            <CardContent className="flex flex-col items-center justify-center p-6">
+                                <item.icon className="h-8 w-8 text-primary mb-2" />
+                                <span className="font-semibold text-center">{item.label}</span>
                             </CardContent>
                         </Card>
                     </Link>

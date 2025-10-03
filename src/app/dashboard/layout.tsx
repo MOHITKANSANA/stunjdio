@@ -29,6 +29,8 @@ import {
   FileCode,
   FlaskConical,
   Loader2,
+  Users,
+  Calendar,
 } from 'lucide-react';
 
 import { useAuth } from '@/hooks/use-auth';
@@ -79,6 +81,15 @@ const kidsSidebarNavItems = [
     { href: '/dashboard/kids/doubts', icon: HelpCircle, label: 'My Doubts' },
 ]
 
+const mindSphereSidebarNavItems = [
+    { href: '/dashboard/mindsphere', icon: Home, label: 'Home' },
+    { href: '/dashboard/mindsphere/library', icon: Library, label: 'Library' },
+    { href: '/dashboard/mindsphere/community', icon: Users, label: 'Community' },
+    { href: '/dashboard/mindsphere/planner', icon: Calendar, label: 'Planner' },
+    { href: '/dashboard/profile', icon: User, label: 'Profile' },
+];
+
+
 const SidebarMenuItemWithHandler = ({ href, icon: Icon, label, closeSidebar }: { href: string; icon: React.ElementType; label: string; closeSidebar: () => void; }) => {
     const pathname = usePathname();
     const { t } = useLanguage();
@@ -97,7 +108,7 @@ const SidebarMenuItemWithHandler = ({ href, icon: Icon, label, closeSidebar }: {
 }
 
 
-const AppSidebar = ({ isKidsMode }: { isKidsMode: boolean }) => {
+const AppSidebar = ({ isKidsMode, isMindSphereMode }: { isKidsMode: boolean, isMindSphereMode: boolean }) => {
     const { isMobile, setOpenMobile } = useSidebar();
     const { t } = useLanguage();
     const { logout } = useAuth();
@@ -128,7 +139,11 @@ const AppSidebar = ({ isKidsMode }: { isKidsMode: boolean }) => {
         router.push(path);
     }
 
-    const navItems = isKidsMode ? kidsSidebarNavItems : sidebarNavItems;
+    const navItems = isKidsMode 
+        ? kidsSidebarNavItems 
+        : isMindSphereMode 
+        ? mindSphereSidebarNavItems
+        : sidebarNavItems;
 
     return (
         <Sidebar>
@@ -211,10 +226,10 @@ const AppHeader = () => {
                 </div>
                  <div className="flex items-center gap-2 md:gap-4 text-lg font-semibold font-headline">
                     <Link href="/dashboard">
-                        <Button className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-bold text-xs sm:text-sm">MindSphere</Button>
+                        <Button className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-bold text-xs sm:text-sm">Go Swami Coaching</Button>
                     </Link>
-                     <Link href="/dashboard/tests">
-                        <Button className="bg-gradient-to-r from-green-500 to-teal-600 hover:from-green-600 hover:to-teal-700 text-white font-bold text-xs sm:text-sm">Test Hub</Button>
+                     <Link href="/dashboard/mindsphere">
+                        <Button className="bg-gradient-to-r from-green-500 to-teal-600 hover:from-green-600 hover:to-teal-700 text-white font-bold text-xs sm:text-sm">MindSphere</Button>
                     </Link>
                  </div>
             </div>
@@ -259,6 +274,7 @@ export default function DashboardLayout({
   const [timeUsed, setTimeUsed] = useState(0); // in seconds
   
   const isVideoPlaybackPage = pathname.includes('/video/') || pathname.includes('/live-class/');
+  const isMindSphereMode = pathname.startsWith('/dashboard/mindsphere');
 
   useEffect(() => {
     let timer: NodeJS.Timeout;
@@ -345,7 +361,7 @@ export default function DashboardLayout({
       <SidebarProvider>
           <div className="flex h-screen w-full flex-col bg-gray-50 dark:bg-gray-950">
              {isScreenLocked && <ScreenTimeLock />}
-             {!isVideoPlaybackPage && <AppSidebar isKidsMode={isKidsMode} />}
+             {!isVideoPlaybackPage && <AppSidebar isKidsMode={isKidsMode} isMindSphereMode={isMindSphereMode} />}
              <div className={cn("flex flex-col w-full h-full overflow-hidden", !isVideoPlaybackPage && "md:pl-[var(--sidebar-width-icon)] group-data-[state=expanded]:md:pl-[var(--sidebar-width)]")}>
                 {!isVideoPlaybackPage && <AppHeader />}
                  <main className="flex-1 overflow-y-auto h-full">
@@ -355,7 +371,7 @@ export default function DashboardLayout({
                         </div>
                     </SidebarInset>
                 </main>
-                {!isVideoPlaybackPage && <AppBottomNav isKidsMode={isKidsMode} />}
+                {!isVideoPlaybackPage && <AppBottomNav isKidsMode={isKidsMode} isMindSphereMode={isMindSphereMode} />}
              </div>
           </div>
       </SidebarProvider>
