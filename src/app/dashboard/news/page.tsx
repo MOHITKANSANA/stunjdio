@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import Image from "next/image";
+import { getNewsAction } from "@/app/actions/news";
 
 interface Article {
     title: string;
@@ -27,27 +28,13 @@ export default function NewsPage() {
         async function fetchNews() {
             setLoading(true);
             setError(null);
-            try {
-                // IMPORTANT: The API key is hardcoded here. For a production app, this should be an environment variable.
-                const apiKey = 'c0d8cdce868642738af39ebe6504fdff';
-                const response = await fetch(`https://newsapi.org/v2/top-headlines?country=in&apiKey=${apiKey}`);
-                
-                if (!response.ok) {
-                    const errorData = await response.json();
-                    throw new Error(errorData.message || 'Failed to fetch news from the server.');
-                }
-
-                const data = await response.json();
-                if (data.status === 'error') {
-                    throw new Error(data.message || 'Error from News API');
-                }
-                setArticles(data.articles);
-            } catch (err: any) {
-                setError(err.message);
-                console.error("News fetch error:", err);
-            } finally {
-                setLoading(false);
+            const result = await getNewsAction();
+            if (result.error) {
+                setError(result.error);
+            } else {
+                setArticles(result.articles);
             }
+            setLoading(false);
         }
         fetchNews();
     }, []);
