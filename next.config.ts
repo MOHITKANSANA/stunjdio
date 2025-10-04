@@ -44,6 +44,12 @@ const nextConfig: NextConfig = {
         hostname: 'share.snapchat.com',
         port: '',
         pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'drive.google.com',
+        port: '',
+        pathname: '/**',
       }
     ],
   },
