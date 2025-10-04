@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { Newspaper } from "lucide-react";
@@ -24,13 +25,18 @@ export default function NewsPage() {
 
     useEffect(() => {
         async function fetchNews() {
+            setLoading(true);
+            setError(null);
             try {
                 // IMPORTANT: The API key is hardcoded here. For a production app, this should be an environment variable.
                 const apiKey = 'c0d8cdce868642738af39ebe6504fdff';
                 const response = await fetch(`https://newsapi.org/v2/top-headlines?country=in&apiKey=${apiKey}`);
+                
                 if (!response.ok) {
-                    throw new Error('Failed to fetch news');
+                    const errorData = await response.json();
+                    throw new Error(errorData.message || 'Failed to fetch news from the server.');
                 }
+
                 const data = await response.json();
                 if (data.status === 'error') {
                     throw new Error(data.message || 'Error from News API');
@@ -38,6 +44,7 @@ export default function NewsPage() {
                 setArticles(data.articles);
             } catch (err: any) {
                 setError(err.message);
+                console.error("News fetch error:", err);
             } finally {
                 setLoading(false);
             }

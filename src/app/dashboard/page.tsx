@@ -1,4 +1,5 @@
 
+
 'use client';
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import {
@@ -130,26 +131,45 @@ const LiveClassTimer = () => {
 };
 
 const StudentReviews = () => {
+    const { user } = useAuth();
+    const { toast } = useToast();
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [isReviewOpen, setIsReviewOpen] = useState(false);
     const [selectedReview, setSelectedReview] = useState<any>(null);
-    const [reviews, setReviews] = useState<any[]>([]);
-    const [loading, setLoading] = useState(true);
+    const [reviewText, setReviewText] = useState('');
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
-    useEffect(() => {
-        const q = query(collection(firestore, 'reviews'), orderBy('createdAt', 'desc'));
-        const unsubscribe = onSnapshot(q, (snapshot) => {
-            const fetchedReviews = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            setReviews(fetchedReviews);
-            setLoading(false);
-        });
-        return () => unsubscribe();
-    }, []);
-
+    const [reviews, loading] = useCollection(
+        query(collection(firestore, 'reviews'), orderBy('createdAt', 'desc'))
+    );
+    
     const openReview = (review: any) => {
       setSelectedReview(review);
       setIsReviewOpen(true);
     }
+    
+    const handleReviewSubmit = async () => {
+        if (!user || !reviewText.trim()) {
+            toast({ variant: 'destructive', description: "Please write a review before submitting." });
+            return;
+        }
+        setIsSubmitting(true);
+        try {
+            await addDoc(collection(firestore, 'reviews'), {
+                name: user.displayName || 'Anonymous',
+                text: reviewText,
+                userId: user.uid,
+                createdAt: serverTimestamp(),
+            });
+            toast({ title: "Success!", description: "Your review has been submitted." });
+            setReviewText('');
+            setIsDialogOpen(false);
+        } catch (error) {
+            toast({ variant: 'destructive', title: "Error", description: "Could not submit your review." });
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
     
     return (
         <>
@@ -160,8 +180,15 @@ const StudentReviews = () => {
                     <DialogDescription>Share your experience with us.</DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4 py-4">
-                    <Textarea placeholder="Write your review here..." />
-                    <Button onClick={() => {setIsDialogOpen(false);}}>Submit Review</Button>
+                    <Textarea 
+                        placeholder="Write your review here..." 
+                        value={reviewText}
+                        onChange={(e) => setReviewText(e.target.value)}
+                    />
+                    <Button onClick={handleReviewSubmit} disabled={isSubmitting}>
+                        {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        Submit Review
+                    </Button>
                 </div>
             </DialogContent>
         </Dialog>
@@ -189,19 +216,22 @@ const StudentReviews = () => {
             <CardContent>
                 {loading ? <Skeleton className="h-24 w-full" /> : (
                     <div className="flex space-x-4 overflow-x-auto pb-4">
-                    {reviews.map(review => (
-                        <Card key={review.id} className="min-w-[280px] cursor-pointer" onClick={() => openReview(review)}>
-                            <CardContent className="p-4">
-                                <p className="italic line-clamp-3">"{review.text}"</p>
-                                <p className="font-semibold mt-2 text-right">- {review.name}</p>
-                            </CardContent>
-                        </Card>
-                    ))}
+                    {reviews?.docs.map(doc => {
+                        const review = doc.data();
+                        return (
+                            <Card key={doc.id} className="min-w-[280px] cursor-pointer" onClick={() => openReview(review)}>
+                                <CardContent className="p-4">
+                                    <p className="italic line-clamp-3">"{review.text}"</p>
+                                    <p className="font-semibold mt-2 text-right">- {review.name}</p>
+                                </CardContent>
+                            </Card>
+                        )
+                    })}
                     </div>
                 )}
-                 <div className="mt-4 p-3 rounded-lg bg-muted/50 text-center cursor-pointer hover:bg-muted" onClick={() => setIsDialogOpen(true)}>
-                    <p className="font-medium text-primary">Write your review...</p>
-                </div>
+                 <Button variant="outline" className="w-full mt-4" onClick={() => setIsDialogOpen(true)}>
+                    Leave Your Review
+                 </Button>
             </CardContent>
         </Card>
         </>
@@ -239,7 +269,7 @@ const TopStudentsSection = () => {
                             <div key={userDoc.id} className="text-center flex-shrink-0 w-24">
                                 <Avatar className="h-16 w-16 mx-auto mb-2 border-2 border-yellow-400">
                                     <AvatarImage src={student.photoURL} />
-                                    <AvatarFallback style={{ backgroundColor: avatarColor }} className="text-xl font-bold">{student.displayName?.charAt(0) || 'S'}</AvatarFallback>
+                                    <AvatarFallback style={{ backgroundColor: avatarColor }} className="text-2xl font-bold">{student.displayName?.charAt(0) || 'S'}</AvatarFallback>
                                 </Avatar>
                                 <Badge variant="secondary" className="text-sm bg-yellow-400 text-black">{i+1}</Badge>
                                 <p className="text-sm font-medium mt-1 truncate">{student.displayName}</p>
