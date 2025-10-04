@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
@@ -132,9 +131,9 @@ const AdmitCardDownloader = () => {
         const printContent = document.getElementById('admit-card');
         if (printContent) {
             const WinPrint = window.open('', '', 'width=900,height=650');
-            WinPrint?.document.write(`<html><head><title>Admit Card</title><script src="https://cdn.tailwindcss.com"></script></head><body>`);
+            WinPrint?.document.write('<html><head><title>Admit Card</title><script src="https://cdn.tailwindcss.com"></script></head><body><div class="p-4">');
             WinPrint?.document.write(printContent.innerHTML);
-            WinPrint?.document.write('</body></html>');
+            WinPrint?.document.write('</div></body></html>');
             WinPrint?.document.close();
             WinPrint?.focus();
             WinPrint?.print();
@@ -157,24 +156,24 @@ const AdmitCardDownloader = () => {
                 </div>
                 {applicantData && (
                     <div className="mt-6">
-                        <div id="admit-card" className="p-6 border rounded-lg bg-white text-black">
+                        <div id="admit-card" className="p-4 sm:p-6 border rounded-lg bg-white text-black text-xs sm:text-sm">
                             <div className="text-center pb-4 border-b">
-                                <h2 className="text-2xl font-bold">Go Swami National Scholarship Test (GSNST)</h2>
-                                <h3 className="text-xl font-semibold">Admit Card</h3>
+                                <h2 className="text-lg sm:text-2xl font-bold">Go Swami National Scholarship Test (GSNST)</h2>
+                                <h3 className="text-md sm:text-xl font-semibold">Admit Card</h3>
                             </div>
-                            <div className="grid grid-cols-3 gap-4 mt-4">
-                                <div className="col-span-2 space-y-2">
+                            <div className="flex flex-col sm:flex-row gap-4 mt-4">
+                                <div className="space-y-2 flex-grow">
                                     <p><strong>Application No:</strong> {applicantData.applicationNumber}</p>
                                     <p><strong>Candidate's Name:</strong> {applicantData.name}</p>
                                     <p><strong>Email:</strong> {applicantData.email}</p>
                                 </div>
-                                <div className="w-24 h-32 border bg-gray-200 flex items-center justify-center text-xs text-gray-500">
+                                <div className="w-24 h-32 border bg-gray-200 flex items-center justify-center text-xs text-gray-500 self-center sm:self-start shrink-0">
                                     {applicantData.photoUrl ? <img src={applicantData.photoUrl} alt="Candidate" className="w-full h-full object-cover" /> : 'Affix Photo Here'}
                                 </div>
                             </div>
                              <div className="mt-4 border-t pt-4">
                                 <h4 className="font-bold mb-2">Instructions:</h4>
-                                <ol className="list-decimal list-inside text-sm space-y-1">
+                                <ol className="list-decimal list-inside text-xs sm:text-sm space-y-1">
                                     <li>Bring a printed copy of this admit card to the test center.</li>
                                     <li>If your photo is not visible, please affix a recent passport-sized photograph.</li>
                                     <li>Bring a valid photo ID (Aadhaar, Passport, etc.).</li>
@@ -361,5 +360,3 @@ export default function ScholarshipPage() {
     </div>
   )
 }
-
-    

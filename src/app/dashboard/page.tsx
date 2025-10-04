@@ -1,4 +1,3 @@
-
 'use client';
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import {
@@ -239,7 +238,7 @@ const TopStudentsSection = () => {
                             <div key={userDoc.id} className="text-center flex-shrink-0 w-24">
                                 <Avatar className="h-16 w-16 mx-auto mb-2 border-2 border-yellow-400">
                                     <AvatarImage src={student.photoURL} />
-                                    <AvatarFallback style={{ backgroundColor: avatarColor }}>{student.displayName?.charAt(0) || 'S'}</AvatarFallback>
+                                    <AvatarFallback style={{ backgroundColor: avatarColor }} className="text-xl font-bold">{student.displayName?.charAt(0) || 'S'}</AvatarFallback>
                                 </Avatar>
                                 <Badge variant="secondary" className="text-sm bg-yellow-400 text-black">{i+1}</Badge>
                                 <p className="text-sm font-medium mt-1 truncate">{student.displayName}</p>
@@ -352,16 +351,14 @@ const MainDashboard = () => {
                   {settings.carouselImages.map((url: string, index: number) => (
                     <CarouselItem key={index}>
                       <Card className="overflow-hidden">
-                        <CardContent className="p-0">
-                          <div className="relative w-full aspect-video">
+                         <CardContent className="p-0 aspect-video relative">
                             <Image
                               src={url}
                               alt={`Carousel Image ${index + 1}`}
                               fill
-                              style={{objectFit: 'cover'}}
+                              className="object-cover"
                               priority={index === 0}
                             />
-                          </div>
                         </CardContent>
                       </Card>
                     </CarouselItem>

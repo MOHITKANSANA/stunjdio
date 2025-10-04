@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useRef, ChangeEvent, useEffect } from 'react';
@@ -25,6 +24,11 @@ const carouselSchema = z.object({
   imageUrl: z.string().url('Must be a valid image URL.'),
 });
 type CarouselFormValues = z.infer<typeof carouselSchema>;
+
+const carouselUploadSchema = z.object({
+  imageFile: z.any().refine(file => file, 'An image is required.'),
+});
+type CarouselUploadFormValues = z.infer<typeof carouselUploadSchema>;
 
 const logoSchema = z.object({
   logoFile: z.any().refine(file => file, 'Logo image is required.'),
@@ -70,7 +74,7 @@ export function AppSettingsForm() {
 
 
   const qrForm = useForm<QrCodeFormValues>({ resolver: zodResolver(qrCodeSchema) });
-  const carouselForm = useForm<CarouselFormValues>({ resolver: zodResolver(carouselSchema), defaultValues: { imageUrl: '' } });
+  const carouselForm = useForm<CarouselUploadFormValues>({ resolver: zodResolver(carouselUploadSchema) });
   const logoForm = useForm<LogoFormValues>({ resolver: zodResolver(logoSchema) });
   
   const handleQrFileChange = (e: ChangeEvent<HTMLInputElement>) => {
@@ -115,10 +119,11 @@ export function AppSettingsForm() {
     }
   }
 
-  const onCarouselSubmit = async (data: CarouselFormValues) => {
+  const onCarouselSubmit = async (data: CarouselUploadFormValues) => {
     setIsCarouselLoading(true);
     try {
-        await updateDoc(doc(firestore, 'settings', 'appConfig'), { carouselImages: arrayUnion(data.imageUrl) });
+        const imageUrl = await fileToDataUrl(data.imageFile);
+        await updateDoc(doc(firestore, 'settings', 'appConfig'), { carouselImages: arrayUnion(imageUrl) });
         toast({ title: 'Success', description: 'Carousel image added.' });
         carouselForm.reset();
     } catch (error: any) {
@@ -200,39 +205,51 @@ export function AppSettingsForm() {
         <Card>
             <CardHeader><CardTitle>Home Page Carousel</CardTitle><CardDescription>Manage images for the dashboard slider.</CardDescription></CardHeader>
             <CardContent>
-                <Form {...carouselForm}>
-                     <form onSubmit={carouselForm.handleSubmit(onCarouselSubmit)} className="space-y-4 mb-6">
-                         <FormField
-                            control={carouselForm.control} name="imageUrl"
-                            render={({ field }) => (
-                                <FormItem><FormLabel>New Image URL</FormLabel>
+                 <Form {...carouselForm}>
+                    <form onSubmit={carouselForm.handleSubmit(onCarouselSubmit)} className="space-y-4 mb-6">
+                        <FormField
+                            control={carouselForm.control}
+                            name="imageFile"
+                            render={({ field: { onChange, ...fieldProps } }) => (
+                                <FormItem>
+                                <FormLabel>New Image</FormLabel>
                                 <FormControl>
                                     <div className="flex gap-2">
-                                    <Input {...field} placeholder="https://example.com/image.png" />
-                                    <Button type="submit" disabled={isCarouselLoading}> {isCarouselLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Add'} </Button>
+                                        <Input
+                                            type="file"
+                                            accept="image/*"
+                                            onChange={(e) => onChange(e.target.files?.[0])}
+                                            {...fieldProps}
+                                        />
+                                        <Button type="submit" disabled={isCarouselLoading}>
+                                            {isCarouselLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Add'}
+                                        </Button>
                                     </div>
                                 </FormControl>
-                                <FormMessage /></FormItem>
+                                <FormMessage />
+                                </FormItem>
                             )}
                         />
-                     </form>
+                    </form>
                 </Form>
                 <div className="space-y-2">
                     <h4 className="font-semibold">Current Images</h4>
                     {carouselImages.length === 0 && <p className="text-sm text-muted-foreground">No images added yet.</p>}
-                    {carouselImages.map((url, index) => (
-                        <div key={index} className="flex items-center justify-between gap-2 p-2 border rounded-md">
-                            <div className="flex items-center gap-2 truncate">
-                                <div className="relative w-10 h-10 shrink-0">
-                                    <Image src={url} alt={`Carousel Image ${index+1}`} fill className="rounded-sm object-cover" />
+                    <div className="max-h-60 overflow-y-auto pr-2">
+                        {carouselImages.map((url, index) => (
+                            <div key={index} className="flex items-center justify-between gap-2 p-2 border rounded-md mb-2">
+                                <div className="flex items-center gap-2 truncate">
+                                    <div className="relative w-10 h-10 shrink-0">
+                                        <Image src={url} alt={`Carousel Image ${index+1}`} fill className="rounded-sm object-cover" />
+                                    </div>
+                                    <a href={url} target="_blank" rel="noopener noreferrer" className="text-xs text-muted-foreground truncate hover:underline">{url}</a>
                                 </div>
-                                <a href={url} target="_blank" rel="noopener noreferrer" className="text-xs text-muted-foreground truncate hover:underline">{url}</a>
+                                <Button variant="ghost" size="icon" onClick={() => handleRemoveCarouselImage(url)}>
+                                    <Trash2 className="h-4 w-4 text-destructive" />
+                                </Button>
                             </div>
-                            <Button variant="ghost" size="icon" onClick={() => handleRemoveCarouselImage(url)}>
-                                <Trash2 className="h-4 w-4 text-destructive" />
-                            </Button>
-                        </div>
-                    ))}
+                        ))}
+                    </div>
                 </div>
             </CardContent>
         </Card>

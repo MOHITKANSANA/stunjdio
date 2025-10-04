@@ -68,6 +68,7 @@ const sidebarNavItems = [
     { href: '/dashboard/downloads', icon: Download, label: 'My Downloads' },
     { href: '/dashboard/scholarship', icon: Award, label: 'scholarship' },
     { href: '/dashboard/papers', icon: Newspaper, label: 'Previous Papers' },
+    { href: '/dashboard/news', icon: Newspaper, label: 'News' },
     { href: '/dashboard/tutor', icon: Bot, label: 'AI Tutor' },
     { href: '/dashboard/tests', icon: ShieldQuestion, label: 'ai_tests' },
 ];
@@ -217,19 +218,20 @@ const AppSidebar = ({ isKidsMode, isMindSphereMode }: { isKidsMode: boolean, isM
 
 const AppHeader = () => {
   return (
-      <header className={cn("flex h-16 shrink-0 items-center justify-between gap-4 px-4 md:px-6 bg-red-600 text-white sticky top-0 z-20 shadow-md")}>
+      <header className={cn("flex h-16 shrink-0 items-center justify-between gap-4 px-4 md:px-6 bg-background sticky top-0 z-20 shadow-md border-b")}>
             <div className='flex items-center gap-2'>
                 <div className='md:hidden'>
                     <SidebarTrigger />
                 </div>
                  <div className="flex items-center gap-2 sm:gap-4 text-lg font-semibold font-headline">
-                    <Link href="/dashboard">
-                       GoSwami Defence Academy
+                    <Link href="/dashboard" className="flex items-center gap-2">
+                       <Shield className="h-7 w-7 text-primary" />
+                       <span className="hidden sm:inline-block">GoSwamiX</span>
                     </Link>
                  </div>
             </div>
             <div className="flex items-center gap-2">
-                <Button variant="ghost" size="icon" className="rounded-full text-white hover:bg-white/20 hover:text-white">
+                <Button variant="ghost" size="icon" className="rounded-full">
                     <Bell />
                     <span className="sr-only">Notifications</span>
                 </Button>
