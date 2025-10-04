@@ -38,6 +38,12 @@ const nextConfig: NextConfig = {
         hostname: 'workdrive.zoho.in',
         port: '',
         pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'share.snapchat.com',
+        port: '',
+        pathname: '/**',
       }
     ],
   },
