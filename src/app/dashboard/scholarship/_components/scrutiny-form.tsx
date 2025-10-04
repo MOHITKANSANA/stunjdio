@@ -13,23 +13,24 @@ import { Loader2 } from 'lucide-react';
 import { collection, query, where, getDocs, addDoc, serverTimestamp } from 'firebase/firestore';
 import { firestore } from '@/lib/firebase';
 import { Textarea } from '@/components/ui/textarea';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
 const scrutinySchema = z.object({
     applicationNumber: z.string().length(5, 'Application number must be 5 digits.'),
-    reason: z.string().min(10, 'Please provide a detailed reason for the review.').max(500, 'Reason cannot exceed 500 characters.'),
 });
 type ScrutinyFormValues = z.infer<typeof scrutinySchema>;
 
 export function ScrutinyForm() {
     const { toast } = useToast();
     const [isLoading, setIsLoading] = useState(false);
+    const [result, setResult] = useState<any>(null);
 
     const form = useForm<ScrutinyFormValues>({ resolver: zodResolver(scrutinySchema) });
 
     const onSubmit = async (data: ScrutinyFormValues) => {
         setIsLoading(true);
+        setResult(null);
         try {
-            // First, verify the application number and that a test was submitted
             const q = query(
                 collection(firestore, 'scholarshipTestResults'),
                 where('applicationNumber', '==', data.applicationNumber)
@@ -42,48 +43,54 @@ export function ScrutinyForm() {
             }
 
             const resultDoc = querySnapshot.docs[0];
+            setResult(resultDoc.data());
 
-            await addDoc(collection(firestore, 'scrutinyRequests'), {
-                ...data,
-                testResultId: resultDoc.id,
-                applicantId: resultDoc.data().applicantId,
-                status: 'pending',
-                requestedAt: serverTimestamp(),
-            });
-
-            toast({ title: 'Request Submitted!', description: 'Your scrutiny request has been received and will be reviewed.' });
-            form.reset();
         } catch (error) {
-            toast({ variant: 'destructive', title: 'Error', description: 'Could not submit your request.' });
+            toast({ variant: 'destructive', title: 'Error', description: 'Could not fetch your test answers.' });
         } finally {
             setIsLoading(false);
         }
     }
 
     return (
-        <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                <FormField control={form.control} name="applicationNumber" render={({ field }) => (
-                    <FormItem>
-                        <FormLabel>Application Number</FormLabel>
-                        <FormControl><Input placeholder="e.g. 12345" {...field} /></FormControl>
-                        <FormMessage />
-                    </FormItem>
-                )} />
-                <FormField control={form.control} name="reason" render={({ field }) => (
-                    <FormItem>
-                        <FormLabel>Reason for Review</FormLabel>
-                        <FormControl><Textarea placeholder="Explain why you think there was an error..." {...field} /></FormControl>
-                        <FormMessage />
-                    </FormItem>
-                )} />
-                <Button type="submit" disabled={isLoading}>
-                    {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    Submit Request
-                </Button>
-            </form>
-        </Form>
+        <Card>
+            <CardHeader>
+                <CardTitle>Answer Sheet Scrutiny</CardTitle>
+                <CardDescription>Enter your application number to review your submitted answers.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <Form {...form}>
+                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                        <FormField control={form.control} name="applicationNumber" render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Application Number</FormLabel>
+                                <FormControl><Input placeholder="e.g. 12345" {...field} /></FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )} />
+                        <Button type="submit" disabled={isLoading}>
+                            {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            View My Answers
+                        </Button>
+                    </form>
+                </Form>
+
+                {result && (
+                    <div className="mt-6 space-y-4">
+                        <h3 className="text-lg font-bold">Your Submitted Answers</h3>
+                        {result.answers.map((answer: any, index: number) => (
+                            <div key={index} className={`p-4 rounded-lg border ${answer.isCorrect ? 'border-green-500 bg-green-50' : 'border-red-500 bg-red-50'}`}>
+                                <p className="font-semibold">{index + 1}. {answer.questionText}</p>
+                                <p className="text-sm">Your answer: <span className="font-medium">{answer.selectedOption || "Not Answered"}</span></p>
+                                {!answer.isCorrect && (
+                                     <p className="text-sm">Correct answer: <span className="font-medium text-green-700">{answer.correctAnswer}</span></p>
+                                )}
+                            </div>
+                        ))}
+                    </div>
+                )}
+
+            </CardContent>
+        </Card>
     )
 }
-
-    
