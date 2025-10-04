@@ -25,7 +25,12 @@ export function ScrutinyForm() {
     const [isLoading, setIsLoading] = useState(false);
     const [result, setResult] = useState<any>(null);
 
-    const form = useForm<ScrutinyFormValues>({ resolver: zodResolver(scrutinySchema) });
+    const form = useForm<ScrutinyFormValues>({ 
+        resolver: zodResolver(scrutinySchema),
+        defaultValues: {
+            applicationNumber: '',
+        }
+    });
 
     const onSubmit = async (data: ScrutinyFormValues) => {
         setIsLoading(true);
