@@ -223,7 +223,9 @@ export function AppSettingsForm() {
                     {carouselImages.map((url, index) => (
                         <div key={index} className="flex items-center justify-between gap-2 p-2 border rounded-md">
                             <div className="flex items-center gap-2 truncate">
-                                <Image src={url} alt={`Carousel Image ${index+1}`} width={40} height={40} className="rounded-sm object-cover" />
+                                <div className="relative w-10 h-10 shrink-0">
+                                    <Image src={url} alt={`Carousel Image ${index+1}`} fill className="rounded-sm object-cover" />
+                                </div>
                                 <a href={url} target="_blank" rel="noopener noreferrer" className="text-xs text-muted-foreground truncate hover:underline">{url}</a>
                             </div>
                             <Button variant="ghost" size="icon" onClick={() => handleRemoveCarouselImage(url)}>

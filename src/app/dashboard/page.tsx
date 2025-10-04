@@ -168,10 +168,14 @@ const StudentReviews = () => {
 
         <Dialog open={isReviewOpen} onOpenChange={setIsReviewOpen}>
             <DialogContent>
-                <DialogHeader>
-                    <DialogTitle>{selectedReview?.name}'s Review</DialogTitle>
-                </DialogHeader>
-                <p className="py-4">{selectedReview?.text}</p>
+                {selectedReview && (
+                    <>
+                    <DialogHeader>
+                        <DialogTitle>{selectedReview?.name}'s Review</DialogTitle>
+                    </DialogHeader>
+                    <p className="py-4">{selectedReview?.text}</p>
+                    </>
+                )}
                  <DialogClose asChild>
                     <Button variant="outline">Close</Button>
                 </DialogClose>
@@ -349,7 +353,7 @@ const MainDashboard = () => {
                     <CarouselItem key={index}>
                       <Card className="overflow-hidden">
                         <CardContent className="p-0">
-                          <div className="aspect-w-16 aspect-h-9 relative h-48">
+                          <div className="relative w-full aspect-video">
                             <Image
                               src={url}
                               alt={`Carousel Image ${index + 1}`}
