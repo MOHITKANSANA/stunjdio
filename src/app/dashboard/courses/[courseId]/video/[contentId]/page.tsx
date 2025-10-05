@@ -85,6 +85,7 @@ const VideoPlayer = ({ videoUrl }: { videoUrl: string }) => {
     const zohoUrl = getZohoVideoEmbedUrl(videoUrl);
     const googleDriveUrl = getGoogleDriveEmbedUrl(videoUrl);
     const isDirectLink = videoUrl?.match(/\.(mp4|webm|ogg)$/i) || videoUrl?.includes('supabase');
+    const isAtoplyLink = videoUrl?.includes('atoplay.com');
 
     if (youtubeId) {
         embedUrl = `https://www.youtube.com/embed/${youtubeId}?autoplay=1&rel=0`;
@@ -92,6 +93,8 @@ const VideoPlayer = ({ videoUrl }: { videoUrl: string }) => {
         embedUrl = zohoUrl;
     } else if (googleDriveUrl) {
         embedUrl = googleDriveUrl;
+    } else if (isAtoplyLink) {
+        embedUrl = videoUrl;
     } else if (isDirectLink) {
         embedUrl = videoUrl;
         playerType = 'video';
