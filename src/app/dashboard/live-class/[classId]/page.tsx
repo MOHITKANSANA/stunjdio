@@ -1,5 +1,3 @@
-
-
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
@@ -74,6 +72,19 @@ const getGoogleDriveEmbedUrl = (url: string): string | null => {
     return null;
 }
 
+const getAtoplyEmbedUrl = (url: string): string | null => {
+    if (!url) return null;
+    try {
+        const atoplyRegex = /atoplay\.com\/video\/([a-zA-Z0-9_-]+)/;
+        const match = url.match(atoplyRegex);
+        if (match && match[1]) {
+            return `https://atoplay.com/embed?v=${match[1]}`;
+        }
+    } catch (e) {
+        console.error("Error parsing Atoply URL", e);
+    }
+    return null;
+};
 
 const VideoPlayer = ({ videoUrl }: { videoUrl: string }) => {
     let embedUrl;
@@ -82,17 +93,17 @@ const VideoPlayer = ({ videoUrl }: { videoUrl: string }) => {
     const youtubeId = getYoutubeVideoId(videoUrl);
     const zohoUrl = getZohoVideoEmbedUrl(videoUrl);
     const googleDriveUrl = getGoogleDriveEmbedUrl(videoUrl);
+    const atoplyUrl = getAtoplyEmbedUrl(videoUrl);
     const isDirectLink = videoUrl?.match(/\.(mp4|webm|ogg)$/i) || videoUrl?.includes('supabase');
-    const isAtoplyLink = videoUrl?.includes('atoplay.com');
-
+    
     if (youtubeId) {
         embedUrl = `https://www.youtube.com/embed/${youtubeId}?autoplay=1&rel=0`;
     } else if (zohoUrl) {
         embedUrl = zohoUrl;
     } else if (googleDriveUrl) {
         embedUrl = googleDriveUrl;
-    } else if (isAtoplyLink) {
-        embedUrl = videoUrl;
+    } else if (atoplyUrl) {
+        embedUrl = atoplyUrl;
     } else if (isDirectLink) {
         embedUrl = videoUrl;
         playerType = 'video';
@@ -357,5 +368,3 @@ export default function LiveClassPlaybackPage() {
         </div>
     );
 }
-
-    
