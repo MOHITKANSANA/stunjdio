@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
@@ -72,19 +73,33 @@ const getGoogleDriveEmbedUrl = (url: string): string | null => {
     return null;
 }
 
-const getAtoplyEmbedUrl = (url: string): string | null => {
+const getAtoplayEmbedUrl = (url: string): string | null => {
     if (!url) return null;
     try {
         const atoplyRegex = /atoplay\.com\/video\/([a-zA-Z0-9_-]+)/;
         const match = url.match(atoplyRegex);
         if (match && match[1]) {
-            return `https://atoplay.com/embed?v=${match[1]}`;
+            return `https://atoplay.com/embed/${match[1]}`;
         }
     } catch (e) {
-        console.error("Error parsing Atoply URL", e);
+        console.error("Error parsing Atoplay URL", e);
     }
     return null;
 };
+
+const getRumbleEmbedUrl = (url: string): string | null => {
+    if (!url) return null;
+    try {
+        const rumbleRegex = /rumble\.com\/([a-zA-Z0-9]+)-/;
+        const match = url.match(rumbleRegex);
+        if (match && match[1]) {
+            return `https://rumble.com/embed/${match[1]}/`;
+        }
+    } catch (e) {
+        console.error("Error parsing Rumble URL", e);
+    }
+    return null;
+}
 
 const VideoPlayer = ({ videoUrl }: { videoUrl: string }) => {
     let embedUrl;
@@ -93,7 +108,8 @@ const VideoPlayer = ({ videoUrl }: { videoUrl: string }) => {
     const youtubeId = getYoutubeVideoId(videoUrl);
     const zohoUrl = getZohoVideoEmbedUrl(videoUrl);
     const googleDriveUrl = getGoogleDriveEmbedUrl(videoUrl);
-    const atoplyUrl = getAtoplyEmbedUrl(videoUrl);
+    const atoplyUrl = getAtoplayEmbedUrl(videoUrl);
+    const rumbleUrl = getRumbleEmbedUrl(videoUrl);
     const isDirectLink = videoUrl?.match(/\.(mp4|webm|ogg)$/i) || videoUrl?.includes('supabase');
     
     if (youtubeId) {
@@ -104,6 +120,8 @@ const VideoPlayer = ({ videoUrl }: { videoUrl: string }) => {
         embedUrl = googleDriveUrl;
     } else if (atoplyUrl) {
         embedUrl = atoplyUrl;
+    } else if (rumbleUrl) {
+        embedUrl = rumbleUrl;
     } else if (isDirectLink) {
         embedUrl = videoUrl;
         playerType = 'video';
