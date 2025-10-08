@@ -69,11 +69,10 @@ import { useCollection } from 'react-firebase-hooks/firestore';
 const mainGridItems = [
   { label: "My Library", icon: Library, href: "/dashboard/my-learning", color: "from-blue-500 to-indigo-600" },
   { label: "Live Classes", icon: Clapperboard, href: "/dashboard/live-classes", color: "from-purple-500 to-violet-600" },
-  { label: "Test Hub", icon: Shield, href: "/dashboard/tests", color: "from-green-500 to-emerald-600" },
+  { label: "Free Courses", icon: BookCopy, href: "/dashboard/courses/free", color: "from-green-500 to-emerald-600" },
   { label: "AI Tutor", icon: Bot, href: "/dashboard/tutor", color: "from-red-500 to-rose-600" },
   { label: "Scholarship", icon: Award, href: "/dashboard/scholarship", color: "from-yellow-500 to-amber-600" },
   { label: "Previous Papers", icon: Newspaper, href: "/dashboard/papers", color: "from-pink-500 to-rose-500" },
-  { label: "Free Courses", icon: BookCopy, href: "/dashboard/courses/free", color: "from-teal-500 to-cyan-600" },
 ];
 
 
@@ -135,7 +134,9 @@ const LiveClassTimer = () => {
 const StudentReviews = () => {
     const { user } = useAuth();
     const { toast } = useToast();
-    const [isDialogOpen, setIsDialogOpen] = useState(false);
+    const [isReviewDialogOpen, setIsReviewDialogOpen] = useState(false);
+    const [isReadMoreDialogOpen, setIsReadMoreDialogOpen] = useState(false);
+    const [selectedReview, setSelectedReview] = useState<any>(null);
     const [reviewText, setReviewText] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -158,17 +159,22 @@ const StudentReviews = () => {
             });
             toast({ title: "Success!", description: "Your review has been submitted." });
             setReviewText('');
-            setIsDialogOpen(false);
+            setIsReviewDialogOpen(false);
         } catch (error) {
             toast({ variant: 'destructive', title: "Error", description: "Could not submit your review." });
         } finally {
             setIsSubmitting(false);
         }
     };
+
+    const openReadMore = (review: any) => {
+        setSelectedReview(review);
+        setIsReadMoreDialogOpen(true);
+    }
     
     return (
         <>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <Dialog open={isReviewDialogOpen} onOpenChange={setIsReviewDialogOpen}>
             <DialogContent>
                 <DialogHeader>
                     <DialogTitle>Write a Review</DialogTitle>
@@ -187,6 +193,20 @@ const StudentReviews = () => {
                 </div>
             </DialogContent>
         </Dialog>
+
+        <Dialog open={isReadMoreDialogOpen} onOpenChange={setIsReadMoreDialogOpen}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Student Review</DialogTitle>
+                </DialogHeader>
+                {selectedReview && (
+                     <div className="py-4 space-y-4">
+                        <p className="italic">"{selectedReview.text}"</p>
+                        <p className="font-semibold text-right">- {selectedReview.name}</p>
+                    </div>
+                )}
+            </DialogContent>
+        </Dialog>
         
         <Card>
             <CardHeader>
@@ -203,8 +223,8 @@ const StudentReviews = () => {
                             {reviews?.docs.map(doc => {
                                 const review = doc.data();
                                 return (
-                                    <CarouselItem key={doc.id} className="md:basis-1/2 lg:basis-1/3">
-                                        <Card>
+                                    <CarouselItem key={doc.id} className="md:basis-1/2 lg:basis-1/3" onClick={() => openReadMore(review)}>
+                                        <Card className="cursor-pointer">
                                             <CardContent className="p-4 flex flex-col justify-between h-full">
                                                 <p className="italic line-clamp-4">"{review.text}"</p>
                                                 <p className="font-semibold mt-2 text-right">- {review.name}</p>
@@ -218,7 +238,7 @@ const StudentReviews = () => {
                         <CarouselNext className="hidden sm:flex" />
                     </Carousel>
                 )}
-                 <Button variant="outline" className="w-full mt-4" onClick={() => setIsDialogOpen(true)}>
+                 <Button variant="outline" className="w-full mt-4" onClick={() => setIsReviewDialogOpen(true)}>
                     Leave Your Review
                  </Button>
             </CardContent>

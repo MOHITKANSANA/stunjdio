@@ -30,6 +30,7 @@ import {
   Users,
   Calendar,
   Info,
+  Languages,
 } from 'lucide-react';
 
 import { useAuth } from '@/hooks/use-auth';
@@ -72,6 +73,7 @@ const sidebarNavItems = [
     { href: '/dashboard/news', icon: Newspaper, label: 'News' },
     { href: '/dashboard/tutor', icon: Bot, label: 'AI Tutor' },
     { href: '/dashboard/tests', icon: ShieldQuestion, label: 'ai_tests' },
+    { href: '/dashboard/golingua', icon: Languages, label: 'GoLingua' },
 ];
 
 const kidsSidebarNavItems = [
