@@ -78,12 +78,10 @@ const getGoogleDriveEmbedUrl = (url: string): string | null => {
 const getAtoplayEmbedUrl = (url: string): string | null => {
     if (!url) return null;
     try {
-        // Updated regex to handle the new URL format
         const atoplayRegex = /atoplay\.com\/video\/([a-zA-Z0-9_-]+)/;
         const match = url.match(atoplayRegex);
         if (match && match[1]) {
-            // Correct embed format is with /embed/ not /embed?v=
-            return `https://atoplay.com/embed/${match[1]}`;
+            return `https://atoplay.com/embed?v=${match[1]}`;
         }
     } catch (e) {
         console.error("Error parsing Atoplay URL", e);

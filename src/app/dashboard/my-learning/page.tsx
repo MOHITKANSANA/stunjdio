@@ -1,8 +1,7 @@
 
-
 'use client';
 
-import { BookOpenCheck, Trophy, Library, BookMarked, BellDot, Newspaper, Trash2, Eye, Download } from "lucide-react";
+import { BookOpenCheck, Trophy, Library, BookMarked, BellDot, Newspaper, Trash2, Eye, Download, Book as EbookIcon } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from '@/hooks/use-auth';
@@ -185,7 +184,7 @@ export default function MyLearningPage() {
     }, {} as Record<string, string>);
     
     return (
-        <div className="space-y-8">
+        <div className="space-y-8 p-4 md:p-8">
              {selectedPdf && (
                 <PDFViewer 
                     pdfUrl={selectedPdf.url}
@@ -197,7 +196,7 @@ export default function MyLearningPage() {
                  <div className="flex items-center gap-3">
                     <Library className="h-10 w-10 text-primary" />
                     <h1 className="text-3xl md:text-4xl font-bold font-headline">
-                        My Learning
+                        My Library
                     </h1>
                      {hasNewReplies && (
                         <Badge variant="destructive" className="animate-pulse">
@@ -248,7 +247,7 @@ export default function MyLearningPage() {
                     {ebooksError && <p className="text-destructive text-center">Could not load E-books.</p>}
                      {!(ebooksLoading) && (!ebooks || ebooks.empty) && (
                          <div className="text-center py-12">
-                            <BookMarked className="mx-auto h-12 w-12 text-muted-foreground" />
+                            <EbookIcon className="mx-auto h-12 w-12 text-muted-foreground" />
                             <h3 className="mt-4 text-lg font-semibold">No E-Books Available</h3>
                             <p className="mt-1 text-sm text-muted-foreground">Please check back later for new e-books.</p>
                         </div>
