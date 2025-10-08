@@ -9,7 +9,7 @@ import { cn } from '@/lib/utils';
 
 const mainBottomNavItems = [
     { href: '/dashboard', icon: Home, label: 'Home' },
-    { href: '/dashboard/my-learning', icon: BookOpen, label: 'My Courses' },
+    { href: '/dashboard/my-learning', icon: Library, label: 'My Library' },
     { href: '/dashboard/live-classes', icon: Calendar, label: 'Live Class' },
     { href: '/dashboard/downloads', icon: Download, label: 'Downloads' },
     { href: '/dashboard/profile', icon: User, label: 'Profile' },

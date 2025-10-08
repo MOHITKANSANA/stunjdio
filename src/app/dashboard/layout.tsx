@@ -61,7 +61,7 @@ import { AppBottomNav } from './bottom-nav';
 
 const sidebarNavItems = [
     { href: '/dashboard', icon: Home, label: 'home' },
-    { href: '/dashboard/my-learning', icon: Library, label: 'My Learning' },
+    { href: '/dashboard/my-learning', icon: Library, label: 'My Library' },
     { href: '/dashboard/profile', icon: User, label: 'profile' },
     { href: '/dashboard/courses', icon: Book, label: 'courses' },
     { href: '/dashboard/live-classes', icon: Clapperboard, label: 'Live Classes' },

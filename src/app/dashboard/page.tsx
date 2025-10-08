@@ -67,12 +67,13 @@ import Image from 'next/image';
 import { useCollection } from 'react-firebase-hooks/firestore';
 
 const mainGridItems = [
-  { label: "My Learning", icon: Library, href: "/dashboard/my-learning", color: "from-blue-500 to-indigo-600" },
+  { label: "My Library", icon: Library, href: "/dashboard/my-learning", color: "from-blue-500 to-indigo-600" },
   { label: "Live Classes", icon: Clapperboard, href: "/dashboard/live-classes", color: "from-purple-500 to-violet-600" },
   { label: "Test Hub", icon: Shield, href: "/dashboard/tests", color: "from-green-500 to-emerald-600" },
   { label: "AI Tutor", icon: Bot, href: "/dashboard/tutor", color: "from-red-500 to-rose-600" },
   { label: "Scholarship", icon: Award, href: "/dashboard/scholarship", color: "from-yellow-500 to-amber-600" },
   { label: "Previous Papers", icon: Newspaper, href: "/dashboard/papers", color: "from-pink-500 to-rose-500" },
+  { label: "Free Courses", icon: BookCopy, href: "/dashboard/courses/free", color: "from-teal-500 to-cyan-600" },
 ];
 
 
@@ -389,7 +390,7 @@ const MainDashboard = () => {
             ) : <Skeleton className="h-48 w-full" />}
             
             <div className="grid grid-cols-3 gap-3">
-                {mainGridItems.map(item => (
+                {mainGridItems.slice(0, 6).map(item => (
                     <Link href={item.href} key={item.label}>
                         <Card className={cn("text-white h-full hover:opacity-90 transition-opacity bg-gradient-to-br", item.color)}>
                              <CardContent className="p-3 flex flex-col items-center justify-center text-center gap-1 h-24">
@@ -400,6 +401,22 @@ const MainDashboard = () => {
                     </Link>
                 ))}
             </div>
+            
+            {mainGridItems.length > 6 && (
+                 <div className="grid grid-cols-4 gap-3">
+                    {mainGridItems.slice(6).map(item => (
+                        <Link href={item.href} key={item.label}>
+                            <Card className={cn("text-white h-full hover:opacity-90 transition-opacity bg-gradient-to-br", item.color)}>
+                                 <CardContent className="p-3 flex flex-col items-center justify-center text-center gap-1 h-24">
+                                    <item.icon className="h-7 w-7" />
+                                    <span className="text-xs font-semibold">{item.label}</span>
+                                </CardContent>
+                            </Card>
+                        </Link>
+                    ))}
+                </div>
+            )}
+
 
             <TopStudentsSection />
             <LiveClassTimer />
