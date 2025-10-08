@@ -29,6 +29,7 @@ import {
   Loader2,
   Users,
   Calendar,
+  Info,
 } from 'lucide-react';
 
 import { useAuth } from '@/hooks/use-auth';
@@ -164,23 +165,25 @@ const AppSidebar = ({ isKidsMode, isMindSphereMode }: { isKidsMode: boolean, isM
                         />
                     ))}
 
-                    {customPages.length > 0 && (
-                        <>
-                            <SidebarSeparator />
-                            <SidebarMenuItem>
-                                <div className="px-2 py-1 text-sm font-semibold text-primary-foreground/70">Custom Pages</div>
-                            </SidebarMenuItem>
-                            {customPages.map((page) => (
-                                <SidebarMenuItemWithHandler
-                                    key={page.id}
-                                    href={`/p/${page.slug}`}
-                                    icon={FileCode}
-                                    label={page.slug.replace(/-/g, ' ')}
-                                    closeSidebar={closeSidebar}
-                                />
-                            ))}
-                        </>
-                    )}
+                    <SidebarMenuItemWithHandler
+                        href="/p/why-us"
+                        icon={Info}
+                        label="Why Us"
+                        closeSidebar={closeSidebar}
+                    />
+
+                    {customPages.map((page) => {
+                        if (page.id === 'why-us') return null; // Avoid duplicating "Why Us"
+                        return (
+                            <SidebarMenuItemWithHandler
+                                key={page.id}
+                                href={`/p/${page.slug}`}
+                                icon={FileCode}
+                                label={page.slug.replace(/-/g, ' ')}
+                                closeSidebar={closeSidebar}
+                            />
+                        )
+                    })}
 
                      <SidebarSeparator />
                      <SidebarMenuItem>

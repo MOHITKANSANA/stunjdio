@@ -316,15 +316,7 @@ export default function ScholarshipPage() {
         case 'admit-card': return <AdmitCardDownloader />;
         case 'test': return renderTestContent();
         case 'result': return <ViewResult />;
-        case 'review': return (
-            <Card>
-                <CardHeader>
-                    <CardTitle>Answer Sheet Scrutiny</CardTitle>
-                    <CardDescription>If you believe there was an error in your test evaluation, please submit a review request.</CardDescription>
-                </CardHeader>
-                <CardContent><ScrutinyForm /></CardContent>
-            </Card>
-        );
+        case 'review': return <ScrutinyForm />;
         case 'history': return <ScholarshipHistory key={historyKey} />;
         default: return null;
     }

@@ -31,6 +31,7 @@ import {
   X,
   Check,
   Bot,
+  Info,
 } from 'lucide-react';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -134,19 +135,12 @@ const StudentReviews = () => {
     const { user } = useAuth();
     const { toast } = useToast();
     const [isDialogOpen, setIsDialogOpen] = useState(false);
-    const [isReviewOpen, setIsReviewOpen] = useState(false);
-    const [selectedReview, setSelectedReview] = useState<any>(null);
     const [reviewText, setReviewText] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     const [reviews, loading] = useCollection(
         query(collection(firestore, 'reviews'), orderBy('createdAt', 'desc'))
     );
-    
-    const openReview = (review: any) => {
-      setSelectedReview(review);
-      setIsReviewOpen(true);
-    }
     
     const handleReviewSubmit = async () => {
         if (!user || !reviewText.trim()) {
@@ -192,22 +186,6 @@ const StudentReviews = () => {
                 </div>
             </DialogContent>
         </Dialog>
-
-        <Dialog open={isReviewOpen} onOpenChange={setIsReviewOpen}>
-            <DialogContent>
-                {selectedReview && (
-                    <>
-                    <DialogHeader>
-                        <DialogTitle>{selectedReview?.name}'s Review</DialogTitle>
-                    </DialogHeader>
-                    <p className="py-4">{selectedReview?.text}</p>
-                    </>
-                )}
-                 <DialogClose asChild>
-                    <Button variant="outline">Close</Button>
-                </DialogClose>
-            </DialogContent>
-        </Dialog>
         
         <Card>
             <CardHeader>
@@ -215,19 +193,29 @@ const StudentReviews = () => {
             </CardHeader>
             <CardContent>
                 {loading ? <Skeleton className="h-24 w-full" /> : (
-                    <div className="flex space-x-4 overflow-x-auto pb-4">
-                    {reviews?.docs.map(doc => {
-                        const review = doc.data();
-                        return (
-                            <Card key={doc.id} className="min-w-[280px] cursor-pointer" onClick={() => openReview(review)}>
-                                <CardContent className="p-4">
-                                    <p className="italic line-clamp-3">"{review.text}"</p>
-                                    <p className="font-semibold mt-2 text-right">- {review.name}</p>
-                                </CardContent>
-                            </Card>
-                        )
-                    })}
-                    </div>
+                    <Carousel 
+                        opts={{ align: "start", loop: true }}
+                        plugins={[Autoplay({ delay: 5000, stopOnInteraction: true })]}
+                        className="w-full"
+                    >
+                        <CarouselContent>
+                            {reviews?.docs.map(doc => {
+                                const review = doc.data();
+                                return (
+                                    <CarouselItem key={doc.id} className="md:basis-1/2 lg:basis-1/3">
+                                        <Card>
+                                            <CardContent className="p-4 flex flex-col justify-between h-full">
+                                                <p className="italic line-clamp-4">"{review.text}"</p>
+                                                <p className="font-semibold mt-2 text-right">- {review.name}</p>
+                                            </CardContent>
+                                        </Card>
+                                    </CarouselItem>
+                                )
+                            })}
+                        </CarouselContent>
+                        <CarouselPrevious className="hidden sm:flex" />
+                        <CarouselNext className="hidden sm:flex" />
+                    </Carousel>
                 )}
                  <Button variant="outline" className="w-full mt-4" onClick={() => setIsDialogOpen(true)}>
                     Leave Your Review
@@ -403,7 +391,7 @@ const MainDashboard = () => {
             <div className="grid grid-cols-3 gap-3">
                 {mainGridItems.map(item => (
                     <Link href={item.href} key={item.label}>
-                        <Card className={cn("text-white h-full hover:opacity-90 transition-opacity", item.color)}>
+                        <Card className={cn("text-white h-full hover:opacity-90 transition-opacity bg-gradient-to-br", item.color)}>
                              <CardContent className="p-3 flex flex-col items-center justify-center text-center gap-1 h-24">
                                 <item.icon className="h-7 w-7" />
                                 <span className="text-xs font-semibold">{item.label}</span>

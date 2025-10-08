@@ -84,11 +84,11 @@ export function ScrutinyForm() {
                     <div className="mt-6 space-y-4">
                         <h3 className="text-lg font-bold">Your Submitted Answers</h3>
                         {result.answers.map((answer: any, index: number) => (
-                            <div key={index} className={`p-4 rounded-lg border ${answer.isCorrect ? 'border-green-500 bg-green-50' : 'border-red-500 bg-red-50'}`}>
+                            <div key={index} className={`p-4 rounded-lg border ${answer.isCorrect ? 'border-green-500 bg-green-500/10' : 'border-red-500 bg-red-500/10'}`}>
                                 <p className="font-semibold">{index + 1}. {answer.questionText}</p>
                                 <p className="text-sm">Your answer: <span className="font-medium">{answer.selectedOption || "Not Answered"}</span></p>
                                 {!answer.isCorrect && (
-                                     <p className="text-sm">Correct answer: <span className="font-medium text-green-700">{answer.correctAnswer}</span></p>
+                                     <p className="text-sm">Correct answer: <span className="font-medium text-green-600">{answer.correctAnswer}</span></p>
                                 )}
                             </div>
                         ))}
