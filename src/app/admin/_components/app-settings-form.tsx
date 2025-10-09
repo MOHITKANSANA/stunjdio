@@ -211,7 +211,7 @@ export function AppSettingsForm() {
                         <FormField
                             control={carouselForm.control}
                             name="imageFile"
-                            render={({ field: { onChange, ...fieldProps } }) => (
+                            render={({ field: { onChange, value, ...fieldProps } }) => (
                                 <FormItem>
                                 <FormLabel>New Image</FormLabel>
                                 <FormControl>
@@ -221,6 +221,7 @@ export function AppSettingsForm() {
                                             accept="image/*"
                                             onChange={(e) => onChange(e.target.files?.[0])}
                                             {...fieldProps}
+                                            value={undefined}
                                         />
                                         <Button type="submit" disabled={isCarouselLoading}>
                                             {isCarouselLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Add'}
