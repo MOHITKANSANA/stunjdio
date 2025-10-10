@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import { useState, useEffect } from "react";
@@ -128,10 +127,7 @@ const NotificationSettings = () => {
         if ('Notification' in window) {
             setPermissionStatus(Notification.permission);
         }
-        if (user && permissionStatus === 'granted') {
-           retrieveToken();
-        }
-    }, [user, permissionStatus]);
+    }, []);
     
     const retrieveToken = async () => {
         if (!messaging || !user) return;
@@ -143,9 +139,12 @@ const NotificationSettings = () => {
                 await updateDoc(userDocRef, {
                     fcmTokens: arrayUnion(currentToken)
                 });
+            } else {
+                 toast({ variant: 'destructive', title: 'Token Error', description: 'Could not get notification token. Please ensure notifications are allowed in your browser settings.' });
             }
         } catch (err) {
              console.log('An error occurred while retrieving token. ', err);
+             toast({ variant: 'destructive', title: 'Token Error', description: 'An error occurred while retrieving the notification token.' });
         }
     };
 
@@ -229,6 +228,9 @@ const NotificationSettings = () => {
                             </div>
                         </div>
                     )}
+                     {permissionStatus === 'granted' && !fcmToken && (
+                         <Button onClick={retrieveToken}>Get My Notification Token</Button>
+                     )}
                 </CardContent>
             </Card>
         </>
