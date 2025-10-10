@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -55,14 +56,14 @@ export function ManageUsers() {
 
   const handleRemoveTopStudent = async (uid: string) => {
     try {
-      await updateDoc(doc(firestore, 'settings', 'topStudents'), {
-        uids: arrayRemove(uid)
-      });
+      const newUids = topStudentUids.filter(id => id !== uid);
+      await setDoc(doc(firestore, 'settings', 'topStudents'), { uids: newUids }, { merge: true });
       toast({ description: 'User removed from top students.' });
     } catch (e: any) {
       toast({ variant: 'destructive', title: 'Error', description: e.message });
     }
   };
+
 
   const moveStudent = async (index: number, direction: 'up' | 'down') => {
     const newUids = [...topStudentUids];
@@ -168,3 +169,5 @@ export function ManageUsers() {
     </Card>
   );
 }
+
+    

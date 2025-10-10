@@ -32,6 +32,12 @@ import {
   Check,
   Bot,
   Info,
+  Download,
+  Star,
+  UserCheck,
+  Settings,
+  HelpCircle,
+  FileSignature,
 } from 'lucide-react';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -66,19 +72,20 @@ import {
 import Image from 'next/image';
 import { useCollection } from 'react-firebase-hooks/firestore';
 
-const mainGridItems = [
-  { label: "My Library", icon: Library, href: "/dashboard/my-learning", color: "from-blue-500 to-indigo-600" },
-  { label: "Live Classes", icon: Clapperboard, href: "/dashboard/live-classes", color: "from-purple-500 to-violet-600" },
-  { label: "Free Courses", icon: BookCopy, href: "/dashboard/courses/free", color: "from-teal-500 to-cyan-600" },
-  { label: "AI Tutor", icon: Bot, href: "/dashboard/tutor", color: "from-red-500 to-rose-600" },
-  { label: "Scholarship", icon: Award, href: "/dashboard/scholarship", color: "from-yellow-500 to-amber-600" },
-  { label: "Previous Papers", icon: Newspaper, href: "/dashboard/papers", color: "from-pink-500 to-rose-500" },
+const quickAccessItems = [
+  { label: "Courses", icon: Book, href: "/dashboard/courses" },
+  { label: "Tests", icon: FileText, href: "/dashboard/tests" },
+  { label: "My Library", icon: Library, href: "/dashboard/my-learning" },
+  { label: "Doubts", icon: HelpCircle, href: "/dashboard/my-learning?tab=notifications" },
+  { label: "Profile", icon: User, href: "/dashboard/profile" },
+  { label: "Settings", icon: Settings, href: "/dashboard/settings" },
 ];
 
 
 const LiveClassTimer = () => {
     const [liveClass, setLiveClass] = useState<any>(null);
-    const [timeLeft, setTimeLeft] = useState('');
+    const [timeLeft, setTimeLeft] = useState({days: 0, hours: 0, minutes: 0, seconds: 0});
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         const q = query(collection(firestore, 'live_classes'), where('startTime', '>', new Date()), orderBy('startTime', 'asc'), limit(1));
@@ -89,176 +96,59 @@ const LiveClassTimer = () => {
             } else {
                 setLiveClass(null);
             }
+            setLoading(false);
         });
         return () => unsubscribe();
     }, []);
 
     useEffect(() => {
         if (!liveClass) return;
+
         const interval = setInterval(() => {
             const now = new Date();
             const startTime = liveClass.startTime.toDate();
             const diff = startTime.getTime() - now.getTime();
+
             if (diff <= 0) {
-                setTimeLeft('Live now!');
+                setTimeLeft({ days: 0, hours: 0, minutes: 0, seconds: 0 });
                 clearInterval(interval);
                 return;
             }
-            const d = Math.floor(diff / (1000 * 60 * 60 * 24));
-            const h = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-            const m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-            const s = Math.floor((diff % (1000 * 60)) / 1000);
-            setTimeLeft(`${d}d ${h}h ${m}m ${s}s`);
+            const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+            const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+            setTimeLeft({ days, hours, minutes, seconds });
         }, 1000);
 
         return () => clearInterval(interval);
     }, [liveClass]);
 
+    if (loading) {
+        return <Skeleton className="h-24 w-full" />
+    }
+
     if (!liveClass) return null;
 
     return (
-        <Card className="bg-primary/5 border-primary/20">
-            <Link href={`/dashboard/live-class/${liveClass.id}`}>
-            <CardContent className="p-4 flex items-center justify-between">
-                <div>
-                    <CardTitle className="text-lg">Next Live Class Starts In:</CardTitle>
-                    <CardDescription>{liveClass.title}</CardDescription>
-                </div>
-                <div className="text-2xl font-bold text-primary">{timeLeft}</div>
+        <Card className="bg-primary text-primary-foreground shadow-lg col-span-2">
+           <Link href={`/dashboard/live-class/${liveClass.id}`}>
+            <CardContent className="p-4 flex flex-col items-center justify-center text-center">
+                 <p className="font-semibold text-sm">Next Live Class</p>
+                 <div className="flex items-center gap-2 my-2">
+                    {Object.entries(timeLeft).map(([unit, value]) => (
+                        <div key={unit} className="flex flex-col items-center">
+                            <span className="text-2xl font-bold">{String(value).padStart(2, '0')}</span>
+                            <span className="text-xs opacity-80">{unit}</span>
+                        </div>
+                    ))}
+                 </div>
+                 <p className="text-xs font-medium truncate max-w-full">{liveClass.title}</p>
             </CardContent>
-            </Link>
+           </Link>
         </Card>
     );
 };
-
-const StudentReviews = () => {
-    const { user } = useAuth();
-    const { toast } = useToast();
-    const [isReviewDialogOpen, setIsReviewDialogOpen] = useState(false);
-    const [isReadMoreDialogOpen, setIsReadMoreDialogOpen] = useState(false);
-    const [selectedReview, setSelectedReview] = useState<any>(null);
-    const [reviewText, setReviewText] = useState('');
-    const [isSubmitting, setIsSubmitting] = useState(false);
-
-    const [reviews, loading] = useCollection(
-        query(collection(firestore, 'reviews'), orderBy('createdAt', 'desc'))
-    );
-    
-    const handleReviewSubmit = async () => {
-        if (!user || !reviewText.trim()) {
-            toast({ variant: 'destructive', description: "Please write a review before submitting." });
-            return;
-        }
-        setIsSubmitting(true);
-        try {
-            await addDoc(collection(firestore, 'reviews'), {
-                name: user.displayName || 'Anonymous',
-                text: reviewText,
-                userId: user.uid,
-                createdAt: serverTimestamp(),
-            });
-            toast({ title: "Success!", description: "Your review has been submitted." });
-            setReviewText('');
-            setIsReviewDialogOpen(false);
-        } catch (error) {
-            toast({ variant: 'destructive', title: "Error", description: "Could not submit your review." });
-        } finally {
-            setIsSubmitting(false);
-        }
-    };
-
-    const openReadMore = (review: any) => {
-        setSelectedReview(review);
-        setIsReadMoreDialogOpen(true);
-    }
-    
-    return (
-        <>
-        <Dialog open={isReviewDialogOpen} onOpenChange={setIsReviewDialogOpen}>
-            <DialogContent>
-                <DialogHeader>
-                    <DialogTitle>Write a Review</DialogTitle>
-                    <DialogDescription>Share your experience with us.</DialogDescription>
-                </DialogHeader>
-                <div className="space-y-4 py-4">
-                    <Textarea 
-                        placeholder="Write your review here..." 
-                        value={reviewText}
-                        onChange={(e) => setReviewText(e.target.value)}
-                    />
-                    <Button onClick={handleReviewSubmit} disabled={isSubmitting}>
-                        {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                        Submit Review
-                    </Button>
-                </div>
-            </DialogContent>
-        </Dialog>
-
-        <Dialog open={isReadMoreDialogOpen} onOpenChange={setIsReadMoreDialogOpen}>
-            <DialogContent>
-                <DialogHeader>
-                    <DialogTitle>Student Review</DialogTitle>
-                </DialogHeader>
-                {selectedReview && (
-                     <div className="py-4 space-y-4">
-                        <p className="italic">"{selectedReview.text}"</p>
-                        <p className="font-semibold text-right">- {selectedReview.name}</p>
-                    </div>
-                )}
-            </DialogContent>
-        </Dialog>
-        
-        <Card className="bg-transparent border-none shadow-none">
-            <CardHeader>
-                <CardTitle>What Our Students Say</CardTitle>
-            </CardHeader>
-            <CardContent>
-                {loading ? <Skeleton className="h-24 w-full" /> : (
-                    <Carousel 
-                        opts={{ align: "start", loop: true }}
-                        plugins={[Autoplay({ delay: 5000, stopOnInteraction: true })]}
-                        className="w-full"
-                    >
-                        <CarouselContent>
-                            {reviews?.docs.map(doc => {
-                                const review = doc.data();
-                                return (
-                                    <CarouselItem key={doc.id} className="md:basis-1/2 lg:basis-1/3" onClick={() => openReadMore(review)}>
-                                        <Card className="cursor-pointer h-full bg-card/80 backdrop-blur-sm">
-                                            <CardContent className="p-4 flex flex-col justify-between h-full">
-                                                <p className="italic line-clamp-4">"{review.text}"</p>
-                                                <p className="font-semibold mt-2 text-right">- {review.name}</p>
-                                            </CardContent>
-                                        </Card>
-                                    </CarouselItem>
-                                )
-                            })}
-                        </CarouselContent>
-                        <CarouselPrevious className="hidden sm:flex" />
-                        <CarouselNext className="hidden sm:flex" />
-                    </Carousel>
-                )}
-                 <Button variant="outline" className="w-full mt-4" onClick={() => setIsReviewDialogOpen(true)}>
-                    Leave Your Review
-                 </Button>
-            </CardContent>
-        </Card>
-        </>
-    )
-};
-
-const hashCode = (str: string) => {
-    let hash = 0;
-    for (let i = 0; i < str.length; i++) {
-       hash = str.charCodeAt(i) + ((hash << 5) - hash);
-    }
-    return hash;
-}
-
-const intToRGB = (i: number) => {
-    const c = (i & 0x00FFFFFF).toString(16).toUpperCase();
-    return "00000".substring(0, 6 - c.length) + c;
-}
 
 const TopStudentsSection = () => {
     const [usersCollection, usersLoading] = useCollection(collection(firestore, 'users'));
@@ -268,10 +158,11 @@ const TopStudentsSection = () => {
         const unsub = onSnapshot(doc(firestore, 'settings', 'topStudents'), (doc) => {
             if (doc.exists() && usersCollection) {
                 const topStudentUids = doc.data().uids || [];
-                const studentDetails = topStudentUids.map((uid: string) => {
-                    const userDoc = usersCollection.docs.find(d => d.id === uid);
-                    return userDoc ? {id: userDoc.id, ...userDoc.data()} : null;
-                }).filter(Boolean);
+                // Create a map for quick lookup
+                const userMap = new Map(usersCollection.docs.map(d => [d.id, {id: d.id, ...d.data()}]));
+                
+                const studentDetails = topStudentUids.map((uid: string) => userMap.get(uid)).filter(Boolean);
+                
                 setTopStudents(studentDetails);
             }
         });
@@ -279,103 +170,109 @@ const TopStudentsSection = () => {
     }, [usersCollection]);
     
     return (
-        <Card className="bg-transparent border-none shadow-none">
-            <CardHeader><CardTitle>Top 10 Students of the Week</CardTitle></CardHeader>
+        <Card className="shadow-lg border-border/30">
+            <CardHeader>
+                <CardTitle className="text-lg flex items-center gap-2"><Trophy className="text-yellow-400" /> Top Students of the Week</CardTitle>
+            </CardHeader>
             <CardContent>
-                {usersLoading && <Skeleton className="h-24 w-full" />}
-                 <div className="flex space-x-6 overflow-x-auto pb-2">
-                    {topStudents.map((student, i) => {
-                        const avatarColor = `#${intToRGB(hashCode(student.displayName || 'U'))}`;
-                        return (
-                            <div key={student.uid || student.id} className="text-center flex-shrink-0 w-24">
-                                <Avatar className="h-16 w-16 mx-auto mb-2 border-2 border-yellow-400">
+                {usersLoading ? <Skeleton className="h-16 w-full" /> : (
+                    <div className="flex space-x-4 overflow-x-auto pb-2 -mx-2 px-2">
+                        {topStudents.length > 0 ? topStudents.map((student, i) => (
+                            <div key={student.id} className="text-center flex-shrink-0 w-20">
+                                <Avatar className="h-14 w-14 mx-auto mb-1 border-2 border-primary/50">
                                     <AvatarImage src={student.photoURL} />
-                                    <AvatarFallback style={{ backgroundColor: avatarColor }} className="text-2xl font-bold">{student.displayName?.charAt(0) || 'S'}</AvatarFallback>
+                                    <AvatarFallback>{student.displayName?.charAt(0) || 'S'}</AvatarFallback>
                                 </Avatar>
-                                <Badge variant="secondary" className="text-sm bg-yellow-400 text-black">{i+1}</Badge>
-                                <p className="text-sm font-medium mt-1 truncate">{student.displayName}</p>
+                                <p className="text-xs font-medium mt-1 truncate">{student.displayName}</p>
                             </div>
-                        )
-                    })}
-                    {!usersLoading && topStudents.length === 0 && <p className="text-muted-foreground w-full text-center">No top students this week.</p>}
-                 </div>
+                        )) : <p className="text-muted-foreground text-sm text-center w-full">No top students this week.</p>}
+                    </div>
+                )}
             </CardContent>
         </Card>
     )
 }
 
-const EducatorsSection = () => {
-    const [educators, loading] = useCollection(
-        query(collection(firestore, 'educators'), orderBy('createdAt', 'desc'))
-    );
-    const [isDialogOpen, setIsDialogOpen] = useState(false);
-    const [selectedEducator, setSelectedEducator] = useState<any>(null);
+const InstallPwaPrompt = () => {
+    const [installPrompt, setInstallPrompt] = useState<any>(null);
+    const [showInstallBanner, setShowInstallBanner] = useState(false);
+    const [isInstallDialogOpen, setIsInstallDialogOpen] = useState(false);
+    const toast = useToast();
 
-    const openEducatorDetails = (educator: any) => {
-        setSelectedEducator(educator);
-        setIsDialogOpen(true);
+    useEffect(() => {
+        const handleBeforeInstallPrompt = (event: Event) => {
+            event.preventDefault();
+            setInstallPrompt(event);
+            setShowInstallBanner(true);
+            
+            const hasSeenPrompt = sessionStorage.getItem('hasSeenInstallPrompt');
+            if (!hasSeenPrompt) {
+                 setTimeout(() => setIsInstallDialogOpen(true), 2000);
+                 sessionStorage.setItem('hasSeenInstallPrompt', 'true');
+            }
+        };
+
+        window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+
+        return () => {
+            window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+        };
+    }, []);
+
+    const handleInstallClick = () => {
+        setIsInstallDialogOpen(false);
+        if (installPrompt) {
+            installPrompt.prompt();
+            installPrompt.userChoice.then((choiceResult: { outcome: string }) => {
+                if (choiceResult.outcome === 'accepted') {
+                   toast.toast({ title: "Installation Complete!", description: "GoSwamiX has been added to your home screen." });
+                }
+                setInstallPrompt(null);
+                setShowInstallBanner(false);
+            });
+        }
     };
+    
+    if(!showInstallBanner) return null;
 
     return (
         <>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogContent>
-                {selectedEducator && (
-                    <>
+            <Dialog open={isInstallDialogOpen} onOpenChange={setIsInstallDialogOpen}>
+                <DialogContent>
                     <DialogHeader>
-                        <DialogTitle>{selectedEducator.name}</DialogTitle>
-                        <DialogDescription>{selectedEducator.expertise}</DialogDescription>
+                        <DialogTitle>Install GoSwamiX App</DialogTitle>
+                        <DialogDescription>
+                            Get a better experience by installing the app on your device. It's fast, works offline, and uses less data.
+                        </DialogDescription>
                     </DialogHeader>
-                    <div className="py-4 flex justify-center">
-                        <Avatar className="h-40 w-40">
-                            <AvatarImage src={selectedEducator.photoUrl} alt={selectedEducator.name} />
-                            <AvatarFallback className="text-4xl">{selectedEducator.name.charAt(0)}</AvatarFallback>
-                        </Avatar>
+                    <div className="flex justify-end gap-2">
+                        <Button variant="ghost" onClick={() => setIsInstallDialogOpen(false)}>Not Now</Button>
+                        <Button onClick={handleInstallClick}>Install</Button>
                     </div>
-                    </>
-                )}
-                <DialogClose asChild>
-                    <Button variant="outline">Close</Button>
-                </DialogClose>
-            </DialogContent>
-        </Dialog>
-        <Card className="bg-transparent border-none shadow-none">
-            <CardHeader><CardTitle>Meet Our Educators</CardTitle></CardHeader>
-            <CardContent>
-                {loading && <Skeleton className="h-24 w-full" />}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    {educators?.docs.map(doc => {
-                        const educator = doc.data();
-                        return (
-                             <div key={doc.id} className="text-center cursor-pointer" onClick={() => openEducatorDetails(educator)}>
-                                <Avatar className="h-20 w-20 mx-auto">
-                                    <AvatarImage src={educator.photoUrl} />
-                                    <AvatarFallback>{educator.name.charAt(0)}</AvatarFallback>
-                                </Avatar>
-                                <p className="font-semibold mt-2">{educator.name}</p>
-                                <p className="text-xs text-muted-foreground">{educator.expertise}</p>
-                            </div>
-                        )
-                    })}
-                </div>
-            </CardContent>
-        </Card>
+                </DialogContent>
+            </Dialog>
+
+            <div className="bg-primary/10 border-b border-primary/20 p-2 text-center text-sm">
+                <p>
+                    Enhance your experience!{' '}
+                    <button onClick={handleInstallClick} className="font-bold underline">
+                        Install the GoSwamiX App
+                    </button>
+                </p>
+            </div>
         </>
     )
 }
 
+
 const MainDashboard = () => {
     const { user } = useAuth();
-    const [settings, setSettings] = useState<any>(null);
-    
-    useEffect(() => {
-      const unsub = onSnapshot(doc(firestore, 'settings', 'appConfig'), (doc) => {
-        if (doc.exists()) {
-          setSettings(doc.data());
-        }
-      });
-      return () => unsub();
-    }, []);
+    const [activeButton, setActiveButton] = useState<string | null>(null);
+
+    const handlePress = (label: string) => {
+        setActiveButton(label);
+        setTimeout(() => setActiveButton(null), 150);
+    };
 
     const getGreeting = () => {
         if (!user) return "Welcome!";
@@ -390,59 +287,45 @@ const MainDashboard = () => {
     }
 
     return (
-        <div className="space-y-6 bg-gradient-to-b from-primary/10 via-background to-background rounded-b-2xl">
-            <div className="p-4 md:p-6">
-                <h1 className="text-2xl font-bold">{getGreeting()}</h1>
-
-                {settings?.carouselImages ? (
-                <Carousel 
-                    opts={{ loop: true }} 
-                    plugins={[Autoplay({ delay: 4000, stopOnInteraction: true })]}
-                    className="w-full mt-4"
-                >
-                    <CarouselContent>
-                    {settings.carouselImages.map((url: string, index: number) => (
-                        <CarouselItem key={index}>
-                        <Card className="overflow-hidden">
-                            <CardContent className="p-0 aspect-video relative">
-                                <Image
-                                src={url}
-                                alt={`Carousel Image ${index + 1}`}
-                                fill
-                                className="object-cover"
-                                priority={index === 0}
-                                />
-                            </CardContent>
-                        </Card>
-                        </CarouselItem>
-                    ))}
-                    </CarouselContent>
-                    <CarouselPrevious className="hidden sm:flex" />
-                    <CarouselNext className="hidden sm:flex" />
-                </Carousel>
-                ) : <Skeleton className="h-48 w-full mt-4" />}
+        <div className="bg-background">
+            <InstallPwaPrompt />
+            <div className="p-4 md:p-6 space-y-6">
+                <div className="flex justify-between items-center">
+                    <div>
+                        <p className="text-muted-foreground text-sm">Hello!</p>
+                        <h1 className="text-2xl font-bold">{user?.displayName || "Student"}</h1>
+                    </div>
+                     <Link href="/dashboard/profile">
+                        <Avatar>
+                            <AvatarImage src={user?.photoURL || undefined} />
+                            <AvatarFallback>{user?.displayName?.charAt(0) || 'U'}</AvatarFallback>
+                        </Avatar>
+                     </Link>
+                </div>
                 
-                <div className="grid grid-cols-3 gap-3 mt-6">
-                    {mainGridItems.slice(0, 6).map(item => (
-                        <Link href={item.href} key={item.label}>
-                            <Card className={cn("text-white h-full hover:scale-105 transition-transform bg-gradient-to-br hover:shadow-lg", item.color)}>
-                                <CardContent className="p-3 flex flex-col items-center justify-center text-center gap-1 h-24">
-                                    <item.icon className="h-7 w-7" />
-                                    <span className="text-xs font-semibold">{item.label}</span>
-                                </CardContent>
-                            </Card>
-                        </Link>
-                    ))}
+                <LiveClassTimer />
+                
+                <TopStudentsSection />
+
+                <div>
+                    <h2 className="text-lg font-semibold mb-3">Quick Access</h2>
+                    <div className="grid grid-cols-3 gap-3">
+                        {quickAccessItems.map(item => (
+                            <Link href={item.href} key={item.label} onClick={() => handlePress(item.label)}>
+                                <Card className={cn(
+                                    "h-full transition-all duration-150 ease-in-out",
+                                    activeButton === item.label ? 'bg-primary text-primary-foreground' : 'bg-muted/50'
+                                )}>
+                                    <CardContent className="p-3 flex flex-col items-center justify-center text-center gap-1 h-24">
+                                        <item.icon className={cn("h-7 w-7", activeButton === item.label ? 'text-primary-foreground' : 'text-primary')} />
+                                        <span className="text-xs font-semibold">{item.label}</span>
+                                    </CardContent>
+                                </Card>
+                            </Link>
+                        ))}
+                    </div>
                 </div>
             </div>
-            
-            <div className="px-4 md:px-6 space-y-6">
-                <TopStudentsSection />
-                <LiveClassTimer />
-                <EducatorsSection />
-                <StudentReviews />
-            </div>
-
         </div>
     );
 };
@@ -483,3 +366,5 @@ export default function DashboardPage() {
 
     return isKidsMode ? <KidsTubeDashboard /> : <MainDashboard />;
 }
+
+    
