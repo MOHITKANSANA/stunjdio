@@ -1,5 +1,4 @@
 
-
 'use client'
 import React, { useEffect, useState } from 'react';
 import {
@@ -60,7 +59,8 @@ import { Button } from '@/components/ui/button';
 import { doc, getDoc, onSnapshot, collection, query, orderBy, updateDoc, arrayUnion } from 'firebase/firestore';
 import { firestore, messaging } from '@/lib/firebase';
 import { AppBottomNav } from './bottom-nav';
-import { getToken } from 'firebase/messaging';
+import { getToken, onMessage } from 'firebase/messaging';
+import { useToast } from '@/hooks/use-toast';
 
 
 const sidebarNavItems = [
@@ -115,7 +115,7 @@ const SidebarMenuItemWithHandler = ({ href, icon: Icon, label, closeSidebar }: {
             <Link href={href} onClick={handlePress}>
                 <SidebarMenuButton isActive={isActive} className={cn(activeButton === label && 'ring-2 ring-primary ring-offset-2 ring-offset-sidebar-background')}>
                     <Icon />
-                    <span>{label}</span>
+                    <span className="capitalize">{label}</span>
                 </SidebarMenuButton>
             </Link>
         </SidebarMenuItem>
@@ -255,7 +255,7 @@ const AppHeader = () => {
 
 const LoadingScreen = () => (
     <div className="flex h-screen w-full items-center justify-center bg-background">
-        <Loader2 className="h-8 w-8 animate-spin" />
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
     </div>
 );
 
@@ -278,10 +278,26 @@ export default function DashboardLayout({
   const [isKidsMode, setIsKidsMode] = useState(false);
   const [isScreenLocked, setIsScreenLocked] = useState(false);
   const [timeUsed, setTimeUsed] = useState(0); // in seconds
+  const { toast } = useToast();
   
   const isVideoPlaybackPage = pathname.includes('/video/') || pathname.includes('/live-class/');
   const isMindSphereMode = pathname.startsWith('/dashboard/mindsphere');
 
+  // Handle foreground messages
+  useEffect(() => {
+    if (messaging) {
+      const unsubscribe = onMessage(messaging, (payload) => {
+        console.log('Foreground message received.', payload);
+        toast({
+          title: payload.notification?.title,
+          description: payload.notification?.body,
+        });
+      });
+      return () => unsubscribe();
+    }
+  }, [toast]);
+
+  // Request permission and register service worker
   useEffect(() => {
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('/firebase-messaging-sw.js')
@@ -366,7 +382,7 @@ export default function DashboardLayout({
   }, [user, loading, router, pathname]);
   
   if (loading) {
-    return <LoadingScreen />;
+    return null; // Let the page.tsx handle its own loading, preventing layout shifts
   }
 
 

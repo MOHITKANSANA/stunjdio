@@ -1,10 +1,9 @@
 
-// Scripts for firebase and firebase messaging
-importScripts("https://www.gstatic.com/firebasejs/9.0.0/firebase-app-compat.js");
-importScripts("https://www.gstatic.com/firebasejs/9.0.0/firebase-messaging-compat.js");
+// Import the Firebase app and messaging services
+import { initializeApp } from 'firebase/app';
+import { getMessaging, onBackgroundMessage } from 'firebase/messaging/sw';
 
-// Initialize the Firebase app in the service worker by passing in the
-// messagingSenderId.
+// Your web app's Firebase configuration
 const firebaseConfig = {
   apiKey: "AIzaSyCowK1pgv_fGzCo65c-7_-9vTIkrO628yM",
   authDomain: "go-swami-coching-classes.firebaseapp.com",
@@ -14,23 +13,20 @@ const firebaseConfig = {
   appId: "1:1064325037320:web:d9ce26cc409e20702700bd"
 };
 
-firebase.initializeApp(firebaseConfig);
+const app = initializeApp(firebaseConfig);
+const messaging = getMessaging(app);
 
+// This is the magic part that handles background notifications
+onBackgroundMessage(messaging, (payload) => {
+  console.log('[firebase-messaging-sw.js] Received background message ', payload);
 
-// Retrieve an instance of Firebase Messaging so that it can handle background
-// messages.
-const messaging = firebase.messaging();
-
-messaging.onBackgroundMessage((payload) => {
-  console.log(
-    "[firebase-messaging-sw.js] Received background message ",
-    payload
-  );
-  // Customize notification here
-  const notificationTitle = payload.notification.title;
+  // Customize the notification here
+  const notificationTitle = payload.notification?.title || 'New Message';
   const notificationOptions = {
-    body: payload.notification.body,
-    icon: "/go-swami-logo.png",
+    body: payload.notification?.body || 'You have a new notification.',
+    icon: '/go-swami-logo.png', // Your custom icon
+    badge: '/go-swami-logo.png',
+    vibrate: [200, 100, 200]
   };
 
   self.registration.showNotification(notificationTitle, notificationOptions);
