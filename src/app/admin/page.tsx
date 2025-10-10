@@ -18,6 +18,7 @@ import { AddEducatorForm } from "./_components/add-educator-form";
 import { ManageTestSeriesEnrollments } from "./_components/manage-test-series-enrollment";
 import { AddBattleQuizForm } from "./_components/add-battle-quiz-form";
 import { AppSettingsForm } from "./_components/app-settings-form";
+import { ManageUsers } from "./_components/manage-users";
 
 
 export default function AdminPage() {
@@ -31,6 +32,7 @@ export default function AdminPage() {
              <Tabs defaultValue="content" className="w-full" orientation="vertical">
                 <TabsList className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-1 md:w-48 lg:w-56 shrink-0 h-max">
                     <TabsTrigger value="content">Content</TabsTrigger>
+                    <TabsTrigger value="users">Manage Users</TabsTrigger>
                     <TabsTrigger value="course_enrollments">Course Enrollments</TabsTrigger>
                     <TabsTrigger value="test_enrollments">Test Enrollments</TabsTrigger>
                     <TabsTrigger value="scholarships">Scholarships</TabsTrigger>
@@ -75,6 +77,10 @@ export default function AdminPage() {
                             </Card>
                         </div>
                     </div>
+                </TabsContent>
+
+                <TabsContent value="users" className="mt-6 md:mt-0">
+                    <ManageUsers />
                 </TabsContent>
 
                 <TabsContent value="course_enrollments" className="mt-6 md:mt-0">

@@ -69,7 +69,7 @@ import { useCollection } from 'react-firebase-hooks/firestore';
 const mainGridItems = [
   { label: "My Library", icon: Library, href: "/dashboard/my-learning", color: "from-blue-500 to-indigo-600" },
   { label: "Live Classes", icon: Clapperboard, href: "/dashboard/live-classes", color: "from-purple-500 to-violet-600" },
-  { label: "Free Courses", icon: BookCopy, href: "/dashboard/courses/free", color: "from-green-500 to-emerald-600" },
+  { label: "Free Courses", icon: BookCopy, href: "/dashboard/courses/free", color: "from-teal-500 to-cyan-600" },
   { label: "AI Tutor", icon: Bot, href: "/dashboard/tutor", color: "from-red-500 to-rose-600" },
   { label: "Scholarship", icon: Award, href: "/dashboard/scholarship", color: "from-yellow-500 to-amber-600" },
   { label: "Previous Papers", icon: Newspaper, href: "/dashboard/papers", color: "from-pink-500 to-rose-500" },
@@ -261,9 +261,22 @@ const intToRGB = (i: number) => {
 }
 
 const TopStudentsSection = () => {
-    const [usersCollection, usersLoading] = useCollection(
-        query(collection(firestore, 'users'), limit(10))
-    );
+    const [usersCollection, usersLoading] = useCollection(collection(firestore, 'users'));
+    const [topStudents, setTopStudents] = useState<any[]>([]);
+
+    useEffect(() => {
+        const unsub = onSnapshot(doc(firestore, 'settings', 'topStudents'), (doc) => {
+            if (doc.exists() && usersCollection) {
+                const topStudentUids = doc.data().uids || [];
+                const studentDetails = topStudentUids.map((uid: string) => {
+                    const userDoc = usersCollection.docs.find(d => d.id === uid);
+                    return userDoc ? userDoc.data() : null;
+                }).filter(Boolean);
+                setTopStudents(studentDetails);
+            }
+        });
+        return () => unsub();
+    }, [usersCollection]);
     
     return (
         <Card>
@@ -271,11 +284,10 @@ const TopStudentsSection = () => {
             <CardContent>
                 {usersLoading && <Skeleton className="h-24 w-full" />}
                  <div className="flex space-x-6 overflow-x-auto pb-2">
-                    {usersCollection?.docs.map((userDoc, i) => {
-                        const student = userDoc.data();
+                    {topStudents.map((student, i) => {
                         const avatarColor = `#${intToRGB(hashCode(student.displayName || 'U'))}`;
                         return (
-                            <div key={userDoc.id} className="text-center flex-shrink-0 w-24">
+                            <div key={student.uid} className="text-center flex-shrink-0 w-24">
                                 <Avatar className="h-16 w-16 mx-auto mb-2 border-2 border-yellow-400">
                                     <AvatarImage src={student.photoURL} />
                                     <AvatarFallback style={{ backgroundColor: avatarColor }} className="text-2xl font-bold">{student.displayName?.charAt(0) || 'S'}</AvatarFallback>
@@ -285,7 +297,7 @@ const TopStudentsSection = () => {
                             </div>
                         )
                     })}
-                    {!usersLoading && usersCollection?.empty && <p className="text-muted-foreground">No students found.</p>}
+                    {!usersLoading && topStudents.length === 0 && <p className="text-muted-foreground w-full text-center">No top students this week.</p>}
                  </div>
             </CardContent>
         </Card>
@@ -412,7 +424,7 @@ const MainDashboard = () => {
             <div className="grid grid-cols-3 gap-3">
                 {mainGridItems.slice(0, 6).map(item => (
                     <Link href={item.href} key={item.label}>
-                        <Card className={cn("text-white h-full hover:opacity-90 transition-opacity bg-gradient-to-br", item.color)}>
+                        <Card className={cn("text-white h-full hover:scale-105 transition-transform bg-gradient-to-br", item.color)}>
                              <CardContent className="p-3 flex flex-col items-center justify-center text-center gap-1 h-24">
                                 <item.icon className="h-7 w-7" />
                                 <span className="text-xs font-semibold">{item.label}</span>
@@ -426,7 +438,7 @@ const MainDashboard = () => {
                  <div className="grid grid-cols-4 gap-3">
                     {mainGridItems.slice(6).map(item => (
                         <Link href={item.href} key={item.label}>
-                            <Card className={cn("text-white h-full hover:opacity-90 transition-opacity bg-gradient-to-br", item.color)}>
+                            <Card className={cn("text-white h-full hover:scale-105 transition-transform bg-gradient-to-br", item.color)}>
                                  <CardContent className="p-3 flex flex-col items-center justify-center text-center gap-1 h-24">
                                     <item.icon className="h-7 w-7" />
                                     <span className="text-xs font-semibold">{item.label}</span>
