@@ -13,10 +13,11 @@ import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Carousel, CarouselContent, CarouselItem } from '@/components/ui/carousel';
 import { useCollection, useDocumentData } from 'react-firebase-hooks/firestore';
-import { Youtube, Facebook, Instagram, Twitter, Linkedin, Link as LinkIcon, Star, CheckCircle, Download } from 'lucide-react';
+import { Youtube, Facebook, Instagram, Twitter, Linkedin, Link as LinkIcon, Star, CheckCircle, Download, X } from 'lucide-react';
 import Link from 'next/link';
 import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@/hooks/use-auth';
+import Autoplay from "embla-carousel-autoplay";
 
 export const LiveClassTimer = () => {
     const [liveClass, setLiveClass] = useState<any>(null);
@@ -126,51 +127,63 @@ export const TopStudentsSection = () => {
 }
 
 export const InstallPwaPrompt = () => {
-    const { toast } = useToast();
     const [installPrompt, setInstallPrompt] = useState<any>(null);
-    const [isVisible, setIsVisible] = useState(false);
+    const [showInstallDialog, setShowInstallDialog] = useState(false);
     
     useEffect(() => {
         const handleBeforeInstallPrompt = (event: Event) => {
             event.preventDefault();
             setInstallPrompt(event);
-            setIsVisible(true);
+            // Check if app is already installed
+            if (window.matchMedia('(display-mode: standalone)').matches) {
+                return;
+            }
+            setShowInstallDialog(true);
         };
 
         window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
 
+        // Show prompt on first visit if available
+         const firstVisit = !localStorage.getItem('pwaPromptShown');
+         if (firstVisit && installPrompt) {
+             setShowInstallDialog(true);
+             localStorage.setItem('pwaPromptShown', 'true');
+         }
+
         return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-    }, []);
+    }, [installPrompt]);
     
 
     const handleInstallClick = () => {
         if (installPrompt) {
             installPrompt.prompt();
             installPrompt.userChoice.then((choiceResult: { outcome: string }) => {
-                if (choiceResult.outcome === 'accepted') {
-                   toast({ title: "Installation Complete!", description: "GoSwamiX has been added to your home screen." });
-                }
-                setIsVisible(false);
+                setShowInstallDialog(false);
                 setInstallPrompt(null);
             });
         }
     };
     
-    if(!isVisible) return null;
+    if(!showInstallDialog) return null;
 
     return (
-      <Card className="bg-primary text-primary-foreground">
-        <CardContent className="p-3 flex items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-                 <Download className="h-6 w-6" />
-                 <div>
-                    <h3 className="font-bold">Install the GoSwamiX App</h3>
-                    <p className="text-xs opacity-80">For a better, faster experience.</p>
-                 </div>
+      <Dialog open={showInstallDialog} onOpenChange={setShowInstallDialog}>
+        <DialogContent>
+            <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                    <Download className="text-primary"/>
+                    Install the GoSwamiX App
+                </DialogTitle>
+                <DialogDescription>
+                    For a better, faster, and offline-ready experience, install our app on your device.
+                </DialogDescription>
+            </DialogHeader>
+            <div className="flex justify-end gap-4 mt-4">
+                <Button variant="ghost" onClick={() => setShowInstallDialog(false)}>Later</Button>
+                <Button onClick={handleInstallClick}>Install Now</Button>
             </div>
-            <Button variant="secondary" size="sm" onClick={handleInstallClick}>Install</Button>
-        </CardContent>
-      </Card>
+        </DialogContent>
+      </Dialog>
     )
 }
 
@@ -314,6 +327,7 @@ export const StudentReviews = () => {
             align: "start",
             loop: true,
           }}
+          plugins={[Autoplay({ delay: 3000, stopOnInteraction: true })]}
           className="w-full"
         >
           <CarouselContent>

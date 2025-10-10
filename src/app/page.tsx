@@ -64,17 +64,9 @@ export default function WelcomePage() {
     const [isSplashVisible, setIsSplashVisible] = useState(true);
 
     useEffect(() => {
-        const splashContainer = document.querySelector('.splash-container');
-        
         const splashTimer = setTimeout(() => {
-            if(splashContainer) splashContainer.classList.add('fade-out');
-            
-            const fadeOutTimer = setTimeout(() => {
-                setIsSplashVisible(false);
-            }, 500); 
-
-            return () => clearTimeout(fadeOutTimer);
-        }, 5000); 
+            setIsSplashVisible(false);
+        }, 4000); // Splash screen for 4 seconds
 
         return () => clearTimeout(splashTimer);
     }, []);
@@ -89,18 +81,18 @@ export default function WelcomePage() {
             router.replace('/login');
         }
     }, [user, authLoading, router, isSplashVisible]);
-
-    if (!isSplashVisible) {
-         return (
-            <div className="flex h-screen w-full items-center justify-center bg-background">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+    
+    if (isSplashVisible) {
+        return (
+            <div className="h-screen w-screen bg-background">
+                <AnimatedSplashScreen />
             </div>
         );
     }
 
     return (
-        <div className="h-screen w-screen bg-background">
-            <AnimatedSplashScreen />
+        <div className="flex h-screen w-full items-center justify-center bg-background">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
     );
 }
