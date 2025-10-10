@@ -128,32 +128,35 @@ export const TopStudentsSection = () => {
 
 export const InstallPwaPrompt = () => {
     const [installPrompt, setInstallPrompt] = useState<any>(null);
-    const [showInstallDialog, setShowInstallDialog] = useState(false);
-    
+    const [isVisible, setIsVisible] = useState(false);
+
     useEffect(() => {
         const handleBeforeInstallPrompt = (event: Event) => {
             event.preventDefault();
             setInstallPrompt(event);
             // Check if app is already installed. If not, show the dialog.
             if (!window.matchMedia('(display-mode: standalone)').matches) {
-                setShowInstallDialog(true);
+                setIsVisible(true);
             }
         };
 
         window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
 
         // For browsers that don't fire the event but support installation
-        setTimeout(() => {
-            if (!installPrompt && !window.matchMedia('(display-mode: standalone)').matches) {
-                // A simple check to see if we can prompt, not perfect but a good fallback
-                if ('onbeforeinstallprompt' in window || navigator.hasOwnProperty('standalone')) {
-                    setShowInstallDialog(true);
-                }
+        const fallbackTimer = setTimeout(() => {
+            if (installPrompt === null && !window.matchMedia('(display-mode: standalone)').matches) {
+                 // A simple check to see if we can prompt, not perfect but a good fallback
+                 if ('onbeforeinstallprompt' in window || (navigator as any).standalone === false) {
+                    setIsVisible(true); // Show a manual prompt button
+                 }
             }
         }, 3000);
 
 
-        return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+        return () => {
+            window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+            clearTimeout(fallbackTimer);
+        }
     }, [installPrompt]);
     
 
@@ -162,7 +165,7 @@ export const InstallPwaPrompt = () => {
             installPrompt.prompt();
             installPrompt.userChoice.then((choiceResult: { outcome: string }) => {
                 if (choiceResult.outcome === 'accepted') {
-                   setShowInstallDialog(false);
+                   setIsVisible(false);
                 }
                 setInstallPrompt(null);
             });
@@ -171,10 +174,10 @@ export const InstallPwaPrompt = () => {
         }
     };
     
-    if(!showInstallDialog) return null;
+    if(!isVisible) return null;
 
     return (
-      <Dialog open={showInstallDialog} onOpenChange={setShowInstallDialog}>
+      <Dialog open={isVisible} onOpenChange={setIsVisible}>
         <DialogContent>
             <DialogHeader>
                 <DialogTitle className="flex items-center gap-2">
@@ -186,7 +189,7 @@ export const InstallPwaPrompt = () => {
                 </DialogDescription>
             </DialogHeader>
             <div className="flex justify-end gap-4 mt-4">
-                <Button variant="ghost" onClick={() => setShowInstallDialog(false)}>Later</Button>
+                <Button variant="ghost" onClick={() => setIsVisible(false)}>Later</Button>
                 <Button onClick={handleInstallClick}>Install Now</Button>
             </div>
         </DialogContent>
@@ -373,5 +376,7 @@ export const StudentReviews = () => {
     </>
   );
 }
+
+    
 
     

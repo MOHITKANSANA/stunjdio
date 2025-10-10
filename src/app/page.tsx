@@ -73,7 +73,7 @@ export default function WelcomePage() {
 
 
     useEffect(() => {
-        if (isSplashVisible || authLoading) return;
+        if (isSplashVisible) return;
 
         if (user) {
             router.replace('/dashboard');
@@ -82,17 +82,11 @@ export default function WelcomePage() {
         }
     }, [user, authLoading, router, isSplashVisible]);
     
-    if (isSplashVisible) {
-        return (
-            <div className="h-screen w-screen bg-background">
-                <AnimatedSplashScreen />
-            </div>
-        );
-    }
-
     return (
-        <div className="flex h-screen w-full items-center justify-center bg-background">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <div className="h-screen w-screen bg-background">
+            <AnimatedSplashScreen />
         </div>
     );
 }
+
+    
