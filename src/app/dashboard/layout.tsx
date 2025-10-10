@@ -99,11 +99,21 @@ const SidebarMenuItemWithHandler = ({ href, icon: Icon, label, closeSidebar }: {
     const pathname = usePathname();
     const { t } = useLanguage();
     const isActive = pathname === href || (href !== '/dashboard' && pathname.startsWith(href));
+    const [activeButton, setActiveButton] = useState<string | null>(null);
+
+    const handlePress = () => {
+        setActiveButton(label);
+        setTimeout(() => {
+            setActiveButton(null);
+            closeSidebar();
+        }, 300);
+    };
+
 
     return (
         <SidebarMenuItem>
-            <Link href={href} onClick={closeSidebar}>
-                <SidebarMenuButton isActive={isActive}>
+            <Link href={href} onClick={handlePress}>
+                <SidebarMenuButton isActive={isActive} className={cn(activeButton === label && 'ring-2 ring-primary ring-offset-2 ring-offset-sidebar-background')}>
                     <Icon />
                     <span>{label}</span>
                 </SidebarMenuButton>
@@ -266,7 +276,6 @@ export default function DashboardLayout({
   const router = useRouter();
   const pathname = usePathname();
   const [isKidsMode, setIsKidsMode] = useState(false);
-  const [checkingProfile, setCheckingProfile] = useState(true);
   const [isScreenLocked, setIsScreenLocked] = useState(false);
   const [timeUsed, setTimeUsed] = useState(0); // in seconds
   
@@ -327,7 +336,6 @@ export default function DashboardLayout({
 
     const checkUserProfile = async () => {
         if (pathname === '/dashboard/complete-profile') {
-            setCheckingProfile(false);
             return;
         }
 
@@ -339,7 +347,6 @@ export default function DashboardLayout({
                 const userData = userDoc.data();
                 if (userData.ageGroup) {
                     setIsKidsMode(userData.ageGroup === '1-9');
-                    setCheckingProfile(false);
                 } else {
                     router.replace('/dashboard/complete-profile');
                 }
@@ -350,8 +357,6 @@ export default function DashboardLayout({
             console.error("Error checking user profile:", error);
              if (pathname !== '/dashboard/complete-profile') {
                 router.replace('/dashboard/complete-profile');
-            } else {
-                setCheckingProfile(false); 
             }
         }
     };
@@ -360,7 +365,7 @@ export default function DashboardLayout({
 
   }, [user, loading, router, pathname]);
   
-  if (loading || checkingProfile) {
+  if (loading) {
     return <LoadingScreen />;
   }
 
