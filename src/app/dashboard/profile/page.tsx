@@ -207,9 +207,9 @@ const NotificationSettings = () => {
                     <div className="flex items-center justify-between p-4 border rounded-lg">
                         <div>
                             <Label>Push Notifications</Label>
-                            <p className="text-sm text-muted-foreground">
+                            <span className="text-sm text-muted-foreground">
                                 Status: <Badge variant={permissionStatus === 'granted' ? 'default' : (permissionStatus === 'denied' ? 'destructive' : 'secondary')}>{permissionStatus}</Badge>
-                            </p>
+                            </span>
                         </div>
                         {permissionStatus !== 'granted' && (
                             <Button onClick={() => setShowPermissionPopup(true)}>
