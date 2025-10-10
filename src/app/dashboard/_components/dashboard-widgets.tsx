@@ -56,13 +56,13 @@ export const LiveClassTimer = () => {
     }, []);
 
     useEffect(() => {
-        if (!liveClass?.startTime) return;
+        if (liveClass?.startTime) {
+            const interval = setInterval(() => {
+                setTimeLeft(calculateTimeLeft(liveClass.startTime.toDate()));
+            }, 1000);
 
-        const interval = setInterval(() => {
-            setTimeLeft(calculateTimeLeft(liveClass.startTime.toDate()));
-        }, 1000);
-
-        return () => clearInterval(interval);
+            return () => clearInterval(interval);
+        }
     }, [liveClass, calculateTimeLeft]);
 
     if (loading) {
@@ -134,21 +134,24 @@ export const InstallPwaPrompt = () => {
         const handleBeforeInstallPrompt = (event: Event) => {
             event.preventDefault();
             setInstallPrompt(event);
-            // Check if app is already installed
-            if (window.matchMedia('(display-mode: standalone)').matches) {
-                return;
+            // Check if app is already installed. If not, show the dialog.
+            if (!window.matchMedia('(display-mode: standalone)').matches) {
+                setShowInstallDialog(true);
             }
-            setShowInstallDialog(true);
         };
 
         window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
 
-        // Show prompt on first visit if available
-         const firstVisit = !localStorage.getItem('pwaPromptShown');
-         if (firstVisit && installPrompt) {
-             setShowInstallDialog(true);
-             localStorage.setItem('pwaPromptShown', 'true');
-         }
+        // For browsers that don't fire the event but support installation
+        setTimeout(() => {
+            if (!installPrompt && !window.matchMedia('(display-mode: standalone)').matches) {
+                // A simple check to see if we can prompt, not perfect but a good fallback
+                if ('onbeforeinstallprompt' in window || navigator.hasOwnProperty('standalone')) {
+                    setShowInstallDialog(true);
+                }
+            }
+        }, 3000);
+
 
         return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
     }, [installPrompt]);
@@ -158,9 +161,13 @@ export const InstallPwaPrompt = () => {
         if (installPrompt) {
             installPrompt.prompt();
             installPrompt.userChoice.then((choiceResult: { outcome: string }) => {
-                setShowInstallDialog(false);
+                if (choiceResult.outcome === 'accepted') {
+                   setShowInstallDialog(false);
+                }
                 setInstallPrompt(null);
             });
+        } else {
+            alert("To install the app, please use the 'Add to Home Screen' option in your browser's menu.");
         }
     };
     
@@ -366,3 +373,5 @@ export const StudentReviews = () => {
     </>
   );
 }
+
+    
