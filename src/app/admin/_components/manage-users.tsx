@@ -2,8 +2,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useCollection } from 'react-firebase-hooks/firestore';
-import { collection, query, where, doc, updateDoc, arrayUnion, arrayRemove, onSnapshot } from 'firebase/firestore';
+import { useCollection, useDocumentData } from 'react-firebase-hooks/firestore';
+import { collection, query, where, doc, updateDoc, arrayUnion, arrayRemove, onSnapshot, setDoc } from 'firebase/firestore';
 import { firestore } from '@/lib/firebase';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
@@ -16,28 +16,23 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 
 export function ManageUsers() {
   const { toast } = useToast();
-  const [users, usersLoading, usersError] = useCollection(collection(firestore, 'users'));
-  const [topStudents, setTopStudents] = useState<string[]>([]);
+  const [users] = useCollection(collection(firestore, 'users'));
+  
+  const [topStudentsDoc, topStudentsLoading] = useDocumentData(doc(firestore, 'settings', 'topStudents'));
+  const topStudentUids = topStudentsDoc?.uids || [];
+  
   const [selectedUser, setSelectedUser] = useState('');
 
-  useEffect(() => {
-    const unsub = onSnapshot(doc(firestore, 'settings', 'topStudents'), (doc) => {
-      if (doc.exists()) {
-        setTopStudents(doc.data().uids || []);
-      }
-    });
-    return () => unsub();
-  }, []);
-
   const handleAddTopStudent = async () => {
-    if (!selectedUser || topStudents.includes(selectedUser)) {
+    if (!selectedUser || topStudentUids.includes(selectedUser)) {
       toast({ variant: 'destructive', description: 'Please select a user or user is already a top student.' });
       return;
     }
     try {
-      await updateDoc(doc(firestore, 'settings', 'topStudents'), {
+      // Use setDoc with merge to create the document if it doesn't exist
+      await setDoc(doc(firestore, 'settings', 'topStudents'), {
         uids: arrayUnion(selectedUser)
-      });
+      }, { merge: true });
       toast({ description: 'User added to top students.' });
       setSelectedUser('');
     } catch (e: any) {
@@ -58,10 +53,13 @@ export function ManageUsers() {
 
   const getTopStudentDetails = () => {
     if (!users) return [];
-    return topStudents.map(uid => users.docs.find(doc => doc.id === uid)?.data()).filter(Boolean);
+    return topStudentUids.map((uid: string) => {
+        const userDoc = users.docs.find(doc => doc.id === uid);
+        return userDoc ? {id: userDoc.id, ...userDoc.data()} : null;
+    }).filter(Boolean);
   };
   
-  const availableUsers = users?.docs.filter(doc => !topStudents.includes(doc.id));
+  const availableUsers = users?.docs.filter(doc => !topStudentUids.includes(doc.id));
 
   return (
     <Card>
@@ -78,7 +76,7 @@ export function ManageUsers() {
                         <SelectValue placeholder="Select a user to add" />
                     </SelectTrigger>
                     <SelectContent>
-                        {usersLoading && <p className="p-2">Loading users...</p>}
+                        {users?.docs.length === 0 && <p className="p-2">Loading users...</p>}
                         {availableUsers?.map(doc => (
                             <SelectItem key={doc.id} value={doc.id}>
                                {doc.data().displayName} ({doc.data().email})
@@ -92,7 +90,7 @@ export function ManageUsers() {
 
         <div>
           <h3 className="font-semibold mb-2">Current Top Students</h3>
-          {usersLoading ? (
+          {topStudentsLoading ? (
             <Skeleton className="h-40 w-full" />
           ) : getTopStudentDetails().length === 0 ? (
             <p className="text-muted-foreground text-center p-4 border rounded-md">No top students selected yet.</p>
@@ -106,7 +104,7 @@ export function ManageUsers() {
               </TableHeader>
               <TableBody>
                 {getTopStudentDetails().map((student: any) => (
-                  <TableRow key={student.uid}>
+                  <TableRow key={student.uid || student.id}>
                     <TableCell className="flex items-center gap-3">
                        <Avatar>
                           <AvatarImage src={student.photoURL} />
@@ -118,7 +116,7 @@ export function ManageUsers() {
                        </div>
                     </TableCell>
                     <TableCell>
-                      <Button variant="destructive" size="icon" onClick={() => handleRemoveTopStudent(student.uid)}>
+                      <Button variant="destructive" size="icon" onClick={() => handleRemoveTopStudent(student.uid || student.id)}>
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </TableCell>

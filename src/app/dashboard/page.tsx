@@ -117,7 +117,7 @@ const LiveClassTimer = () => {
     if (!liveClass) return null;
 
     return (
-        <Card>
+        <Card className="bg-primary/5 border-primary/20">
             <Link href={`/dashboard/live-class/${liveClass.id}`}>
             <CardContent className="p-4 flex items-center justify-between">
                 <div>
@@ -208,7 +208,7 @@ const StudentReviews = () => {
             </DialogContent>
         </Dialog>
         
-        <Card>
+        <Card className="bg-transparent border-none shadow-none">
             <CardHeader>
                 <CardTitle>What Our Students Say</CardTitle>
             </CardHeader>
@@ -224,7 +224,7 @@ const StudentReviews = () => {
                                 const review = doc.data();
                                 return (
                                     <CarouselItem key={doc.id} className="md:basis-1/2 lg:basis-1/3" onClick={() => openReadMore(review)}>
-                                        <Card className="cursor-pointer">
+                                        <Card className="cursor-pointer h-full bg-card/80 backdrop-blur-sm">
                                             <CardContent className="p-4 flex flex-col justify-between h-full">
                                                 <p className="italic line-clamp-4">"{review.text}"</p>
                                                 <p className="font-semibold mt-2 text-right">- {review.name}</p>
@@ -270,7 +270,7 @@ const TopStudentsSection = () => {
                 const topStudentUids = doc.data().uids || [];
                 const studentDetails = topStudentUids.map((uid: string) => {
                     const userDoc = usersCollection.docs.find(d => d.id === uid);
-                    return userDoc ? userDoc.data() : null;
+                    return userDoc ? {id: userDoc.id, ...userDoc.data()} : null;
                 }).filter(Boolean);
                 setTopStudents(studentDetails);
             }
@@ -279,7 +279,7 @@ const TopStudentsSection = () => {
     }, [usersCollection]);
     
     return (
-        <Card>
+        <Card className="bg-transparent border-none shadow-none">
             <CardHeader><CardTitle>Top 10 Students of the Week</CardTitle></CardHeader>
             <CardContent>
                 {usersLoading && <Skeleton className="h-24 w-full" />}
@@ -287,7 +287,7 @@ const TopStudentsSection = () => {
                     {topStudents.map((student, i) => {
                         const avatarColor = `#${intToRGB(hashCode(student.displayName || 'U'))}`;
                         return (
-                            <div key={student.uid} className="text-center flex-shrink-0 w-24">
+                            <div key={student.uid || student.id} className="text-center flex-shrink-0 w-24">
                                 <Avatar className="h-16 w-16 mx-auto mb-2 border-2 border-yellow-400">
                                     <AvatarImage src={student.photoURL} />
                                     <AvatarFallback style={{ backgroundColor: avatarColor }} className="text-2xl font-bold">{student.displayName?.charAt(0) || 'S'}</AvatarFallback>
@@ -339,7 +339,7 @@ const EducatorsSection = () => {
                 </DialogClose>
             </DialogContent>
         </Dialog>
-        <Card>
+        <Card className="bg-transparent border-none shadow-none">
             <CardHeader><CardTitle>Meet Our Educators</CardTitle></CardHeader>
             <CardContent>
                 {loading && <Skeleton className="h-24 w-full" />}
@@ -390,56 +390,43 @@ const MainDashboard = () => {
     }
 
     return (
-        <div className="space-y-6">
-            <h1 className="text-2xl font-bold">{getGreeting()}</h1>
+        <div className="space-y-6 bg-gradient-to-b from-primary/10 via-background to-background rounded-b-2xl">
+            <div className="p-4 md:p-6">
+                <h1 className="text-2xl font-bold">{getGreeting()}</h1>
 
-            {settings?.carouselImages ? (
-              <Carousel 
-                opts={{ loop: true }} 
-                plugins={[Autoplay({ delay: 4000, stopOnInteraction: true })]}
-                className="w-full"
-              >
-                <CarouselContent>
-                  {settings.carouselImages.map((url: string, index: number) => (
-                    <CarouselItem key={index}>
-                      <Card className="overflow-hidden">
-                         <CardContent className="p-0 aspect-video relative">
-                            <Image
-                              src={url}
-                              alt={`Carousel Image ${index + 1}`}
-                              fill
-                              className="object-cover"
-                              priority={index === 0}
-                            />
-                        </CardContent>
-                      </Card>
-                    </CarouselItem>
-                  ))}
-                </CarouselContent>
-                <CarouselPrevious className="hidden sm:flex" />
-                <CarouselNext className="hidden sm:flex" />
-              </Carousel>
-            ) : <Skeleton className="h-48 w-full" />}
-            
-            <div className="grid grid-cols-3 gap-3">
-                {mainGridItems.slice(0, 6).map(item => (
-                    <Link href={item.href} key={item.label}>
-                        <Card className={cn("text-white h-full hover:scale-105 transition-transform bg-gradient-to-br", item.color)}>
-                             <CardContent className="p-3 flex flex-col items-center justify-center text-center gap-1 h-24">
-                                <item.icon className="h-7 w-7" />
-                                <span className="text-xs font-semibold">{item.label}</span>
+                {settings?.carouselImages ? (
+                <Carousel 
+                    opts={{ loop: true }} 
+                    plugins={[Autoplay({ delay: 4000, stopOnInteraction: true })]}
+                    className="w-full mt-4"
+                >
+                    <CarouselContent>
+                    {settings.carouselImages.map((url: string, index: number) => (
+                        <CarouselItem key={index}>
+                        <Card className="overflow-hidden">
+                            <CardContent className="p-0 aspect-video relative">
+                                <Image
+                                src={url}
+                                alt={`Carousel Image ${index + 1}`}
+                                fill
+                                className="object-cover"
+                                priority={index === 0}
+                                />
                             </CardContent>
                         </Card>
-                    </Link>
-                ))}
-            </div>
-            
-            {mainGridItems.length > 6 && (
-                 <div className="grid grid-cols-4 gap-3">
-                    {mainGridItems.slice(6).map(item => (
+                        </CarouselItem>
+                    ))}
+                    </CarouselContent>
+                    <CarouselPrevious className="hidden sm:flex" />
+                    <CarouselNext className="hidden sm:flex" />
+                </Carousel>
+                ) : <Skeleton className="h-48 w-full mt-4" />}
+                
+                <div className="grid grid-cols-3 gap-3 mt-6">
+                    {mainGridItems.slice(0, 6).map(item => (
                         <Link href={item.href} key={item.label}>
-                            <Card className={cn("text-white h-full hover:scale-105 transition-transform bg-gradient-to-br", item.color)}>
-                                 <CardContent className="p-3 flex flex-col items-center justify-center text-center gap-1 h-24">
+                            <Card className={cn("text-white h-full hover:scale-105 transition-transform bg-gradient-to-br hover:shadow-lg", item.color)}>
+                                <CardContent className="p-3 flex flex-col items-center justify-center text-center gap-1 h-24">
                                     <item.icon className="h-7 w-7" />
                                     <span className="text-xs font-semibold">{item.label}</span>
                                 </CardContent>
@@ -447,13 +434,14 @@ const MainDashboard = () => {
                         </Link>
                     ))}
                 </div>
-            )}
-
-
-            <TopStudentsSection />
-            <LiveClassTimer />
-            <EducatorsSection />
-            <StudentReviews />
+            </div>
+            
+            <div className="px-4 md:px-6 space-y-6">
+                <TopStudentsSection />
+                <LiveClassTimer />
+                <EducatorsSection />
+                <StudentReviews />
+            </div>
 
         </div>
     );
