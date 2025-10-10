@@ -2,6 +2,7 @@
 import { initializeApp, getApps, getApp, FirebaseApp } from "firebase/app";
 import { getAuth, initializeAuth, browserLocalPersistence } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
+import { getMessaging } from "firebase/messaging";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCowK1pgv_fGzCo65c-7_-9vTIkrO628yM",
@@ -30,4 +31,6 @@ if (typeof window !== 'undefined') {
 
 const firestore = getFirestore(app);
 
-export { app, auth, firestore };
+const messaging = typeof window !== 'undefined' ? getMessaging(app) : null;
+
+export { app, auth, firestore, messaging };

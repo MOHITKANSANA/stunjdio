@@ -57,9 +57,10 @@ import { cn } from '@/lib/utils';
 import { useLanguage } from '@/hooks/use-language';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
-import { doc, getDoc, onSnapshot, collection, query, orderBy } from 'firebase/firestore';
-import { firestore } from '@/lib/firebase';
+import { doc, getDoc, onSnapshot, collection, query, orderBy, updateDoc, arrayUnion } from 'firebase/firestore';
+import { firestore, messaging } from '@/lib/firebase';
 import { AppBottomNav } from './bottom-nav';
+import { getToken } from 'firebase/messaging';
 
 
 const sidebarNavItems = [
@@ -244,20 +245,7 @@ const AppHeader = () => {
 
 const LoadingScreen = () => (
     <div className="flex h-screen w-full items-center justify-center bg-background">
-       <div className="splash-container flex flex-col items-center justify-between h-full w-full text-white p-8">
-            <div />
-            <div className="flex flex-col items-center text-center">
-                <div className="font-headline text-8xl font-bold flex items-center">
-                    <span className="text-saffron">G</span>
-                    <span className="text-green">S</span>
-                </div>
-                <h1 className="text-5xl font-bold font-headline text-white mt-4 metallic-text">
-                    GoSwamiX
-                </h1>
-                <p className="mt-2 text-lg text-gray-300">Your Path to Success Starts Here</p>
-            </div>
-             <Loader2 className="h-8 w-8 animate-spin" />
-        </div>
+        <Loader2 className="h-8 w-8 animate-spin" />
     </div>
 );
 
@@ -284,6 +272,44 @@ export default function DashboardLayout({
   
   const isVideoPlaybackPage = pathname.includes('/video/') || pathname.includes('/live-class/');
   const isMindSphereMode = pathname.startsWith('/dashboard/mindsphere');
+
+  useEffect(() => {
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/firebase-messaging-sw.js')
+        .then((registration) => {
+          console.log('Service Worker registered with scope:', registration.scope);
+        }).catch((err) => {
+          console.log('Service Worker registration failed:', err);
+        });
+    }
+  }, []);
+  
+  useEffect(() => {
+    if (typeof window !== 'undefined' && 'Notification' in window && user && messaging) {
+        Notification.requestPermission().then(permission => {
+            if (permission === 'granted') {
+                console.log('Notification permission granted.');
+                getToken(messaging, { vapidKey: 'BK7Em65W8CaTgTAkBNokkVuUr4OBe0FzjsbxcSsLtNNLdwWp9kv5KJvegTn99IdsIHZwKEqC8Zkgfs8XpRIqv6o' }).then(async (currentToken) => {
+                    if (currentToken) {
+                        console.log('FCM Token:', currentToken);
+                        const userDocRef = doc(firestore, 'users', user.uid);
+                        // Save the token to Firestore
+                        await updateDoc(userDocRef, {
+                            fcmTokens: arrayUnion(currentToken)
+                        });
+                    } else {
+                        console.log('No registration token available. Request permission to generate one.');
+                    }
+                }).catch((err) => {
+                    console.log('An error occurred while retrieving token. ', err);
+                });
+            } else {
+                console.log('Unable to get permission to notify.');
+            }
+        });
+    }
+  }, [user]);
+
 
   useEffect(() => {
     let timer: NodeJS.Timeout;
@@ -386,4 +412,3 @@ export default function DashboardLayout({
       </SidebarProvider>
   );
 }
-
