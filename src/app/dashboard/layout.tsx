@@ -285,33 +285,6 @@ export default function DashboardLayout({
   }, []);
   
   useEffect(() => {
-    if (typeof window !== 'undefined' && 'Notification' in window && user && messaging) {
-        Notification.requestPermission().then(permission => {
-            if (permission === 'granted') {
-                console.log('Notification permission granted.');
-                getToken(messaging, { vapidKey: 'BK7Em65W8CaTgTAkBNokkVuUr4OBe0FzjsbxcSsLtNNLdwWp9kv5KJvegTn99IdsIHZwKEqC8Zkgfs8XpRIqv6o' }).then(async (currentToken) => {
-                    if (currentToken) {
-                        console.log('FCM Token:', currentToken);
-                        const userDocRef = doc(firestore, 'users', user.uid);
-                        // Save the token to Firestore
-                        await updateDoc(userDocRef, {
-                            fcmTokens: arrayUnion(currentToken)
-                        });
-                    } else {
-                        console.log('No registration token available. Request permission to generate one.');
-                    }
-                }).catch((err) => {
-                    console.log('An error occurred while retrieving token. ', err);
-                });
-            } else {
-                console.log('Unable to get permission to notify.');
-            }
-        });
-    }
-  }, [user]);
-
-
-  useEffect(() => {
     let timer: NodeJS.Timeout;
     if (user) {
         const userDocRef = doc(firestore, 'users', user.uid);

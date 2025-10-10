@@ -1,5 +1,6 @@
 
-"use client"
+
+"use client";
 
 import { useState, useEffect } from "react";
 import { doc, getDoc, updateDoc, arrayUnion } from 'firebase/firestore';
@@ -13,7 +14,7 @@ import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/hooks/use-auth";
 import { useLanguage } from "@/hooks/use-language";
-import { Award, Pencil, Timer, Bell, Copy, Check } from "lucide-react";
+import { Award, Pencil, Timer, Bell, Copy, Check, AlertTriangle } from "lucide-react";
 import Link from "next/link";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -30,6 +31,13 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 
 const KidsProfileExtras = () => {
     const { user } = useAuth();
@@ -114,53 +122,55 @@ const NotificationSettings = () => {
     const [permissionStatus, setPermissionStatus] = useState<NotificationPermission>('default');
     const [fcmToken, setFcmToken] = useState<string | null>(null);
     const [isCopied, setIsCopied] = useState(false);
+    const [showPermissionPopup, setShowPermissionPopup] = useState(false);
 
     useEffect(() => {
         if ('Notification' in window) {
             setPermissionStatus(Notification.permission);
         }
-        if (user) {
-            const userDocRef = doc(firestore, 'users', user.uid);
-            getDoc(userDocRef).then(docSnap => {
-                if (docSnap.exists()) {
-                    const tokens = docSnap.data().fcmTokens;
-                    if (tokens && tokens.length > 0) {
-                        setFcmToken(tokens[tokens.length - 1]); // Show the latest token
-                    }
-                }
-            });
+        if (user && permissionStatus === 'granted') {
+           retrieveToken();
         }
-    }, [user]);
+    }, [user, permissionStatus]);
+    
+    const retrieveToken = async () => {
+        if (!messaging || !user) return;
+        try {
+            const currentToken = await getToken(messaging, { vapidKey: 'BK7Em65W8CaTgTAkBNokkVuUr4OBe0FzjsbxcSsLtNNLdwWp9kv5KJvegTn99IdsIHZwKEqC8Zkgfs8XpRIqv6o' });
+            if (currentToken) {
+                setFcmToken(currentToken);
+                const userDocRef = doc(firestore, 'users', user.uid);
+                await updateDoc(userDocRef, {
+                    fcmTokens: arrayUnion(currentToken)
+                });
+            }
+        } catch (err) {
+             console.log('An error occurred while retrieving token. ', err);
+        }
+    };
 
     const handleRequestPermission = async () => {
         if (!('Notification' in window) || !messaging || !user) {
             toast({ variant: 'destructive', title: 'Unsupported', description: 'Notifications are not supported on this browser or you are not logged in.' });
+            setShowPermissionPopup(false);
             return;
         }
 
         try {
             const permission = await Notification.requestPermission();
             setPermissionStatus(permission);
+            setShowPermissionPopup(false);
 
             if (permission === 'granted') {
                 toast({ title: 'Success', description: 'Notifications enabled!' });
-                const currentToken = await getToken(messaging, { vapidKey: 'BK7Em65W8CaTgTAkBNokkVuUr4OBe0FzjsbxcSsLtNNLdwWp9kv5KJvegTn99IdsIHZwKEqC8Zkgfs8XpRIqv6o' });
-                if (currentToken) {
-                    setFcmToken(currentToken);
-                    const userDocRef = doc(firestore, 'users', user.uid);
-                    await updateDoc(userDocRef, {
-                        fcmTokens: arrayUnion(currentToken)
-                    });
-                    toast({ description: "Your device is now registered for notifications." });
-                } else {
-                    toast({ variant: 'destructive', title: 'Token Error', description: 'Could not get notification token.' });
-                }
+                await retrieveToken();
             } else {
                 toast({ variant: 'destructive', title: 'Permission Denied', description: 'You have blocked notifications.' });
             }
         } catch (error) {
             console.error('Error getting notification permission:', error);
             toast({ variant: 'destructive', title: 'Error', description: 'An error occurred while enabling notifications.' });
+            setShowPermissionPopup(false);
         }
     };
     
@@ -173,38 +183,55 @@ const NotificationSettings = () => {
     }
 
     return (
-        <Card className="mt-6">
-            <CardHeader>
-                <CardTitle>Notification Settings</CardTitle>
-                <CardDescription>Manage how you receive notifications from the app.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-                <div className="flex items-center justify-between p-4 border rounded-lg">
-                    <div>
-                        <Label>Push Notifications</Label>
-                        <p className="text-sm text-muted-foreground">
-                            Status: <Badge variant={permissionStatus === 'granted' ? 'default' : (permissionStatus === 'denied' ? 'destructive' : 'secondary')}>{permissionStatus}</Badge>
-                        </p>
+        <>
+            <Dialog open={showPermissionPopup} onOpenChange={setShowPermissionPopup}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Enable Notifications?</DialogTitle>
+                    </DialogHeader>
+                    <div className="py-4">
+                        <p>To receive important updates and alerts, please allow notifications from this app.</p>
                     </div>
-                    {permissionStatus !== 'granted' && (
-                        <Button onClick={handleRequestPermission}>
-                            <Bell className="mr-2" /> Enable Notifications
-                        </Button>
-                    )}
-                </div>
-                 {fcmToken && (
-                     <div className="p-4 border rounded-lg space-y-2">
-                        <Label>Your Notification Token</Label>
-                        <div className="flex items-center gap-2">
-                           <Input readOnly value={fcmToken} className="bg-muted text-xs" />
-                           <Button variant="outline" size="icon" onClick={copyToken}>
-                             {isCopied ? <Check className="h-4 w-4 text-green-500"/> : <Copy className="h-4 w-4" />}
-                           </Button>
+                     <AlertDialogFooter>
+                        <Button variant="outline" onClick={() => setShowPermissionPopup(false)}>Later</Button>
+                        <Button onClick={handleRequestPermission}>Allow</Button>
+                    </AlertDialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            <Card className="mt-6">
+                <CardHeader>
+                    <CardTitle>Notification Settings</CardTitle>
+                    <CardDescription>Manage how you receive notifications from the app.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    <div className="flex items-center justify-between p-4 border rounded-lg">
+                        <div>
+                            <Label>Push Notifications</Label>
+                            <p className="text-sm text-muted-foreground">
+                                Status: <Badge variant={permissionStatus === 'granted' ? 'default' : (permissionStatus === 'denied' ? 'destructive' : 'secondary')}>{permissionStatus}</Badge>
+                            </p>
                         </div>
-                     </div>
-                 )}
-            </CardContent>
-        </Card>
+                        {permissionStatus !== 'granted' && (
+                            <Button onClick={() => setShowPermissionPopup(true)}>
+                                <Bell className="mr-2" /> Enable Notifications
+                            </Button>
+                        )}
+                    </div>
+                    {fcmToken && (
+                        <div className="p-4 border rounded-lg space-y-2">
+                            <Label>Your Notification Token</Label>
+                            <div className="flex items-center gap-2">
+                            <Input readOnly value={fcmToken} className="bg-muted text-xs" />
+                            <Button variant="outline" size="icon" onClick={copyToken}>
+                                {isCopied ? <Check className="h-4 w-4 text-green-500"/> : <Copy className="h-4 w-4" />}
+                            </Button>
+                            </div>
+                        </div>
+                    )}
+                </CardContent>
+            </Card>
+        </>
     );
 };
 
