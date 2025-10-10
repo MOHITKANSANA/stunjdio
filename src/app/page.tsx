@@ -5,13 +5,13 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/use-auth";
-import { Shield } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { onSnapshot, doc } from "firebase/firestore";
 import { firestore } from "@/lib/firebase";
 import Image from "next/image";
 
 const AnimatedSplashScreen = () => {
-    const [logoUrl, setLogoUrl] = useState<string | null>(null);
+    const [logoUrl, setLogoUrl] = useState<string | null>("https://firebasestorage.googleapis.com/v0/b/go-swami-coching-classes.appspot.com/o/app_assets%2Flogo.png?alt=media&token=42558509-de60-4055-9b2f-7d28c46011b1");
 
     useEffect(() => {
         const unsub = onSnapshot(doc(firestore, 'settings', 'appConfig'), (doc) => {
@@ -67,7 +67,7 @@ export default function WelcomePage() {
         const splashContainer = document.querySelector('.splash-container');
         
         const splashTimer = setTimeout(() => {
-            splashContainer?.classList.add('fade-out');
+            if(splashContainer) splashContainer.classList.add('fade-out');
             
             const fadeOutTimer = setTimeout(() => {
                 setIsSplashVisible(false);
@@ -93,9 +93,7 @@ export default function WelcomePage() {
     if (!isSplashVisible) {
          return (
             <div className="flex h-screen w-full items-center justify-center bg-background">
-                <div className="flex flex-col items-center gap-4">
-                    <Shield className="h-12 w-12 animate-pulse text-primary" />
-                </div>
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
         );
     }

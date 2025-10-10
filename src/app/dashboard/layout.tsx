@@ -231,11 +231,6 @@ const AppHeader = () => {
                 <div className='md:hidden'>
                     <SidebarTrigger />
                 </div>
-                 <div className="flex items-center gap-2 sm:gap-4 text-lg font-semibold font-headline">
-                    <Link href="/dashboard" className="flex items-center gap-2">
-                       <span className="sr-only">GoSwamiX</span>
-                    </Link>
-                 </div>
             </div>
             <div className="flex items-center gap-2">
                 <Button variant="ghost" size="icon" className="rounded-full">
@@ -249,8 +244,19 @@ const AppHeader = () => {
 
 const LoadingScreen = () => (
     <div className="flex h-screen w-full items-center justify-center bg-background">
-        <div className="flex flex-col items-center gap-4">
-            <Shield className="h-12 w-12 animate-pulse text-primary" />
+       <div className="splash-container flex flex-col items-center justify-between h-full w-full text-white p-8">
+            <div />
+            <div className="flex flex-col items-center text-center">
+                <div className="font-headline text-8xl font-bold flex items-center">
+                    <span className="text-saffron">G</span>
+                    <span className="text-green">S</span>
+                </div>
+                <h1 className="text-5xl font-bold font-headline text-white mt-4 metallic-text">
+                    GoSwamiX
+                </h1>
+                <p className="mt-2 text-lg text-gray-300">Your Path to Success Starts Here</p>
+            </div>
+             <Loader2 className="h-8 w-8 animate-spin" />
         </div>
     </div>
 );
@@ -380,3 +386,4 @@ export default function DashboardLayout({
       </SidebarProvider>
   );
 }
+
