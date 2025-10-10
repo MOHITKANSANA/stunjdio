@@ -2,7 +2,7 @@
 'use client';
 
 import React, { useEffect, useState, useCallback } from 'react';
-import { onSnapshot, doc, collection, query, orderBy, limit } from 'firebase/firestore';
+import { onSnapshot, doc, collection, query, orderBy, limit, where } from 'firebase/firestore';
 import { firestore } from '@/lib/firebase';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
