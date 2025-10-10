@@ -1,7 +1,7 @@
 
 
 'use client';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Book,
   Library,
@@ -21,6 +21,7 @@ import { LiveClassTimer, TopStudentsSection, InstallPwaPrompt, SocialMediaLinks,
 import { doc, getDoc } from 'firebase/firestore';
 import { firestore } from '@/lib/firebase';
 import { Button } from '@/components/ui/button';
+import { Loader2 } from 'lucide-react';
 
 const quickAccessItems = [
   { label: "Courses", icon: Book, href: "/dashboard/courses", color: "from-blue-500 to-sky-500" },
@@ -35,6 +36,7 @@ const quickAccessItems = [
 ];
 
 const MainDashboard = () => {
+    const { user } = useAuth();
     const [activeButton, setActiveButton] = useState<string | null>(null);
 
     const handlePress = (label: string) => {
@@ -44,33 +46,33 @@ const MainDashboard = () => {
 
     return (
        <div className="relative min-h-screen w-full">
-            <div className="fixed top-0 left-0 right-0 h-[40vh] bg-gradient-to-b from-blue-700 to-sky-500 -z-10" 
+            <div className="fixed top-0 left-0 right-0 h-[30vh] bg-gradient-to-b from-blue-700 to-sky-500 -z-10" 
                  style={{clipPath: 'polygon(0 0, 100% 0, 100% 80%, 0 100%)'}}
             />
             <div className="relative p-4 md:p-6 space-y-8 z-10">
-                <InstallPwaPrompt />
-
-                <div>
-                    <h2 className="text-lg font-semibold mb-3 px-4 text-foreground/80">Quick Access</h2>
-                    <div className="grid grid-cols-3 gap-3">
-                        {quickAccessItems.map(item => (
-                            <Link href={item.href} key={item.label} onClick={() => handlePress(item.label)}>
-                                <Card className={cn(
-                                    "h-full transition-all duration-200 ease-in-out transform hover:-translate-y-1",
-                                    "bg-gradient-to-br text-white shadow-lg",
-                                    activeButton === item.label ? 'ring-2 ring-offset-2 ring-primary' : '',
-                                    item.color
-                                )}>
-                                    <CardContent className="p-3 flex flex-col items-center justify-center text-center gap-2 h-28">
-                                        <item.icon className="h-7 w-7" />
-                                        <span className="text-xs font-semibold">{item.label}</span>
-                                    </CardContent>
-                                </Card>
-                            </Link>
-                        ))}
-                    </div>
+                <div className="px-4">
+                    <h1 className="text-2xl font-bold text-white">Hello, {user?.displayName || 'Student'}!</h1>
                 </div>
 
+                <div className="grid grid-cols-3 gap-3">
+                    {quickAccessItems.map(item => (
+                        <Link href={item.href} key={item.label} onClick={() => handlePress(item.label)}>
+                            <Card className={cn(
+                                "h-full transition-all duration-200 ease-in-out transform hover:-translate-y-1",
+                                "bg-gradient-to-br text-white shadow-lg",
+                                activeButton === item.label ? 'ring-2 ring-offset-2 ring-white' : '',
+                                item.color
+                            )}>
+                                <CardContent className="p-3 flex flex-col items-center justify-center text-center gap-2 h-28">
+                                    <item.icon className="h-7 w-7" />
+                                    <span className="text-xs font-semibold">{item.label}</span>
+                                </CardContent>
+                            </Card>
+                        </Link>
+                    ))}
+                </div>
+
+                <InstallPwaPrompt />
                 <LiveClassTimer />
                 <StudentReviews />
                 <TopStudentsSection />
@@ -107,16 +109,10 @@ export default function DashboardPage() {
     if (authLoading || isKidsMode === null) {
         return (
              <div className="flex h-screen w-full items-center justify-center bg-background">
-                <div className="flex flex-col items-center gap-4">
-                   <div className="h-12 w-12 animate-pulse text-primary" />
-                </div>
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
         )
     }
 
     return <MainDashboard />;
 }
-
-    
-
-    

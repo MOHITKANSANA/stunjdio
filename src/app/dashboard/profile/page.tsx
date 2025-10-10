@@ -2,8 +2,9 @@
 "use client"
 
 import { useState, useEffect } from "react";
-import { doc, getDoc, updateDoc } from 'firebase/firestore';
-import { firestore } from '@/lib/firebase';
+import { doc, getDoc, updateDoc, arrayUnion } from 'firebase/firestore';
+import { firestore, messaging } from '@/lib/firebase';
+import { getToken } from "firebase/messaging";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -12,7 +13,7 @@ import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/hooks/use-auth";
 import { useLanguage } from "@/hooks/use-language";
-import { Award, Pencil, Timer } from "lucide-react";
+import { Award, Pencil, Timer, Bell, Copy, Check } from "lucide-react";
 import Link from "next/link";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -107,7 +108,107 @@ const KidsProfileExtras = () => {
     )
 }
 
-// Dummy data, replace with Firestore data
+const NotificationSettings = () => {
+    const { user } = useAuth();
+    const { toast } = useToast();
+    const [permissionStatus, setPermissionStatus] = useState<NotificationPermission>('default');
+    const [fcmToken, setFcmToken] = useState<string | null>(null);
+    const [isCopied, setIsCopied] = useState(false);
+
+    useEffect(() => {
+        if ('Notification' in window) {
+            setPermissionStatus(Notification.permission);
+        }
+        if (user) {
+            const userDocRef = doc(firestore, 'users', user.uid);
+            getDoc(userDocRef).then(docSnap => {
+                if (docSnap.exists()) {
+                    const tokens = docSnap.data().fcmTokens;
+                    if (tokens && tokens.length > 0) {
+                        setFcmToken(tokens[tokens.length - 1]); // Show the latest token
+                    }
+                }
+            });
+        }
+    }, [user]);
+
+    const handleRequestPermission = async () => {
+        if (!('Notification' in window) || !messaging || !user) {
+            toast({ variant: 'destructive', title: 'Unsupported', description: 'Notifications are not supported on this browser or you are not logged in.' });
+            return;
+        }
+
+        try {
+            const permission = await Notification.requestPermission();
+            setPermissionStatus(permission);
+
+            if (permission === 'granted') {
+                toast({ title: 'Success', description: 'Notifications enabled!' });
+                const currentToken = await getToken(messaging, { vapidKey: 'BK7Em65W8CaTgTAkBNokkVuUr4OBe0FzjsbxcSsLtNNLdwWp9kv5KJvegTn99IdsIHZwKEqC8Zkgfs8XpRIqv6o' });
+                if (currentToken) {
+                    setFcmToken(currentToken);
+                    const userDocRef = doc(firestore, 'users', user.uid);
+                    await updateDoc(userDocRef, {
+                        fcmTokens: arrayUnion(currentToken)
+                    });
+                    toast({ description: "Your device is now registered for notifications." });
+                } else {
+                    toast({ variant: 'destructive', title: 'Token Error', description: 'Could not get notification token.' });
+                }
+            } else {
+                toast({ variant: 'destructive', title: 'Permission Denied', description: 'You have blocked notifications.' });
+            }
+        } catch (error) {
+            console.error('Error getting notification permission:', error);
+            toast({ variant: 'destructive', title: 'Error', description: 'An error occurred while enabling notifications.' });
+        }
+    };
+    
+    const copyToken = () => {
+        if (!fcmToken) return;
+        navigator.clipboard.writeText(fcmToken);
+        setIsCopied(true);
+        toast({description: "Token copied to clipboard!"})
+        setTimeout(() => setIsCopied(false), 2000);
+    }
+
+    return (
+        <Card className="mt-6">
+            <CardHeader>
+                <CardTitle>Notification Settings</CardTitle>
+                <CardDescription>Manage how you receive notifications from the app.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+                <div className="flex items-center justify-between p-4 border rounded-lg">
+                    <div>
+                        <Label>Push Notifications</Label>
+                        <p className="text-sm text-muted-foreground">
+                            Status: <Badge variant={permissionStatus === 'granted' ? 'default' : (permissionStatus === 'denied' ? 'destructive' : 'secondary')}>{permissionStatus}</Badge>
+                        </p>
+                    </div>
+                    {permissionStatus !== 'granted' && (
+                        <Button onClick={handleRequestPermission}>
+                            <Bell className="mr-2" /> Enable Notifications
+                        </Button>
+                    )}
+                </div>
+                 {fcmToken && (
+                     <div className="p-4 border rounded-lg space-y-2">
+                        <Label>Your Notification Token</Label>
+                        <div className="flex items-center gap-2">
+                           <Input readOnly value={fcmToken} className="bg-muted text-xs" />
+                           <Button variant="outline" size="icon" onClick={copyToken}>
+                             {isCopied ? <Check className="h-4 w-4 text-green-500"/> : <Copy className="h-4 w-4" />}
+                           </Button>
+                        </div>
+                     </div>
+                 )}
+            </CardContent>
+        </Card>
+    );
+};
+
+
 const userCourses = [
   { name: "Algebra Fundamentals", progress: 75 },
   { name: "World History", progress: 40 },
@@ -184,6 +285,8 @@ export default function ProfilePage() {
         </Button>
       </div>
 
+       <NotificationSettings />
+
       {isKidsMode ? <KidsProfileExtras /> : (
         <Tabs defaultValue="courses" className="w-full">
             <TabsList className="grid w-full grid-cols-3 max-w-lg">
@@ -258,5 +361,3 @@ export default function ProfilePage() {
     </div>
   );
 }
-
-    
