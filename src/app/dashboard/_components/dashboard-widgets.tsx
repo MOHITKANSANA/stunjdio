@@ -18,6 +18,8 @@ import Link from 'next/link';
 import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@/hooks/use-auth';
 import Autoplay from "embla-carousel-autoplay";
+import { cn } from '@/lib/utils';
+
 
 export const LiveClassTimer = () => {
     const [liveClass, setLiveClass] = useState<any>(null);
@@ -134,7 +136,6 @@ export const InstallPwaPrompt = () => {
         const handleBeforeInstallPrompt = (event: Event) => {
             event.preventDefault();
             setInstallPrompt(event);
-            // Check if app is already installed. If not, show the dialog.
             if (!window.matchMedia('(display-mode: standalone)').matches) {
                 setIsVisible(true);
             }
@@ -142,23 +143,10 @@ export const InstallPwaPrompt = () => {
 
         window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
 
-        // For browsers that don't fire the event but support installation
-        const fallbackTimer = setTimeout(() => {
-            if (installPrompt === null && !window.matchMedia('(display-mode: standalone)').matches) {
-                 // A simple check to see if we can prompt, not perfect but a good fallback
-                 if ('onbeforeinstallprompt' in window || (navigator as any).standalone === false) {
-                    setIsVisible(true); // Show a manual prompt button
-                 }
-            }
-        }, 3000);
-
-
         return () => {
             window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-            clearTimeout(fallbackTimer);
         }
-    }, [installPrompt]);
-    
+    }, []);
 
     const handleInstallClick = () => {
         if (installPrompt) {
@@ -167,33 +155,25 @@ export const InstallPwaPrompt = () => {
                 if (choiceResult.outcome === 'accepted') {
                    setIsVisible(false);
                 }
-                setInstallPrompt(null);
             });
-        } else {
-            alert("To install the app, please use the 'Add to Home Screen' option in your browser's menu.");
         }
     };
     
     if(!isVisible) return null;
 
     return (
-      <Dialog open={isVisible} onOpenChange={setIsVisible}>
-        <DialogContent>
-            <DialogHeader>
-                <DialogTitle className="flex items-center gap-2">
-                    <Download className="text-primary"/>
-                    Install the GoSwamiX App
-                </DialogTitle>
-                <DialogDescription>
-                    For a better, faster, and offline-ready experience, install our app on your device.
-                </DialogDescription>
-            </DialogHeader>
-            <div className="flex justify-end gap-4 mt-4">
-                <Button variant="ghost" onClick={() => setIsVisible(false)}>Later</Button>
-                <Button onClick={handleInstallClick}>Install Now</Button>
-            </div>
-        </DialogContent>
-      </Dialog>
+      <Card className="bg-gradient-to-r from-purple-500 to-indigo-600 text-white shadow-lg">
+          <CardContent className="p-4 flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                  <Download className="h-8 w-8" />
+                  <div>
+                      <h3 className="font-bold">Install the GoSwamiX App</h3>
+                      <p className="text-sm opacity-90">For a better, faster, and offline-ready experience.</p>
+                  </div>
+              </div>
+              <Button onClick={handleInstallClick} className="bg-white text-purple-600 hover:bg-gray-100 shrink-0">Install Now</Button>
+          </CardContent>
+      </Card>
     )
 }
 
@@ -282,7 +262,7 @@ const LeaveReviewDialog = ({ onOpenChange }: { onOpenChange: (open: boolean) => 
                 {[...Array(5)].map((_, i) => (
                     <Star
                         key={i}
-                        className={`h-8 w-8 cursor-pointer ${i < rating ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300'}`}
+                        className={cn('h-8 w-8 cursor-pointer transition-colors', i < rating ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300 hover:text-yellow-300')}
                         onClick={() => setRating(i + 1)}
                     />
                 ))}
@@ -320,7 +300,7 @@ export const StudentReviews = () => {
                     <DialogTitle>Review by {selectedReview.name}</DialogTitle>
                      <div className="flex items-center gap-1">
                         {[...Array(5)].map((_, i) => (
-                           <Star key={i} className={i < selectedReview.rating ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300'} />
+                           <Star key={i} className={cn("h-5 w-5", i < selectedReview.rating ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300')} />
                         ))}
                     </div>
                 </DialogHeader>
@@ -337,7 +317,7 @@ export const StudentReviews = () => {
             align: "start",
             loop: true,
           }}
-          plugins={[Autoplay({ delay: 3000, stopOnInteraction: true })]}
+          plugins={[Autoplay({ delay: 5000, stopOnInteraction: true })]}
           className="w-full"
         >
           <CarouselContent>
@@ -358,7 +338,7 @@ export const StudentReviews = () => {
                         </div>
                          <div className="flex items-center gap-1">
                              {[...Array(5)].map((_, i) => (
-                               <Star key={i} className={`h-4 w-4 ${i < review.rating ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300'}`}/>
+                               <Star key={i} className={cn("h-4 w-4", i < review.rating ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300')} />
                             ))}
                         </div>
                       </CardContent>

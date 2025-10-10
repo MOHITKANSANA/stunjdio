@@ -49,9 +49,7 @@ const MainDashboard = () => {
             />
             <div className="relative p-4 md:p-6 space-y-8 z-10">
                 <InstallPwaPrompt />
-                <LiveClassTimer />
-                <StudentReviews />
-                
+
                 <div>
                     <h2 className="text-lg font-semibold mb-3 px-4 text-foreground/80">Quick Access</h2>
                     <div className="grid grid-cols-3 gap-3">
@@ -72,9 +70,11 @@ const MainDashboard = () => {
                         ))}
                     </div>
                 </div>
-            
-                <SocialMediaLinks />
+
+                <LiveClassTimer />
+                <StudentReviews />
                 <TopStudentsSection />
+                <SocialMediaLinks />
             </div>
         </div>
     );
