@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -96,23 +97,6 @@ export function LoginForm() {
     return 'Sign In';
   }
 
-  const getFooterText = () => {
-       if (formType === 'signup') {
-            return (
-                <>
-                Already have an account?{" "}
-                <Button variant="link" className="p-0 h-auto" onClick={() => setFormType('login')}>Sign in</Button>
-                </>
-            );
-        }
-        return (
-            <>
-            Don't have an account?{" "}
-            <Button variant="link" className="p-0 h-auto" onClick={() => setFormType('signup')}>Sign up</Button>
-            </>
-        );
-  }
-
   return (
     <div className="flex min-h-screen w-full items-center justify-center bg-gray-100 dark:bg-gray-900 p-4">
         <Card className="w-full max-w-md bg-card shadow-lg">
@@ -143,7 +127,17 @@ export function LoginForm() {
             </CardContent>
             <CardFooter className="flex flex-col gap-4">
                 <div className="text-center text-sm">
-                   {getFooterText()}
+                    {formType === 'signup' ? (
+                       <>
+                         Already have an account?{" "}
+                         <Button variant="link" className="p-0 h-auto" onClick={() => setFormType('login')}>Sign in</Button>
+                       </>
+                    ) : (
+                       <>
+                         Don't have an account?{" "}
+                         <Button variant="link" className="p-0 h-auto" onClick={() => setFormType('signup')}>Sign up</Button>
+                       </>
+                    )}
                 </div>
             </CardFooter>
         </Card>

@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useEffect, useState } from "react";
@@ -10,7 +11,7 @@ import { firestore } from "@/lib/firebase";
 import Image from "next/image";
 
 const AnimatedSplashScreen = () => {
-    const [logoUrl, setLogoUrl] = useState<string | null>("/go-swami-logo.png");
+    const [logoUrl, setLogoUrl] = useState<string | null>(null);
 
     useEffect(() => {
         const unsub = onSnapshot(doc(firestore, 'settings', 'appConfig'), (doc) => {
@@ -32,7 +33,7 @@ const AnimatedSplashScreen = () => {
                        <Image src={logoUrl} alt="App Logo" fill className="rounded-full object-cover" />
                     </div>
                 ) : (
-                    <div className="splash-item splash-item-2 font-headline text-8xl font-bold flex items-center">
+                     <div className="splash-item splash-item-2 font-headline text-8xl font-bold flex items-center">
                         <span className="text-saffron">G</span>
                         <span className="text-green">S</span>
                     </div>
@@ -90,7 +91,13 @@ export default function WelcomePage() {
     }, [user, authLoading, router, isSplashVisible]);
 
     if (!isSplashVisible) {
-        return null; // Don't render anything after splash screen to avoid flicker
+         return (
+            <div className="flex h-screen w-full items-center justify-center bg-background">
+                <div className="flex flex-col items-center gap-4">
+                    <Shield className="h-12 w-12 animate-pulse text-primary" />
+                </div>
+            </div>
+        );
     }
 
     return (

@@ -79,13 +79,29 @@ const quickAccessItems = [
   { label: "Doubts", icon: HelpCircle, href: "/dashboard/my-learning?tab=notifications" },
   { label: "Profile", icon: User, href: "/dashboard/profile" },
   { label: "Settings", icon: Settings, href: "/dashboard/settings" },
+  { label: "Free Courses", icon: BookCopy, href: "/dashboard/courses/free" },
+  { label: "Scholarship", icon: Award, href: "/dashboard/scholarship" },
+  { label: "AI Tutor", icon: Bot, href: "/dashboard/tutor" },
 ];
 
 
 const LiveClassTimer = () => {
     const [liveClass, setLiveClass] = useState<any>(null);
-    const [timeLeft, setTimeLeft] = useState({days: 0, hours: 0, minutes: 0, seconds: 0});
+    const [timeLeft, setTimeLeft] = useState<any>(null);
     const [loading, setLoading] = useState(true);
+
+    const calculateTimeLeft = useCallback((targetDate: Date) => {
+        const difference = +targetDate - +new Date();
+        if (difference > 0) {
+            return {
+                days: Math.floor(difference / (1000 * 60 * 60 * 24)),
+                hours: Math.floor((difference / (1000 * 60 * 60)) % 24),
+                minutes: Math.floor((difference / 1000 / 60) % 60),
+                seconds: Math.floor((difference / 1000) % 60),
+            };
+        }
+        return null;
+    }, []);
 
     useEffect(() => {
         const q = query(collection(firestore, 'live_classes'), where('startTime', '>', new Date()), orderBy('startTime', 'asc'), limit(1));
@@ -95,55 +111,55 @@ const LiveClassTimer = () => {
                 setLiveClass({ id: doc.id, ...doc.data() });
             } else {
                 setLiveClass(null);
+                // Set a sample future date for display if no live class is scheduled
+                const sampleDate = new Date();
+                sampleDate.setDate(sampleDate.getDate() + 2);
+                sampleDate.setHours(18, 0, 0, 0);
+                setTimeLeft(calculateTimeLeft(sampleDate));
             }
             setLoading(false);
         });
         return () => unsubscribe();
-    }, []);
+    }, [calculateTimeLeft]);
 
     useEffect(() => {
         if (!liveClass) return;
 
         const interval = setInterval(() => {
-            const now = new Date();
-            const startTime = liveClass.startTime.toDate();
-            const diff = startTime.getTime() - now.getTime();
-
-            if (diff <= 0) {
-                setTimeLeft({ days: 0, hours: 0, minutes: 0, seconds: 0 });
+            const newTimeLeft = calculateTimeLeft(liveClass.startTime.toDate());
+            if (newTimeLeft) {
+                setTimeLeft(newTimeLeft);
+            } else {
                 clearInterval(interval);
-                return;
+                setTimeLeft(null);
             }
-            const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-            const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-            const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-            const seconds = Math.floor((diff % (1000 * 60)) / 1000);
-            setTimeLeft({ days, hours, minutes, seconds });
         }, 1000);
 
         return () => clearInterval(interval);
-    }, [liveClass]);
+    }, [liveClass, calculateTimeLeft]);
 
     if (loading) {
         return <Skeleton className="h-24 w-full" />
     }
 
-    if (!liveClass) return null;
-
     return (
-        <Card className="bg-primary text-primary-foreground shadow-lg col-span-2">
-           <Link href={`/dashboard/live-class/${liveClass.id}`}>
+        <Card className="bg-primary/5 border-primary/20 shadow-lg col-span-2">
+           <Link href={liveClass ? `/dashboard/live-class/${liveClass.id}`: '#'}>
             <CardContent className="p-4 flex flex-col items-center justify-center text-center">
-                 <p className="font-semibold text-sm">Next Live Class</p>
-                 <div className="flex items-center gap-2 my-2">
-                    {Object.entries(timeLeft).map(([unit, value]) => (
-                        <div key={unit} className="flex flex-col items-center">
-                            <span className="text-2xl font-bold">{String(value).padStart(2, '0')}</span>
-                            <span className="text-xs opacity-80">{unit}</span>
-                        </div>
-                    ))}
-                 </div>
-                 <p className="text-xs font-medium truncate max-w-full">{liveClass.title}</p>
+                 <p className="font-semibold text-sm text-primary">Next Live Class</p>
+                 {timeLeft ? (
+                    <div className="flex items-center gap-2 my-2">
+                        {Object.entries(timeLeft).map(([unit, value]) => (
+                            <div key={unit} className="flex flex-col items-center">
+                                <span className="text-2xl font-bold">{String(value).padStart(2, '0')}</span>
+                                <span className="text-xs opacity-80">{unit}</span>
+                            </div>
+                        ))}
+                    </div>
+                 ) : (
+                     <p className="font-semibold my-2">No upcoming classes</p>
+                 )}
+                 <p className="text-xs font-medium truncate max-w-full">{liveClass ? liveClass.title : 'Stay Tuned!'}</p>
             </CardContent>
            </Link>
         </Card>
@@ -184,6 +200,7 @@ const TopStudentsSection = () => {
                                     <AvatarFallback>{student.displayName?.charAt(0) || 'S'}</AvatarFallback>
                                 </Avatar>
                                 <p className="text-xs font-medium mt-1 truncate">{student.displayName}</p>
+                                <Badge variant="secondary" className="mt-1">Rank {i+1}</Badge>
                             </div>
                         )) : <p className="text-muted-foreground text-sm text-center w-full">No top students this week.</p>}
                     </div>
@@ -194,10 +211,11 @@ const TopStudentsSection = () => {
 }
 
 const InstallPwaPrompt = () => {
+    const { toast } = useToast();
     const [installPrompt, setInstallPrompt] = useState<any>(null);
     const [showInstallBanner, setShowInstallBanner] = useState(false);
     const [isInstallDialogOpen, setIsInstallDialogOpen] = useState(false);
-    const toast = useToast();
+    
 
     useEffect(() => {
         const handleBeforeInstallPrompt = (event: Event) => {
@@ -225,11 +243,13 @@ const InstallPwaPrompt = () => {
             installPrompt.prompt();
             installPrompt.userChoice.then((choiceResult: { outcome: string }) => {
                 if (choiceResult.outcome === 'accepted') {
-                   toast.toast({ title: "Installation Complete!", description: "GoSwamiX has been added to your home screen." });
+                   toast({ title: "Installation Complete!", description: "GoSwamiX has been added to your home screen." });
                 }
                 setInstallPrompt(null);
                 setShowInstallBanner(false);
             });
+        } else {
+            toast({variant: 'destructive', title: "Installation not available", description: "Your browser does not support app installation."});
         }
     };
     
@@ -271,37 +291,14 @@ const MainDashboard = () => {
 
     const handlePress = (label: string) => {
         setActiveButton(label);
-        setTimeout(() => setActiveButton(null), 150);
+        setTimeout(() => setActiveButton(null), 200);
     };
-
-    const getGreeting = () => {
-        if (!user) return "Welcome!";
-        const isNewUser = user.metadata.creationTime === user.metadata.lastSignInTime;
-        if (isNewUser) return "Welcome to Go Swami X!";
-        
-        const name = user.displayName?.split(' ')[0] || 'Student';
-        const hour = new Date().getHours();
-        if (hour < 12) return `Good Morning, ${name}!`;
-        if (hour < 18) return `Good Afternoon, ${name}!`;
-        return `Good Evening, ${name}!`;
-    }
+    
 
     return (
-        <div className="bg-background">
+       <div className="min-h-screen bg-gradient-to-b from-blue-100 via-white to-white dark:from-blue-950/50 dark:via-background dark:to-background">
             <InstallPwaPrompt />
             <div className="p-4 md:p-6 space-y-6">
-                <div className="flex justify-between items-center">
-                    <div>
-                        <p className="text-muted-foreground text-sm">Hello!</p>
-                        <h1 className="text-2xl font-bold">{user?.displayName || "Student"}</h1>
-                    </div>
-                     <Link href="/dashboard/profile">
-                        <Avatar>
-                            <AvatarImage src={user?.photoURL || undefined} />
-                            <AvatarFallback>{user?.displayName?.charAt(0) || 'U'}</AvatarFallback>
-                        </Avatar>
-                     </Link>
-                </div>
                 
                 <LiveClassTimer />
                 
@@ -313,11 +310,13 @@ const MainDashboard = () => {
                         {quickAccessItems.map(item => (
                             <Link href={item.href} key={item.label} onClick={() => handlePress(item.label)}>
                                 <Card className={cn(
-                                    "h-full transition-all duration-150 ease-in-out",
-                                    activeButton === item.label ? 'bg-primary text-primary-foreground' : 'bg-muted/50'
+                                    "h-full transition-all duration-150 ease-in-out transform hover:-translate-y-1",
+                                    activeButton === item.label 
+                                        ? 'bg-gradient-to-br from-purple-500 to-indigo-600 text-white shadow-lg' 
+                                        : 'bg-background hover:bg-muted'
                                 )}>
                                     <CardContent className="p-3 flex flex-col items-center justify-center text-center gap-1 h-24">
-                                        <item.icon className={cn("h-7 w-7", activeButton === item.label ? 'text-primary-foreground' : 'text-primary')} />
+                                        <item.icon className={cn("h-7 w-7", activeButton === item.label ? 'text-white' : 'text-primary')} />
                                         <span className="text-xs font-semibold">{item.label}</span>
                                     </CardContent>
                                 </Card>
@@ -357,9 +356,9 @@ export default function DashboardPage() {
     if (authLoading || isKidsMode === null) {
         return (
             <div className="space-y-6 p-4 md:p-6">
-                <Skeleton className="h-8 w-1/2" />
-                <Skeleton className="h-48 w-full" />
+                <Skeleton className="h-24 w-full" />
                 <Skeleton className="h-40 w-full" />
+                <Skeleton className="h-48 w-full" />
             </div>
         )
     }

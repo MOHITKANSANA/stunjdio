@@ -1,4 +1,5 @@
 
+
 'use client'
 import React, { useEffect, useState } from 'react';
 import {
@@ -100,8 +101,8 @@ const SidebarMenuItemWithHandler = ({ href, icon: Icon, label, closeSidebar }: {
 
     return (
         <SidebarMenuItem>
-            <Link href={href}>
-                <SidebarMenuButton isActive={isActive} onClick={closeSidebar}>
+            <Link href={href} onClick={closeSidebar}>
+                <SidebarMenuButton isActive={isActive}>
                     <Icon />
                     <span>{label}</span>
                 </SidebarMenuButton>
@@ -137,11 +138,6 @@ const AppSidebar = ({ isKidsMode, isMindSphereMode }: { isKidsMode: boolean, isM
         logout();
     }
     
-    const handleNavigation = (path: string) => {
-        closeSidebar();
-        router.push(path);
-    }
-
     const navItems = isKidsMode 
         ? kidsSidebarNavItems 
         : isMindSphereMode 
@@ -150,10 +146,10 @@ const AppSidebar = ({ isKidsMode, isMindSphereMode }: { isKidsMode: boolean, isM
 
     return (
         <Sidebar>
-            <SidebarContent className="bg-primary text-primary-foreground border-none">
+            <SidebarContent className="bg-background text-foreground border-r">
                 <SidebarHeader>
                      <div className='flex items-center gap-2'>
-                        <Shield className="h-7 w-7 text-white" />
+                        <Shield className="h-7 w-7 text-primary" />
                         <span className="text-lg font-semibold font-headline">Go Swami X</span>
                     </div>
                 </SidebarHeader>
@@ -196,8 +192,8 @@ const AppSidebar = ({ isKidsMode, isMindSphereMode }: { isKidsMode: boolean, isM
 
                      <SidebarSeparator />
                      <SidebarMenuItem>
-                        <Link href="/admin">
-                           <SidebarMenuButton onClick={() => handleNavigation('/admin')}>
+                        <Link href="/admin" onClick={closeSidebar}>
+                           <SidebarMenuButton>
                                 <UserCog />
                                 <span>Admin</span>
                             </SidebarMenuButton>
@@ -207,8 +203,8 @@ const AppSidebar = ({ isKidsMode, isMindSphereMode }: { isKidsMode: boolean, isM
                 <SidebarFooter>
                     <SidebarMenu>
                         <SidebarMenuItem>
-                            <Link href="/dashboard/settings">
-                                <SidebarMenuButton onClick={() => handleNavigation('/dashboard/settings')}>
+                             <Link href="/dashboard/settings" onClick={closeSidebar}>
+                                <SidebarMenuButton>
                                     <Settings />
                                     <span>{t('settings')}</span>
                                 </SidebarMenuButton>
@@ -230,15 +226,14 @@ const AppSidebar = ({ isKidsMode, isMindSphereMode }: { isKidsMode: boolean, isM
 
 const AppHeader = () => {
   return (
-      <header className={cn("flex h-16 shrink-0 items-center justify-between gap-4 px-4 md:px-6 bg-background sticky top-0 z-20 shadow-md border-b")}>
+      <header className={cn("flex h-16 shrink-0 items-center justify-between gap-4 px-4 md:px-6 bg-transparent sticky top-0 z-20")}>
             <div className='flex items-center gap-2'>
                 <div className='md:hidden'>
                     <SidebarTrigger />
                 </div>
                  <div className="flex items-center gap-2 sm:gap-4 text-lg font-semibold font-headline">
                     <Link href="/dashboard" className="flex items-center gap-2">
-                       <Shield className="h-7 w-7 text-primary" />
-                       <span className="hidden sm:inline-block">GoSwamiX</span>
+                       <span className="sr-only">GoSwamiX</span>
                     </Link>
                  </div>
             </div>
@@ -374,7 +369,7 @@ export default function DashboardLayout({
                 {!isVideoPlaybackPage && <AppSidebar isKidsMode={isKidsMode} isMindSphereMode={isMindSphereMode} />}
                  <main className="flex-1 overflow-y-auto h-full">
                     <SidebarInset>
-                        <div className={cn(!isVideoPlaybackPage && 'p-4 md:p-6')}>
+                        <div className={cn(!isVideoPlaybackPage && '')}>
                             {children}
                         </div>
                     </SidebarInset>
