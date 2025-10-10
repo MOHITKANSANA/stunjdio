@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { useEffect, useState, useCallback } from 'react';
@@ -12,15 +11,15 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Carousel, CarouselContent, CarouselItem } from '@/components/ui/carousel';
+import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
 import { useCollection, useDocumentData } from 'react-firebase-hooks/firestore';
-import { Youtube, Facebook, Instagram, Twitter, Linkedin, Link as LinkIcon, Star, CheckCircle, Download, X } from 'lucide-react';
+import { Youtube, Facebook, Instagram, Twitter, Linkedin, Link as LinkIcon, Star, CheckCircle, Download, X, Volume2, Loader2, Megaphone } from 'lucide-react';
 import Link from 'next/link';
 import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@/hooks/use-auth';
 import Autoplay from "embla-carousel-autoplay";
 import { cn } from '@/lib/utils';
-
+import { getAudioAction } from '@/app/actions/ai-tutor';
 
 export const LiveClassTimer = () => {
     const [liveClass, setLiveClass] = useState<any>(null);
@@ -287,11 +286,32 @@ export const StudentReviews = () => {
   const [reviews, loading] = useCollection(query(collection(firestore, 'reviews'), orderBy('createdAt', 'desc')));
   const [selectedReview, setSelectedReview] = useState<any>(null);
   const [showReviewForm, setShowReviewForm] = useState(false);
+  const audioRef = React.useRef<HTMLAudioElement>(null);
+  const [isAudioLoading, setIsAudioLoading] = useState(false);
 
-  if (loading) return <Skeleton className="h-32 w-full" />;
+  const handlePlayAudio = async (text: string) => {
+    if (!text || !audioRef.current) return;
+    setIsAudioLoading(true);
+    audioRef.current.pause();
+    audioRef.current.src = "";
+    try {
+        const audioResult = await getAudioAction(text);
+        if (audioRef.current) {
+            audioRef.current.src = audioResult.media;
+            audioRef.current.play().catch(e => console.error("Audio playback failed:", e));
+        }
+    } catch (error) {
+        console.error("Error generating audio:", error);
+    } finally {
+        setIsAudioLoading(false);
+    }
+  }
+
+  if (loading) return <Skeleton className="h-40 w-full" />;
 
   return (
     <>
+      <audio ref={audioRef} className="hidden" />
       {showReviewForm && <LeaveReviewDialog onOpenChange={setShowReviewForm} />}
       <Dialog open={!!selectedReview} onOpenChange={() => setSelectedReview(null)}>
         <DialogContent>
@@ -306,6 +326,10 @@ export const StudentReviews = () => {
                     </div>
                 </DialogHeader>
                 <p className="py-4 text-muted-foreground">{selectedReview.review}</p>
+                 <Button variant="outline" onClick={() => handlePlayAudio(selectedReview.review)} disabled={isAudioLoading}>
+                    {isAudioLoading ? <Loader2 className="h-4 w-4 animate-spin"/> : <Volume2 className="h-4 w-4" />}
+                    <span className="ml-2">Read Aloud</span>
+                </Button>
                 </>
             )}
         </DialogContent>
@@ -321,14 +345,14 @@ export const StudentReviews = () => {
           plugins={[Autoplay({ delay: 5000, stopOnInteraction: true })]}
           className="w-full"
         >
-          <CarouselContent>
+          <CarouselContent className="-ml-2">
             {reviews?.docs.map((doc) => {
               const review = doc.data();
               return (
-                <CarouselItem key={doc.id} className="basis-full md:basis-1/2 lg:basis-1/3">
+                <CarouselItem key={doc.id} className="basis-full md:basis-1/2 lg:basis-1/3 pl-2">
                   <div className="p-1">
                     <Card onClick={() => setSelectedReview(review)} className="cursor-pointer hover:bg-muted">
-                      <CardContent className="flex flex-col items-center justify-center p-4 gap-4 text-center">
+                      <CardContent className="flex flex-col items-center justify-center p-4 gap-4 text-center h-48">
                          <Avatar className="h-16 w-16">
                             <AvatarImage src={review.photoURL} />
                             <AvatarFallback>{review.name?.charAt(0) || 'S'}</AvatarFallback>
@@ -356,4 +380,36 @@ export const StudentReviews = () => {
       </div>
     </>
   );
+}
+
+
+export const DashboardMarquee = () => {
+    const [promotions, loading, error] = useCollection(
+        query(collection(firestore, 'promotions'), orderBy('createdAt', 'desc'))
+    );
+
+    if (loading || error || !promotions || promotions.empty) {
+        return null; // Don't render anything if there's nothing to show
+    }
+
+    return (
+        <div className="relative flex overflow-x-hidden bg-primary text-primary-foreground rounded-lg shadow-md">
+            <div className="py-2 animate-marquee whitespace-nowrap">
+                {promotions.docs.map(doc => (
+                    <a href={doc.data().url} target="_blank" rel="noopener noreferrer" key={doc.id} className="mx-8 text-sm font-semibold hover:underline">
+                        <Megaphone className="inline-block mr-2 h-4 w-4" />
+                        {doc.data().title}
+                    </a>
+                ))}
+            </div>
+             <div className="absolute top-0 py-2 animate-marquee whitespace-nowrap">
+                 {promotions.docs.map(doc => (
+                    <a href={doc.data().url} target="_blank" rel="noopener noreferrer" key={doc.id} className="mx-8 text-sm font-semibold hover:underline">
+                        <Megaphone className="inline-block mr-2 h-4 w-4" />
+                        {doc.data().title}
+                    </a>
+                ))}
+            </div>
+        </div>
+    );
 }

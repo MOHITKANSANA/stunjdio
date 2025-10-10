@@ -1,5 +1,4 @@
 
-
 'use client';
 import React, { useState, useEffect } from 'react';
 import {
@@ -17,7 +16,7 @@ import Link from 'next/link';
 import { Card, CardContent } from '@/components/ui/card';
 import { useAuth } from '@/hooks/use-auth';
 import { cn } from '@/lib/utils';
-import { LiveClassTimer, TopStudentsSection, InstallPwaPrompt, SocialMediaLinks, StudentReviews } from './_components/dashboard-widgets';
+import { LiveClassTimer, TopStudentsSection, InstallPwaPrompt, SocialMediaLinks, StudentReviews, DashboardMarquee } from './_components/dashboard-widgets';
 import { doc, getDoc } from 'firebase/firestore';
 import { firestore } from '@/lib/firebase';
 import { Button } from '@/components/ui/button';
@@ -41,18 +40,22 @@ const MainDashboard = () => {
 
     const handlePress = (label: string) => {
         setActiveButton(label);
-        setTimeout(() => setActiveButton(null), 200);
+        setTimeout(() => setActiveButton(null), 300);
     };
 
     return (
        <div className="relative min-h-screen w-full">
-            <div className="fixed top-0 left-0 right-0 h-[30vh] bg-gradient-to-b from-blue-700 to-sky-500 -z-10" 
+            <div 
+                 className="fixed top-0 left-0 right-0 h-[35vh] bg-gradient-to-b from-blue-700 to-sky-500 -z-10" 
                  style={{clipPath: 'polygon(0 0, 100% 0, 100% 80%, 0 100%)'}}
             />
-            <div className="relative p-4 md:p-6 space-y-8 z-10">
-                <div className="px-4">
-                    <h1 className="text-2xl font-bold text-white">Hello, {user?.displayName || 'Student'}!</h1>
+            <div className="relative p-4 md:p-6 space-y-6 z-10">
+                <div className="px-4 text-white">
+                    <h1 className="text-2xl font-bold">Hello, {user?.displayName || 'Student'}!</h1>
                 </div>
+
+                <DashboardMarquee />
+                <InstallPwaPrompt />
 
                 <div className="grid grid-cols-3 gap-3">
                     {quickAccessItems.map(item => (
@@ -72,7 +75,6 @@ const MainDashboard = () => {
                     ))}
                 </div>
 
-                <InstallPwaPrompt />
                 <LiveClassTimer />
                 <StudentReviews />
                 <TopStudentsSection />
@@ -96,7 +98,7 @@ export default function DashboardPage() {
                     const userData = userDoc.data();
                     setIsKidsMode(userData.ageGroup === '1-9');
                 } else {
-                    setIsKidsMode(false); // Default for older profiles
+                    setIsKidsMode(false);
                 }
             }
         };

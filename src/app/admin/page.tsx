@@ -19,6 +19,7 @@ import { ManageTestSeriesEnrollments } from "./_components/manage-test-series-en
 import { AddBattleQuizForm } from "./_components/add-battle-quiz-form";
 import { AppSettingsForm } from "./_components/app-settings-form";
 import { ManageUsers } from "./_components/manage-users";
+import { ManagePromotions } from "./_components/manage-promotions";
 
 
 export default function AdminPage() {
@@ -38,6 +39,7 @@ export default function AdminPage() {
                     <TabsTrigger value="scholarships">Scholarships</TabsTrigger>
                     <TabsTrigger value="kids_tube">Kids Tube</TabsTrigger>
                     <TabsTrigger value="battle_quiz">Battle Quiz</TabsTrigger>
+                    <TabsTrigger value="promotions">Promotions</TabsTrigger>
                     <TabsTrigger value="html_editor">HTML Editor</TabsTrigger>
                     <TabsTrigger value="settings">App Settings</TabsTrigger>
                 </TabsList>
@@ -144,6 +146,10 @@ export default function AdminPage() {
                             <AddBattleQuizForm />
                         </CardContent>
                     </Card>
+                </TabsContent>
+
+                 <TabsContent value="promotions" className="mt-6 md:mt-0">
+                    <ManagePromotions />
                 </TabsContent>
 
                 <TabsContent value="html_editor" className="mt-6 md:mt-0">
