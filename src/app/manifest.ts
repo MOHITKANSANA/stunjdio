@@ -12,12 +12,12 @@ export default function manifest(): MetadataRoute.Manifest {
     theme_color: '#6c2bd9',
     icons: [
       {
-        src: '/icons/icon-192x192.png',
+        src: 'https://i.postimg.cc/Y9qkK3hC/go-swami-logo.png',
         sizes: '192x192',
         type: 'image/png',
       },
       {
-        src: '/icons/icon-512x512.png',
+        src: 'https://i.postimg.cc/Y9qkK3hC/go-swami-logo.png',
         sizes: '512x512',
         type: 'image/png',
       },
