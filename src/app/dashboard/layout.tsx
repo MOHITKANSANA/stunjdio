@@ -174,6 +174,12 @@ const AppSidebar = ({ isKidsMode, isMindSphereMode }: { isKidsMode: boolean, isM
                         label="Why Us"
                         closeSidebar={closeSidebar}
                     />
+                     <SidebarMenuItemWithHandler
+                        href="/dashboard/my-learning?tab=ebooks"
+                        icon={BookCopy}
+                        label="E-books"
+                        closeSidebar={closeSidebar}
+                    />
 
                     {customPages.map((page) => {
                         if (page.id === 'why-us') return null; // Avoid duplicating "Why Us"
@@ -250,7 +256,6 @@ const LoadingScreen = () => (
     <div className="flex h-screen w-full items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-4">
             <Shield className="h-12 w-12 animate-pulse text-primary" />
-            <p className="text-muted-foreground">Loading your experience...</p>
         </div>
     </div>
 );

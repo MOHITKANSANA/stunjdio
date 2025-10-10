@@ -10,12 +10,12 @@ import { firestore } from "@/lib/firebase";
 import Image from "next/image";
 
 const AnimatedSplashScreen = () => {
-    const [logoUrl, setLogoUrl] = useState<string | null>(null);
+    const [logoUrl, setLogoUrl] = useState<string | null>("/go-swami-logo.png");
 
     useEffect(() => {
         const unsub = onSnapshot(doc(firestore, 'settings', 'appConfig'), (doc) => {
-            if (doc.exists()) {
-                setLogoUrl(doc.data().appLogoUrl || null);
+            if (doc.exists() && doc.data().appLogoUrl) {
+                setLogoUrl(doc.data().appLogoUrl);
             }
         });
         return () => unsub();
@@ -57,14 +57,6 @@ const AnimatedSplashScreen = () => {
     );
 };
 
-
-const LoadingSpinner = () => (
-    <div className="flex flex-col items-center gap-4">
-        <Shield className="h-12 w-12 animate-pulse text-primary" />
-        <p className="text-muted-foreground">Loading your experience...</p>
-    </div>
-);
-
 export default function WelcomePage() {
     const { user, loading: authLoading } = useAuth();
     const router = useRouter();
@@ -81,7 +73,7 @@ export default function WelcomePage() {
             }, 500); 
 
             return () => clearTimeout(fadeOutTimer);
-        }, 3500); 
+        }, 5000); 
 
         return () => clearTimeout(splashTimer);
     }, []);
@@ -97,15 +89,13 @@ export default function WelcomePage() {
         }
     }, [user, authLoading, router, isSplashVisible]);
 
+    if (!isSplashVisible) {
+        return null; // Don't render anything after splash screen to avoid flicker
+    }
+
     return (
         <div className="h-screen w-screen bg-background">
-             {isSplashVisible ? (
-                <AnimatedSplashScreen />
-             ) : (
-                <div className="flex min-h-screen w-full items-center justify-center">
-                    <LoadingSpinner />
-                </div>
-             )}
+            <AnimatedSplashScreen />
         </div>
     );
 }

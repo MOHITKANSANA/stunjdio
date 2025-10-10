@@ -67,6 +67,10 @@ export default function AdminPage() {
                             </Card>
                         </div>
                         <div className="space-y-8">
+                             <Card>
+                                <CardHeader><CardTitle>Add E-book</CardTitle></CardHeader>
+                                <CardContent><AddEbookForm /></CardContent>
+                            </Card>
                             <Card>
                                 <CardHeader><CardTitle>Add New Live Class</CardTitle></CardHeader>
                                 <CardContent><ManageLiveClass /></CardContent>

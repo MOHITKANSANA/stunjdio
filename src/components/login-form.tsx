@@ -90,49 +90,63 @@ export function LoginForm() {
     if (formType === 'signup') return 'Create an Account';
     return 'Sign in to your account';
   };
+  
+  const getButtonText = () => {
+    if (formType === 'signup') return 'Sign Up';
+    return 'Sign In';
+  }
+
+  const getFooterText = () => {
+       if (formType === 'signup') {
+            return (
+                <>
+                Already have an account?{" "}
+                <Button variant="link" className="p-0 h-auto" onClick={() => setFormType('login')}>Sign in</Button>
+                </>
+            );
+        }
+        return (
+            <>
+            Don't have an account?{" "}
+            <Button variant="link" className="p-0 h-auto" onClick={() => setFormType('signup')}>Sign up</Button>
+            </>
+        );
+  }
 
   return (
-    <Card className="w-full max-w-md bg-card shadow-lg">
-      <CardHeader className="text-center">
-        <div className="mx-auto bg-primary text-primary-foreground rounded-full p-3 w-fit mb-4">
-          <BookOpenCheck className="h-10 w-10" />
-        </div>
-        <CardTitle className="text-3xl font-headline text-card-foreground">Go Swami Coaching</CardTitle>
-        <CardDescription>{getTitle()}</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
-            <Input id="email" type="email" placeholder="student@example.com" {...form.register("email")} />
-            {form.formState.errors.email && <p className="text-xs text-destructive">{form.formState.errors.email.message}</p>}
-            </div>
-            <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
-            <Input id="password" type="password" {...form.register("password")} />
-            {form.formState.errors.password && <p className="text-xs text-destructive">{form.formState.errors.password.message}</p>}
-            </div>
-            <Button type="submit" className="w-full" disabled={isLoading}>
-            {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {formType === 'signup' ? 'Sign Up' : 'Sign In'}
-            </Button>
-        </form>
-      </CardContent>
-      <CardFooter className="flex flex-col gap-4">
-        <div className="text-center text-sm">
-          {formType === 'signup' ? (
-            <>
-              Already have an account?{" "}
-              <Button variant="link" className="p-0 h-auto" onClick={() => setFormType('login')}>Sign in</Button>
-            </>
-          ) : (
-            <>
-              Don't have an account?{" "}
-              <Button variant="link" className="p-0 h-auto" onClick={() => setFormType('signup')}>Sign up</Button>
-            </>
-          )}
-        </div>
-      </CardFooter>
-    </Card>
+    <div className="flex min-h-screen w-full items-center justify-center bg-gray-100 dark:bg-gray-900 p-4">
+        <Card className="w-full max-w-md bg-card shadow-lg">
+            <CardHeader className="text-center">
+                <div className="mx-auto bg-primary text-primary-foreground rounded-full p-3 w-fit mb-4">
+                <BookOpenCheck className="h-10 w-10" />
+                </div>
+                <CardTitle className="text-3xl font-headline text-card-foreground">Go Swami Coaching</CardTitle>
+                <CardDescription>{getTitle()}</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                    <div className="space-y-2">
+                    <Label htmlFor="email">Email</Label>
+                    <Input id="email" type="email" placeholder="student@example.com" {...form.register("email")} />
+                    {form.formState.errors.email && <p className="text-xs text-destructive">{form.formState.errors.email.message}</p>}
+                    </div>
+                    <div className="space-y-2">
+                    <Label htmlFor="password">Password</Label>
+                    <Input id="password" type="password" {...form.register("password")} />
+                    {form.formState.errors.password && <p className="text-xs text-destructive">{form.formState.errors.password.message}</p>}
+                    </div>
+                    <Button type="submit" className="w-full" disabled={isLoading}>
+                    {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    {getButtonText()}
+                    </Button>
+                </form>
+            </CardContent>
+            <CardFooter className="flex flex-col gap-4">
+                <div className="text-center text-sm">
+                   {getFooterText()}
+                </div>
+            </CardFooter>
+        </Card>
+    </div>
   );
 }
