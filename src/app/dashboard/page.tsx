@@ -1,7 +1,7 @@
 
 
 'use client';
-import React, from 'react';
+import React, { useState } from 'react';
 import {
   Book,
   Youtube,
@@ -33,8 +33,7 @@ const quickAccessItems = [
 ];
 
 const MainDashboard = () => {
-    const { user } = useAuth();
-    const [activeButton, setActiveButton] = React.useState<string | null>(null);
+    const [activeButton, setActiveButton] = useState<string | null>(null);
 
     const handlePress = (label: string) => {
         setActiveButton(label);
@@ -43,14 +42,13 @@ const MainDashboard = () => {
 
     return (
        <div className="min-h-screen bg-background">
-            <InstallPwaPrompt />
             <div className="relative">
                 <div className="absolute top-0 left-0 right-0 h-64 bg-gradient-to-br from-blue-700 to-indigo-800 transform -skew-y-6 origin-top-left" />
                 <div className="relative p-4 md:p-6 space-y-8 z-10">
+                    <InstallPwaPrompt />
                     <LiveClassTimer />
                     <StudentReviews />
-                    <TopStudentsSection />
-
+                    
                     <div>
                         <h2 className="text-lg font-semibold mb-3 px-4 text-foreground/80">Quick Access</h2>
                         <div className="grid grid-cols-3 gap-3">
@@ -73,6 +71,7 @@ const MainDashboard = () => {
                     </div>
                 
                     <SocialMediaLinks />
+                    <TopStudentsSection />
                 </div>
             </div>
         </div>

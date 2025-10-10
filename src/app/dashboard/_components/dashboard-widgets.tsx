@@ -2,7 +2,7 @@
 'use client';
 
 import React, { useEffect, useState, useCallback } from 'react';
-import { onSnapshot, doc, collection, query, orderBy, limit, where } from 'firebase/firestore';
+import { onSnapshot, doc, collection, query, orderBy, limit, where, addDoc, serverTimestamp } from 'firebase/firestore';
 import { firestore } from '@/lib/firebase';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -13,8 +13,10 @@ import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Carousel, CarouselContent, CarouselItem } from '@/components/ui/carousel';
 import { useCollection, useDocumentData } from 'react-firebase-hooks/firestore';
-import { Youtube, Facebook, Instagram, Twitter, Linkedin, Link as LinkIcon, Star, CheckCircle } from 'lucide-react';
+import { Youtube, Facebook, Instagram, Twitter, Linkedin, Link as LinkIcon, Star, CheckCircle, Download } from 'lucide-react';
 import Link from 'next/link';
+import { Textarea } from '@/components/ui/textarea';
+import { useAuth } from '@/hooks/use-auth';
 
 export const LiveClassTimer = () => {
     const [liveClass, setLiveClass] = useState<any>(null);
@@ -53,7 +55,7 @@ export const LiveClassTimer = () => {
     }, []);
 
     useEffect(() => {
-        if (!liveClass) return;
+        if (!liveClass?.startTime) return;
 
         const interval = setInterval(() => {
             setTimeLeft(calculateTimeLeft(liveClass.startTime.toDate()));
@@ -126,58 +128,49 @@ export const TopStudentsSection = () => {
 export const InstallPwaPrompt = () => {
     const { toast } = useToast();
     const [installPrompt, setInstallPrompt] = useState<any>(null);
-    const [isDialogOpen, setIsDialogOpen] = useState(false);
+    const [isVisible, setIsVisible] = useState(false);
     
     useEffect(() => {
         const handleBeforeInstallPrompt = (event: Event) => {
             event.preventDefault();
             setInstallPrompt(event);
-            setIsDialogOpen(true); // Show dialog when app is installable
+            setIsVisible(true);
         };
 
         window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
 
-        // For repeated visits
-        if ((window.navigator as any).standalone === false || !window.matchMedia('(display-mode: standalone)').matches) {
-           if (sessionStorage.getItem('installPromptShown') !== 'true') {
-               setTimeout(() => {
-                   if (installPrompt) setIsDialogOpen(true);
-                   sessionStorage.setItem('installPromptShown', 'true');
-               }, 3000);
-           }
-        }
-
         return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-    }, [installPrompt]);
+    }, []);
     
 
     const handleInstallClick = () => {
-        setIsDialogOpen(false);
         if (installPrompt) {
             installPrompt.prompt();
             installPrompt.userChoice.then((choiceResult: { outcome: string }) => {
                 if (choiceResult.outcome === 'accepted') {
                    toast({ title: "Installation Complete!", description: "GoSwamiX has been added to your home screen." });
                 }
+                setIsVisible(false);
                 setInstallPrompt(null);
             });
-        } else {
-            toast({variant: 'destructive', title: "Installation not available", description: "Your browser may not support PWA installation, or the app is already installed."});
         }
     };
     
+    if(!isVisible) return null;
+
     return (
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Install GoSwamiX App</DialogTitle>
-            <DialogDescription>
-              For a better experience, install the GoSwamiX app on your device. It's fast, works offline, and gives you a native app feel.
-            </DialogDescription>
-          </DialogHeader>
-          <Button onClick={handleInstallClick} className="w-full">Install App</Button>
-        </DialogContent>
-      </Dialog>
+      <Card className="bg-primary text-primary-foreground">
+        <CardContent className="p-3 flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+                 <Download className="h-6 w-6" />
+                 <div>
+                    <h3 className="font-bold">Install the GoSwamiX App</h3>
+                    <p className="text-xs opacity-80">For a better, faster experience.</p>
+                 </div>
+            </div>
+            <Button variant="secondary" size="sm" onClick={handleInstallClick}>Install</Button>
+        </CardContent>
+      </Card>
     )
 }
 
@@ -215,14 +208,87 @@ export const SocialMediaLinks = () => {
     )
 }
 
+const LeaveReviewDialog = ({ onOpenChange }: { onOpenChange: (open: boolean) => void }) => {
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const [rating, setRating] = useState(0);
+  const [review, setReview] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleSubmit = async () => {
+    if (!user) {
+        toast({ variant: 'destructive', description: "You must be logged in to leave a review." });
+        return;
+    }
+    if (rating === 0) {
+        toast({ variant: 'destructive', description: "Please select a star rating." });
+        return;
+    }
+     if (review.trim() === '') {
+        toast({ variant: 'destructive', description: "Please write a review." });
+        return;
+    }
+    setIsSubmitting(true);
+    try {
+        await addDoc(collection(firestore, 'reviews'), {
+            userId: user.uid,
+            name: user.displayName,
+            photoURL: user.photoURL,
+            rating,
+            review,
+            createdAt: serverTimestamp(),
+        });
+        toast({ description: "Thank you for your review!" });
+        onOpenChange(false);
+    } catch(e) {
+        toast({ variant: 'destructive', description: "Could not submit your review." });
+    } finally {
+        setIsSubmitting(false);
+    }
+  }
+
+  return (
+    <Dialog open={true} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Leave a Review</DialogTitle>
+          <DialogDescription>Share your experience with us.</DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4">
+            <div className="flex justify-center gap-2">
+                {[...Array(5)].map((_, i) => (
+                    <Star
+                        key={i}
+                        className={`h-8 w-8 cursor-pointer ${i < rating ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300'}`}
+                        onClick={() => setRating(i + 1)}
+                    />
+                ))}
+            </div>
+            <Textarea 
+                value={review}
+                onChange={(e) => setReview(e.target.value)}
+                placeholder="Tell us what you think..."
+                rows={4}
+            />
+            <Button onClick={handleSubmit} disabled={isSubmitting} className="w-full">
+                {isSubmitting ? 'Submitting...' : 'Submit Review'}
+            </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 export const StudentReviews = () => {
   const [reviews, loading] = useCollection(query(collection(firestore, 'reviews'), orderBy('createdAt', 'desc')));
   const [selectedReview, setSelectedReview] = useState<any>(null);
+  const [showReviewForm, setShowReviewForm] = useState(false);
 
   if (loading) return <Skeleton className="h-32 w-full" />;
 
   return (
     <>
+      {showReviewForm && <LeaveReviewDialog onOpenChange={setShowReviewForm} />}
       <Dialog open={!!selectedReview} onOpenChange={() => setSelectedReview(null)}>
         <DialogContent>
             {selectedReview && (
@@ -240,8 +306,10 @@ export const StudentReviews = () => {
             )}
         </DialogContent>
       </Dialog>
-
-       <Carousel
+       
+       <div className="space-y-4">
+        <h2 className="text-lg font-semibold text-foreground/80 px-4">What Our Students Say</h2>
+        <Carousel
           opts={{
             align: "start",
             loop: true,
@@ -277,7 +345,10 @@ export const StudentReviews = () => {
             })}
           </CarouselContent>
         </Carousel>
+        <div className="px-4">
+            <Button variant="outline" className="w-full" onClick={() => setShowReviewForm(true)}>Leave Your Review</Button>
+        </div>
+      </div>
     </>
   );
 }
-
