@@ -167,7 +167,7 @@ export const InstallPwaPrompt = () => {
               <div className="flex items-center gap-3">
                   <Download className="h-8 w-8" />
                   <div>
-                      <h3 className="font-bold">Install the GoSwamiX App</h3>
+                      <h3 className="font-bold">Install the Learn with Munedra App</h3>
                       <p className="text-sm opacity-90">For a better, faster, and offline-ready experience.</p>
                   </div>
               </div>

@@ -37,7 +37,7 @@ const WhyUsPageContent = () => (
     <div className="bg-gray-50 dark:bg-gray-950 min-h-screen">
       <div className="container mx-auto px-4 py-16">
         <div className="text-center mb-12">
-          <h1 className="text-4xl md:text-5xl font-extrabold font-headline text-primary">Why Choose Go Swami X?</h1>
+          <h1 className="text-4xl md:text-5xl font-extrabold font-headline text-primary">Why Choose Learn with Munedra?</h1>
           <p className="mt-4 text-lg text-muted-foreground max-w-2xl mx-auto">
             We are dedicated to providing the best learning experience with a focus on results, innovation, and student success.
           </p>
