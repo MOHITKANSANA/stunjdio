@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { doc, getDoc, updateDoc, arrayUnion } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, arrayUnion, onSnapshot } from 'firebase/firestore';
 import { firestore, messaging } from '@/lib/firebase';
 import { getToken } from "firebase/messaging";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -43,6 +43,8 @@ export default function ProfilePage() {
   const { user } = useAuth();
   const { t } = useLanguage();
   const [userData, setUserData] = useState<any>(null);
+  const [fcmToken, setFcmToken] = useState<string | null>(null);
+  const { toast } = useToast();
 
   useEffect(() => {
     if (user) {
@@ -51,11 +53,54 @@ export default function ProfilePage() {
         if (docSnap.exists()) {
           const data = docSnap.data();
           setUserData(data);
+          if (data.fcmTokens && data.fcmTokens.length > 0) {
+            setFcmToken(data.fcmTokens[data.fcmTokens.length - 1]);
+          }
         }
       });
       return () => unsubscribe();
     }
   }, [user]);
+
+  const handleNotificationPermission = async () => {
+    if (!messaging || !user) {
+      toast({
+        variant: "destructive",
+        title: "Unsupported",
+        description: "Notifications are not supported on this browser or you are not logged in.",
+      });
+      return;
+    }
+
+    try {
+      const permission = await Notification.requestPermission();
+      if (permission === 'granted') {
+        const currentToken = await getToken(messaging, { vapidKey: 'BDj_D88pTzY1nB-VjXgIu-Lw5-S8iH8z8c8c8c8c8c8c8c8c8c8c8c8' });
+        if (currentToken) {
+          setFcmToken(currentToken);
+          const userDocRef = doc(firestore, 'users', user.uid);
+          await updateDoc(userDocRef, {
+            fcmTokens: arrayUnion(currentToken)
+          });
+          toast({
+            title: "Notifications Enabled",
+            description: "You will now receive notifications.",
+          });
+        } else {
+          throw new Error("No registration token available. Request permission to generate one.");
+        }
+      } else {
+         throw new Error("Notification permission denied.");
+      }
+    } catch (err: any) {
+      console.error('An error occurred while getting token. ', err);
+      toast({
+        variant: "destructive",
+        title: "Token Error",
+        description: err.message,
+      });
+    }
+  };
 
   const getInitials = (name: string | null | undefined) => {
     if (!name) return "S";
@@ -67,7 +112,7 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 p-4 md:p-6">
       <div className="flex flex-col md:flex-row items-start md:items-center gap-6">
         <Avatar className="h-24 w-24">
           <AvatarImage src={user?.photoURL || undefined} data-ai-hint="student" />
