@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -104,7 +103,7 @@ export function LoginForm() {
                 <div className="mx-auto bg-primary text-primary-foreground rounded-full p-3 w-fit mb-4">
                 <BookOpenCheck className="h-10 w-10" />
                 </div>
-                <CardTitle className="text-3xl font-headline text-card-foreground">Go Swami Coaching</CardTitle>
+                <CardTitle className="text-3xl font-headline text-card-foreground">Learn with Munedra</CardTitle>
                 <CardDescription>{getTitle()}</CardDescription>
             </CardHeader>
             <CardContent>

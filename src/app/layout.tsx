@@ -7,7 +7,7 @@ import { AuthProvider } from '@/hooks/use-auth';
 import { LanguageProvider } from '@/hooks/use-language';
 
 export const metadata: Metadata = {
-  title: 'Go Swami Coaching Classes',
+  title: 'Learn with Munedra',
   description: 'Personalized learning paths for success.',
 };
 

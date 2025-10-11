@@ -59,7 +59,7 @@ import { Button } from '@/components/ui/button';
 import { doc, getDoc, onSnapshot, collection, query, orderBy, updateDoc, arrayUnion } from 'firebase/firestore';
 import { firestore, messaging } from '@/lib/firebase';
 import { AppBottomNav } from './bottom-nav';
-import { getToken, onMessage } from 'firebase/messaging';
+import { onMessage } from 'firebase/messaging';
 import { useToast } from '@/hooks/use-toast';
 
 
@@ -161,7 +161,7 @@ const AppSidebar = ({ isKidsMode, isMindSphereMode }: { isKidsMode: boolean, isM
                 <SidebarHeader>
                      <div className='flex items-center gap-2'>
                         <Shield className="h-7 w-7 text-primary" />
-                        <span className="text-lg font-semibold font-headline">Go Swami X</span>
+                        <span className="text-lg font-semibold font-headline">Learn with Munedra</span>
                     </div>
                 </SidebarHeader>
                 <SidebarMenu>
@@ -285,7 +285,7 @@ export default function DashboardLayout({
 
   // Handle foreground messages
   useEffect(() => {
-    if (messaging) {
+    if (messaging && typeof window !== 'undefined') {
       const unsubscribe = onMessage(messaging, (payload) => {
         console.log('Foreground message received.', payload);
         toast({

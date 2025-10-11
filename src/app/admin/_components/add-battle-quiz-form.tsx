@@ -1,129 +1,165 @@
 'use client';
 
-import { useState } from 'react';
-import { useForm, useFieldArray } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { useToast } from '@/hooks/use-toast';
-import { addDoc, collection, serverTimestamp, query, onSnapshot, deleteDoc, doc } from 'firebase/firestore';
-import { firestore } from '@/lib/firebase';
-import { Loader2, PlusCircle, Trash2 } from 'lucide-react';
-import { Textarea } from '@/components/ui/textarea';
-import { useEffect } from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { AddCourseForm } from "./_components/add-course-form";
+import { ManageLiveClass } from "./_components/manage-live-class";
+import { AddEbookForm } from "./_components/add-ebook-form";
+import { AddPaperForm } from "./_components/add-paper-form";
+import { AddTestSeriesForm } from "./_components/add-test-series-form";
+import { ManageEnrollments } from "./_components/manage-enrollments";
+import { ManageScholarships } from "./_components/manage-scholarships";
+import { ManagePointRequests } from "./_components/manage-point-requests";
+import { AddKidsVideoForm } from "./_components/add-kids-video-form";
+import { AddContentToCourseForm } from "./_components/add-content-to-course-form";
+import { HtmlEditor } from "./_components/html-editor";
+import { AddEducatorForm } from "./_components/add-educator-form";
+import { ManageTestSeriesEnrollments } from "./_components/manage-test-series-enrollment";
+import { AppSettingsForm } from "./_components/app-settings-form";
+import { ManageUsers } from "./_components/manage-users";
+import { ManagePromotions } from "./_components/manage-promotions";
+import { SendNotificationsForm } from "./_components/send-notifications-form";
 
-const questionSchema = z.object({
-  question: z.string().min(1, 'Question text is required.'),
-  options: z.array(z.string().min(1, 'Option cannot be empty.')).length(4, 'There must be exactly 4 options.'),
-  correctAnswer: z.string().min(1, 'Please specify the correct answer.'),
-});
 
-type QuestionFormValues = z.infer<typeof questionSchema>;
-
-const ExistingQuestions = () => {
-    const { toast } = useToast();
-    const [questions, setQuestions] = useState<any[]>([]);
-    
-    useEffect(() => {
-        const q = query(collection(firestore, "battleQuizzes"));
-        const unsubscribe = onSnapshot(q, (snapshot) => {
-            setQuestions(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-        });
-        return () => unsubscribe();
-    }, []);
-
-    const handleDelete = async (id: string) => {
-        if (window.confirm("Are you sure you want to delete this question?")) {
-            try {
-                await deleteDoc(doc(firestore, 'battleQuizzes', id));
-                toast({ title: "Question Deleted" });
-            } catch (error: any) {
-                toast({ variant: 'destructive', title: "Error", description: error.message });
-            }
-        }
-    };
-
+export default function AdminPage() {
     return (
-        <div className="space-y-4">
-            <h3 className="text-lg font-semibold">Existing Questions</h3>
-            {questions.length === 0 && <p className="text-sm text-muted-foreground">No questions added yet.</p>}
-            {questions.map((q) => (
-                <div key={q.id} className="p-4 border rounded-lg relative">
-                    <p className="font-medium">{q.question}</p>
-                    <ul className="list-disc list-inside text-sm text-muted-foreground mt-2">
-                        {q.options.map((opt: string, i: number) => (
-                            <li key={i} className={opt === q.correctAnswer ? 'font-bold text-green-600' : ''}>{opt}</li>
-                        ))}
-                    </ul>
-                     <Button variant="destructive" size="icon" className="absolute top-2 right-2 h-7 w-7" onClick={() => handleDelete(q.id)}>
-                        <Trash2 className="h-4 w-4" />
-                    </Button>
-                </div>
-            ))}
+        <div className="space-y-8 p-4 md:p-8">
+            <div>
+                <h1 className="text-3xl md:text-4xl font-bold font-headline">Admin Dashboard</h1>
+                <p className="text-muted-foreground mt-2">Manage your application content and users.</p>
+            </div>
+            
+             <Tabs defaultValue="content" className="w-full" orientation="vertical">
+                <TabsList className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-1 md:w-48 lg:w-56 shrink-0 h-max">
+                    <TabsTrigger value="content">Content</TabsTrigger>
+                    <TabsTrigger value="users">Manage Users</TabsTrigger>
+                    <TabsTrigger value="notifications">Notifications</TabsTrigger>
+                    <TabsTrigger value="course_enrollments">Course Enrollments</TabsTrigger>
+                    <TabsTrigger value="test_enrollments">Test Enrollments</TabsTrigger>
+                    <TabsTrigger value="scholarships">Scholarships</TabsTrigger>
+                    <TabsTrigger value="kids_tube">Kids Tube</TabsTrigger>
+                    <TabsTrigger value="promotions">Promotions</TabsTrigger>
+                    <TabsTrigger value="html_editor">HTML Editor</TabsTrigger>
+                    <TabsTrigger value="settings">App Settings</TabsTrigger>
+                </TabsList>
+                
+                <TabsContent value="content" className="mt-6 md:mt-0">
+                    <div className="grid gap-8 lg:grid-cols-2">
+                        <div className="space-y-8">
+                            <Card>
+                                <CardHeader><CardTitle>Add New Course</CardTitle></CardHeader>
+                                <CardContent><AddCourseForm /></CardContent>
+                            </Card>
+                            <Card>
+                                <CardHeader><CardTitle>Add Content to Existing Course</CardTitle></CardHeader>
+                                <CardContent><AddContentToCourseForm /></CardContent>
+                            </Card>
+                             <Card>
+                                <CardHeader><CardTitle>Add New E-Book</CardTitle></CardHeader>
+                                <CardContent><AddEbookForm /></CardContent>
+                            </Card>
+                             <Card>
+                                <CardHeader><CardTitle>Add New Test Series</CardTitle></CardHeader>
+                                <CardContent><AddTestSeriesForm /></CardContent>
+                            </Card>
+                             <Card>
+                                <CardHeader><CardTitle>Add New Educator</CardTitle></CardHeader>
+                                <CardContent><AddEducatorForm /></CardContent>
+                            </Card>
+                        </div>
+                        <div className="space-y-8">
+                            <Card>
+                                <CardHeader><CardTitle>Add New Live Class</CardTitle></CardHeader>
+                                <CardContent><ManageLiveClass /></CardContent>
+                            </Card>
+                            <Card>
+                                <CardHeader><CardTitle>Add Previous Paper</CardTitle></CardHeader>
+                                <CardContent><AddPaperForm /></CardContent>
+                            </Card>
+                        </div>
+                    </div>
+                </TabsContent>
+
+                <TabsContent value="users" className="mt-6 md:mt-0">
+                    <ManageUsers />
+                </TabsContent>
+
+                 <TabsContent value="notifications" className="mt-6 md:mt-0">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Send Push Notifications</CardTitle>
+                            <CardDescription>Send a notification to all subscribed users.</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <SendNotificationsForm />
+                        </CardContent>
+                    </Card>
+                </TabsContent>
+
+                <TabsContent value="course_enrollments" className="mt-6 md:mt-0">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Manage Course Enrollments</CardTitle>
+                            <CardDescription>Approve or reject student course enrollment requests.</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <ManageEnrollments />
+                        </CardContent>
+                    </Card>
+                </TabsContent>
+
+                <TabsContent value="test_enrollments" className="mt-6 md:mt-0">
+                     <Card>
+                        <CardHeader>
+                            <CardTitle>Manage Test Series Enrollments</CardTitle>
+                            <CardDescription>Approve or reject student test series enrollment requests.</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <ManageTestSeriesEnrollments />
+                        </CardContent>
+                    </Card>
+                </TabsContent>
+
+                <TabsContent value="scholarships" className="mt-6 md:mt-0">
+                    <ManageScholarships />
+                </TabsContent>
+
+                <TabsContent value="kids_tube" className="mt-6 md:mt-0">
+                     <div className="grid gap-8 lg:grid-cols-2">
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Add New Kids Tube Video</CardTitle>
+                                <CardDescription>Add a new video to the Kids Tube section.</CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <AddKidsVideoForm />
+                            </CardContent>
+                        </Card>
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Kids Tube Point Requests</CardTitle>
+                                <CardDescription>Award extra points to kids.</CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <ManagePointRequests />
+                            </CardContent>
+                        </Card>
+                    </div>
+                </TabsContent>
+
+                 <TabsContent value="promotions" className="mt-6 md:mt-0">
+                    <ManagePromotions />
+                </TabsContent>
+
+                <TabsContent value="html_editor" className="mt-6 md:mt-0">
+                    <HtmlEditor />
+                </TabsContent>
+
+                <TabsContent value="settings" className="mt-6 md:mt-0">
+                    <AppSettingsForm />
+                </TabsContent>
+
+            </Tabs>
         </div>
-    )
-}
-
-export function AddBattleQuizForm() {
-  const { toast } = useToast();
-  const [isLoading, setIsLoading] = useState(false);
-
-  const form = useForm<QuestionFormValues>({
-    resolver: zodResolver(questionSchema),
-    defaultValues: {
-      question: '',
-      options: ['', '', '', ''],
-      correctAnswer: '',
-    },
-  });
-
-  const onSubmit = async (data: QuestionFormValues) => {
-    setIsLoading(true);
-    try {
-      if (!data.options.includes(data.correctAnswer)) {
-          toast({ variant: 'destructive', title: 'Invalid correct answer', description: 'The correct answer must be one of the options.' });
-          setIsLoading(false);
-          return;
-      }
-      await addDoc(collection(firestore, 'battleQuizzes'), {
-        ...data,
-        createdAt: serverTimestamp(),
-      });
-      toast({ title: 'Success', description: 'New question added for the Battle Quiz.' });
-      form.reset();
-    } catch (error) {
-      console.error('Error adding question:', error);
-      toast({ variant: 'destructive', title: 'Error', description: 'Could not add question.' });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  return (
-    <div className="grid lg:grid-cols-2 gap-8">
-        <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                 <FormField control={form.control} name="question" render={({ field }) => (
-                    <FormItem><FormLabel>Question</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>
-                )} />
-                {...Array(4).fill(0).map((_, optionIndex) => (
-                    <FormField key={optionIndex} control={form.control} name={`options.${optionIndex}`} render={({ field }) => (
-                        <FormItem><FormLabel>Option {optionIndex + 1}</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
-                    )} />
-                ))}
-                <FormField control={form.control} name="correctAnswer" render={({ field }) => (
-                    <FormItem><FormLabel>Correct Answer</FormLabel><FormControl><Input placeholder="Copy one of the options above" {...field} /></FormControl><FormMessage /></FormItem>
-                )} />
-
-                <Button type="submit" disabled={isLoading}>
-                    {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    Add Question
-                </Button>
-            </form>
-        </Form>
-        <ExistingQuestions />
-    </div>
-  );
+    );
 }

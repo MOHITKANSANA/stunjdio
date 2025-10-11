@@ -16,10 +16,10 @@ import { AddContentToCourseForm } from "./_components/add-content-to-course-form
 import { HtmlEditor } from "./_components/html-editor";
 import { AddEducatorForm } from "./_components/add-educator-form";
 import { ManageTestSeriesEnrollments } from "./_components/manage-test-series-enrollment";
-import { AddBattleQuizForm } from "./_components/add-battle-quiz-form";
 import { AppSettingsForm } from "./_components/app-settings-form";
 import { ManageUsers } from "./_components/manage-users";
 import { ManagePromotions } from "./_components/manage-promotions";
+import { SendNotificationsForm } from "./_components/send-notifications-form";
 
 
 export default function AdminPage() {
@@ -34,11 +34,11 @@ export default function AdminPage() {
                 <TabsList className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-1 md:w-48 lg:w-56 shrink-0 h-max">
                     <TabsTrigger value="content">Content</TabsTrigger>
                     <TabsTrigger value="users">Manage Users</TabsTrigger>
+                    <TabsTrigger value="notifications">Notifications</TabsTrigger>
                     <TabsTrigger value="course_enrollments">Course Enrollments</TabsTrigger>
                     <TabsTrigger value="test_enrollments">Test Enrollments</TabsTrigger>
                     <TabsTrigger value="scholarships">Scholarships</TabsTrigger>
                     <TabsTrigger value="kids_tube">Kids Tube</TabsTrigger>
-                    <TabsTrigger value="battle_quiz">Battle Quiz</TabsTrigger>
                     <TabsTrigger value="promotions">Promotions</TabsTrigger>
                     <TabsTrigger value="html_editor">HTML Editor</TabsTrigger>
                     <TabsTrigger value="settings">App Settings</TabsTrigger>
@@ -83,6 +83,18 @@ export default function AdminPage() {
 
                 <TabsContent value="users" className="mt-6 md:mt-0">
                     <ManageUsers />
+                </TabsContent>
+
+                 <TabsContent value="notifications" className="mt-6 md:mt-0">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Send Push Notifications</CardTitle>
+                            <CardDescription>Send a notification to all subscribed users.</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <SendNotificationsForm />
+                        </CardContent>
+                    </Card>
                 </TabsContent>
 
                 <TabsContent value="course_enrollments" className="mt-6 md:mt-0">
@@ -134,18 +146,6 @@ export default function AdminPage() {
                             </CardContent>
                         </Card>
                     </div>
-                </TabsContent>
-
-                <TabsContent value="battle_quiz" className="mt-6 md:mt-0">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Manage Battle Quiz</CardTitle>
-                            <CardDescription>Add and manage questions for the Battle Quiz.</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <AddBattleQuizForm />
-                        </CardContent>
-                    </Card>
                 </TabsContent>
 
                  <TabsContent value="promotions" className="mt-6 md:mt-0">

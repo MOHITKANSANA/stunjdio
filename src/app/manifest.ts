@@ -3,9 +3,9 @@ import { MetadataRoute } from 'next'
  
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'GoSwamiX Learning App',
-    short_name: 'GoSwamiX',
-    description: 'Your path to success starts here. Learn with GoSwamiX.',
+    name: 'Learn with Munedra',
+    short_name: 'LearnWithMunedra',
+    description: 'Your path to success starts here. Learn with Munedra.',
     start_url: '/',
     display: 'standalone',
     background_color: '#1A001A',
