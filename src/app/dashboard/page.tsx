@@ -10,17 +10,20 @@ import {
   HelpCircle,
   User,
   BookCopy,
-  Bot
+  Bot,
+  Users,
 } from 'lucide-react';
 import Link from 'next/link';
 import { Card, CardContent } from '@/components/ui/card';
 import { useAuth } from '@/hooks/use-auth';
 import { cn } from '@/lib/utils';
 import { LiveClassTimer, TopStudentsSection, InstallPwaPrompt, SocialMediaLinks, StudentReviews, DashboardMarquee } from './_components/dashboard-widgets';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, onSnapshot, collection } from 'firebase/firestore';
 import { firestore } from '@/lib/firebase';
 import { Button } from '@/components/ui/button';
 import { Loader2 } from 'lucide-react';
+import { useCollection } from 'react-firebase-hooks/firestore';
+import Image from 'next/image';
 
 const quickAccessItems = [
   { label: "Courses", icon: Book, href: "/dashboard/courses", color: "from-blue-500 to-sky-500" },
@@ -33,6 +36,35 @@ const quickAccessItems = [
   { label: "Scholarship", icon: Award, href: "/dashboard/scholarship", color: "from-yellow-500 to-lime-500" },
   { label: "Profile", icon: User, href: "/dashboard/profile", color: "from-slate-500 to-gray-500" },
 ];
+
+const OurEducators = () => {
+    const [educators, loading] = useCollection(collection(firestore, 'educators'));
+
+    if (loading) return null;
+    if (!educators || educators.empty) return null;
+
+    return (
+        <div className="space-y-4">
+            <h2 className="text-lg font-semibold text-foreground/80 px-4">Our Educators</h2>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 px-4">
+                {educators.docs.map(doc => {
+                    const educator = doc.data();
+                    return (
+                        <Card key={doc.id} className="text-center overflow-hidden">
+                            <CardContent className="p-4">
+                                <div className="relative h-24 w-24 mx-auto rounded-full overflow-hidden mb-3">
+                                    <Image src={educator.photoUrl} alt={educator.name} fill style={{objectFit:"cover"}} />
+                                </div>
+                                <h3 className="font-semibold">{educator.name}</h3>
+                                <p className="text-xs text-muted-foreground">{educator.expertise}</p>
+                            </CardContent>
+                        </Card>
+                    )
+                })}
+            </div>
+        </div>
+    )
+}
 
 const MainDashboard = () => {
     const { user } = useAuth();
@@ -54,9 +86,9 @@ const MainDashboard = () => {
                     <h1 className="text-2xl font-bold">Hello, {user?.displayName || 'Student'}!</h1>
                 </div>
 
-                <DashboardMarquee />
                 <InstallPwaPrompt />
-
+                <DashboardMarquee />
+                
                 <div className="grid grid-cols-3 gap-3">
                     {quickAccessItems.map(item => (
                         <Link href={item.href} key={item.label} onClick={() => handlePress(item.label)}>
@@ -76,6 +108,7 @@ const MainDashboard = () => {
                 </div>
 
                 <LiveClassTimer />
+                <OurEducators />
                 <StudentReviews />
                 <TopStudentsSection />
                 <SocialMediaLinks />

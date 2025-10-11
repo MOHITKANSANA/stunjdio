@@ -39,7 +39,7 @@ export default function WelcomePage() {
                 <div className="relative inline-block">
                     <BookOpenCheck className="splash-item splash-item-1 h-24 w-24 text-primary animate-pulse" />
                 </div>
-                <h1 className="splash-item splash-item-2 text-4xl md:text-5xl font-bold font-headline mt-4 metallic-text">Go Swami X</h1>
+                <h1 className="splash-item splash-item-2 text-4xl md:text-5xl font-bold font-headline mt-4 metallic-text">Learn with Munedra</h1>
                 <div className="splash-item splash-item-3 mt-8 flex justify-center items-baseline gap-2 font-body text-lg">
                     <span className="feature-text-1">Learn.</span>
                     <span className="feature-text-2">Practice.</span>

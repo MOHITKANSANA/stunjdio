@@ -61,6 +61,7 @@ import { firestore, messaging } from '@/lib/firebase';
 import { AppBottomNav } from './bottom-nav';
 import { onMessage } from 'firebase/messaging';
 import { useToast } from '@/hooks/use-toast';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 
 const sidebarNavItems = [
@@ -123,7 +124,7 @@ const SidebarMenuItemWithHandler = ({ href, icon: Icon, label, closeSidebar }: {
 }
 
 
-const AppSidebar = ({ isKidsMode, isMindSphereMode }: { isKidsMode: boolean, isMindSphereMode: boolean }) => {
+const AppSidebar = ({ isKidsMode, isMindSphereMode, appLogoUrl }: { isKidsMode: boolean, isMindSphereMode: boolean, appLogoUrl: string | null }) => {
     const { isMobile, setOpenMobile } = useSidebar();
     const { t } = useLanguage();
     const { logout } = useAuth();
@@ -160,7 +161,14 @@ const AppSidebar = ({ isKidsMode, isMindSphereMode }: { isKidsMode: boolean, isM
             <SidebarContent className="bg-background text-foreground border-r">
                 <SidebarHeader>
                      <div className='flex items-center gap-2'>
-                        <Shield className="h-7 w-7 text-primary" />
+                        {appLogoUrl ? (
+                            <Avatar className="h-8 w-8">
+                                <AvatarImage src={appLogoUrl} alt="App Logo" />
+                                <AvatarFallback>L</AvatarFallback>
+                            </Avatar>
+                        ) : (
+                            <Shield className="h-7 w-7 text-primary" />
+                        )}
                         <span className="text-lg font-semibold font-headline">Learn with Munedra</span>
                     </div>
                 </SidebarHeader>
@@ -235,12 +243,21 @@ const AppSidebar = ({ isKidsMode, isMindSphereMode }: { isKidsMode: boolean, isM
 }
 
 
-const AppHeader = () => {
+const AppHeader = ({ appLogoUrl }: { appLogoUrl: string | null }) => {
   return (
       <header className={cn("flex h-16 shrink-0 items-center justify-between gap-4 px-4 md:px-6 bg-transparent sticky top-0 z-20")}>
             <div className='flex items-center gap-2'>
                 <div className='md:hidden'>
                     <SidebarTrigger />
+                </div>
+                 <div className='hidden md:flex items-center gap-2'>
+                    {appLogoUrl && (
+                        <Avatar className="h-8 w-8">
+                            <AvatarImage src={appLogoUrl} alt="App Logo" />
+                            <AvatarFallback>L</AvatarFallback>
+                        </Avatar>
+                    )}
+                    <span className="text-lg font-semibold font-headline">Learn with Munedra</span>
                 </div>
             </div>
             <div className="flex items-center gap-2">
@@ -278,6 +295,7 @@ export default function DashboardLayout({
   const [isKidsMode, setIsKidsMode] = useState(false);
   const [isScreenLocked, setIsScreenLocked] = useState(false);
   const [timeUsed, setTimeUsed] = useState(0); // in seconds
+  const [appLogoUrl, setAppLogoUrl] = useState<string | null>(null);
   const { toast } = useToast();
   
   const isVideoPlaybackPage = pathname.includes('/video/') || pathname.includes('/live-class/');
@@ -285,15 +303,18 @@ export default function DashboardLayout({
 
   // Handle foreground messages
   useEffect(() => {
-    if (messaging && typeof window !== 'undefined') {
-      const unsubscribe = onMessage(messaging, (payload) => {
-        console.log('Foreground message received.', payload);
-        toast({
-          title: payload.notification?.title,
-          description: payload.notification?.body,
-        });
-      });
-      return () => unsubscribe();
+    if (typeof window !== 'undefined' && 'serviceWorker' in navigator && window.Worker) {
+        const onMessageListener = (payload: any) => {
+            console.log('Foreground message received.', payload);
+            toast({
+              title: payload.notification?.title,
+              description: payload.notification?.body,
+            });
+        };
+        if (messaging) {
+            const unsubscribe = onMessage(messaging, onMessageListener);
+            return () => unsubscribe();
+        }
     }
   }, [toast]);
 
@@ -379,10 +400,19 @@ export default function DashboardLayout({
     
     checkUserProfile();
 
+    // Fetch App Logo
+     const appConfigUnsub = onSnapshot(doc(firestore, 'settings', 'appConfig'), (doc) => {
+        if (doc.exists()) {
+            setAppLogoUrl(doc.data().appLogoUrl || null);
+        }
+     });
+
+    return () => appConfigUnsub();
+
   }, [user, loading, router, pathname]);
   
   if (loading) {
-    return null; // Let the page.tsx handle its own loading, preventing layout shifts
+    return null;
   }
 
 
@@ -390,9 +420,9 @@ export default function DashboardLayout({
       <SidebarProvider>
           <div className="flex h-screen w-full flex-col bg-gray-50 dark:bg-gray-950">
              {isScreenLocked && <ScreenTimeLock />}
-             {!isVideoPlaybackPage && <AppHeader />}
+             {!isVideoPlaybackPage && <AppHeader appLogoUrl={appLogoUrl} />}
              <div className={cn("flex flex-col md:flex-row w-full h-full overflow-hidden")}>
-                {!isVideoPlaybackPage && <AppSidebar isKidsMode={isKidsMode} isMindSphereMode={isMindSphereMode} />}
+                {!isVideoPlaybackPage && <AppSidebar isKidsMode={isKidsMode} isMindSphereMode={isMindSphereMode} appLogoUrl={appLogoUrl} />}
                  <main className="flex-1 overflow-y-auto h-full">
                     <SidebarInset>
                         <div className={cn(!isVideoPlaybackPage && '')}>
