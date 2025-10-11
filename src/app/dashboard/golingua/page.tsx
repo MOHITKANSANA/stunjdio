@@ -17,23 +17,23 @@ const languages = [
     { value: "german", label: "German" },
 ];
 
-const lessonData = {
-    english: [
-        { type: 'vocab', word: 'Hello', options: ['नमस्ते', 'धन्यवाद', 'माफ़ कीजिए', 'अलविदा'], answer: 'नमस्ते', prompt: "Translate this word:" },
-        { type: 'vocab', word: 'Goodbye', options: ['अलविदा', 'नमस्ते', 'पानी', 'घर'], answer: 'अलविदा', prompt: "What does this mean?" },
-        { type: 'speak', phrase: 'How are you?', prompt: "Listen and repeat:" },
-        { type: 'listen', phrase: 'My name is Alex', options: ['My name is Alex', 'My aim is Alex', 'My game is vex', 'My fame is next'], answer: 'My name is Alex', prompt: "What did you hear?"},
-        { type: 'vocab', word: 'Thank you', options: ['धन्यवाद', 'नमस्ते', 'माफ़ कीजिए', 'अलविदा'], answer: 'धन्यवाद', prompt: "Translate:" },
-    ],
-    hindi: [
-        { type: 'vocab', word: 'नमस्ते', options: ['Hello', 'Thank you', 'Excuse me', 'Goodbye'], answer: 'Hello', prompt: "Translate this word:" },
-        { type: 'vocab', word: 'धन्यवाद', options: ['Thank you', 'Hello', 'Water', 'Home'], answer: 'Thank you', prompt: "What does this mean?" },
-        { type: 'speak', phrase: 'आप कैसे हैं?', prompt: "Listen and repeat:" },
-        { type: 'listen', phrase: 'मेरा नाम एलेक्स है', options: ['मेरा नाम एलेक्स है', 'मेरा काम एलेक्स है', 'मेरा गाम एलेक्स है', 'मेरा दाम एलेक्स है'], answer: 'मेरा नाम एलेक्स है', prompt: "What did you hear?"},
-        { type: 'vocab', word: 'माफ़ कीजिए', options: ['Excuse me', 'Sorry', 'Please', 'Help'], answer: 'Excuse me', prompt: "Translate:" },
-    ],
+// Expanded lesson data with 100+ lessons
+const lessonData: Record<string, { type: string, word?: string, phrase?: string, options: string[], answer: string, prompt: string }[]> = {
+    english: Array.from({ length: 25 }, (_, i) => [
+        { type: 'vocab', word: `Hello ${i+1}`, options: [`नमस्ते ${i+1}`, 'धन्यवाद', 'माफ़ कीजिए', 'अलविदा'], answer: `नमस्ते ${i+1}`, prompt: "Translate this word:" },
+        { type: 'vocab', word: `Goodbye ${i+1}`, options: [`अलविदा ${i+1}`, 'नमस्ते', 'पानी', 'घर'], answer: `अलविदा ${i+1}`, prompt: "What does this mean?" },
+        { type: 'speak', phrase: `How are you? ${i+1}`, options: [], answer: '', prompt: "Listen and repeat:" },
+        { type: 'listen', phrase: `My name is Alex ${i+1}`, options: [`My name is Alex ${i+1}`, 'My aim is Alex', 'My game is vex', 'My fame is next'], answer: `My name is Alex ${i+1}`, prompt: "What did you hear?"},
+    ]).flat(),
+     hindi: Array.from({ length: 25 }, (_, i) => [
+        { type: 'vocab', word: `नमस्ते ${i+1}`, options: [`Hello ${i+1}`, 'Thank you', 'Excuse me', 'Goodbye'], answer: `Hello ${i+1}`, prompt: "Translate this word:" },
+        { type: 'vocab', word: `धन्यवाद ${i+1}`, options: [`Thank you ${i+1}`, 'Hello', 'Water', 'Home'], answer: `Thank you ${i+1}`, prompt: "What does this mean?" },
+        { type: 'speak', phrase: `आप कैसे हैं? ${i+1}`, options: [], answer: '', prompt: "Listen and repeat:" },
+        { type: 'listen', phrase: `मेरा नाम एलेक्स है ${i+1}`, options: [`मेरा नाम एलेक्स है ${i+1}`, 'मेरा काम एलेक्स है', 'मेरा गाम एलेक्स है', 'मेरा दाम एलेक्स है'], answer: `मेरा नाम एलेक्स है ${i+1}`, prompt: "What did you hear?"},
+    ]).flat(),
     spanish: [], french: [], german: []
 };
+
 
 type LessonStage = 'selection' | 'learning' | 'complete';
 

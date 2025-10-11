@@ -34,7 +34,7 @@ function JsonViewer({ data }: { data: any }) {
 }
 
 const WhyUsPageContent = () => (
-    <div className="bg-gray-50 dark:bg-gray-950 min-h-screen">
+    <div className="bg-background min-h-screen">
       <div className="container mx-auto px-4 py-16">
         <div className="text-center mb-12">
           <h1 className="text-4xl md:text-5xl font-extrabold font-headline text-primary">Why Choose Learn with Munedra?</h1>

@@ -25,16 +25,18 @@
     --input: 217.2 32.6% 17.5%;
     --ring: 224.3 76.3% 48%;
     --radius: 0.8rem;
-    --sidebar-background: 222.2 84% 4.9%;
+
+    /* Custom Sidebar Colors */
+    --sidebar-background: 222.2 84% 4.9%; /* Same as background */
     --sidebar-foreground: 210 40% 98%;
-    --sidebar-primary: 263.4 70% 50.4%;
-    --sidebar-primary-foreground: 210 40% 98%;
+    --sidebar-border: 217.2 32.6% 17.5%;
     --sidebar-accent: 217.2 32.6% 17.5%;
     --sidebar-accent-foreground: 210 40% 98%;
-    --sidebar-border: 217.2 32.6% 17.5%;
-    --sidebar-ring: 224.3 76.3% 48%;
+    --sidebar-ring: 263.4 70% 50.4%;
+    --sidebar-primary: 263.4 70% 50.4%;
+    --sidebar-primary-foreground: 210 40% 98%;
   }
- 
+
   .dark {
     --background: 222.2 84% 4.9%;
     --foreground: 210 40% 98%;
@@ -55,14 +57,16 @@
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
     --ring: 224.3 76.3% 48%;
-    --sidebar-background: 222.2 84% 4.9%;
+
+     /* Custom Sidebar Colors */
+    --sidebar-background: 222.2 84% 4.9%; /* Same as background */
     --sidebar-foreground: 210 40% 98%;
-    --sidebar-primary: 263.4 70% 50.4%;
-    --sidebar-primary-foreground: 210 40% 98%;
+    --sidebar-border: 217.2 32.6% 17.5%;
     --sidebar-accent: 217.2 32.6% 17.5%;
     --sidebar-accent-foreground: 210 40% 98%;
-    --sidebar-border: 217.2 32.6% 17.5%;
-    --sidebar-ring: 224.3 76.3% 48%;
+    --sidebar-ring: 263.4 70% 50.4%;
+    --sidebar-primary: 263.4 70% 50.4%;
+    --sidebar-primary-foreground: 210 40% 98%;
   }
 }
 
@@ -128,3 +132,15 @@
 .splash-item-5 { animation-delay: 1.6s; }
 .splash-item-6 { animation-delay: 1.8s; }
 .splash-item-7 { animation-delay: 2.0s; }
+
+/* Custom font styles */
+@font-face {
+  font-family: 'CursiveFont';
+  src: url('/fonts/GreatVibes-Regular.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+.font-cursive {
+  font-family: 'CursiveFont', cursive;
+}

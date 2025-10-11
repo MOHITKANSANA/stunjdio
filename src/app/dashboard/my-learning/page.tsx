@@ -138,10 +138,11 @@ export default function MyLearningPage() {
     );
     
     const [notifications, notificationsLoading, notificationsError] = useCollection(
-        user ? query(collection(firestore, 'users', user.uid, 'notifications'), where('read', '==', false), orderBy('createdAt', 'desc')) : null
+        user ? query(collection(firestore, 'users', user.uid, 'notifications'), orderBy('createdAt', 'desc')) : null
     );
 
-    const hasNewReplies = notifications && !notifications.empty;
+    const unreadNotifications = notifications?.docs.filter(doc => !doc.data().read);
+    const hasNewReplies = unreadNotifications && unreadNotifications.length > 0;
 
     
     const handleEbookClick = (ebookData: any) => {
@@ -150,11 +151,17 @@ export default function MyLearningPage() {
     };
 
     const markAllAsRead = async () => {
-        if (!user || !notifications) return;
-        const batch = await getDocs(query(collection(firestore, 'users', user.uid, 'notifications'), where('read', '==', false)));
-        batch.forEach(async (docSnapshot) => {
-            await updateDoc(doc(firestore, 'users', user.uid, 'notifications', docSnapshot.id), { read: true });
-        });
+        if (!user || !unreadNotifications) return;
+        
+        const batch = unreadNotifications.map(docSnapshot => 
+            updateDoc(doc(firestore, 'users', user.uid, 'notifications', docSnapshot.id), { read: true })
+        );
+
+        try {
+            await Promise.all(batch);
+        } catch (error) {
+            toast({ variant: 'destructive', title: 'Error', description: 'Could not mark notifications as read.' });
+        }
     }
 
     const handleUnenroll = async (enrollmentId: string, courseTitle: string) => {

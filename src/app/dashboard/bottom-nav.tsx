@@ -1,17 +1,16 @@
 
-
 "use client";
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Library, Bot, User, Search, HelpCircle, Users, BookOpen, Calendar, Download } from 'lucide-react';
+import { Home, Library, Bot, User, Search, HelpCircle, Users, BookOpen, Calendar, Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const mainBottomNavItems = [
     { href: '/dashboard', icon: Home, label: 'Home' },
     { href: '/dashboard/my-learning', icon: Library, label: 'My Library' },
     { href: '/dashboard/live-classes', icon: Calendar, label: 'Live Class' },
-    { href: '/dashboard/downloads', icon: Download, label: 'Downloads' },
+    { href: '/p/why-us', icon: Info, label: 'Why Us' },
     { href: '/dashboard/profile', icon: User, label: 'Profile' },
 ];
 

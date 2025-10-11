@@ -71,7 +71,6 @@ const sidebarNavItems = [
     { href: '/dashboard/courses', icon: Book, label: 'courses' },
     { href: '/dashboard/live-classes', icon: Clapperboard, label: 'Live Classes' },
     { href: '/dashboard/courses/free', icon: BookCopy, label: 'Free Courses' },
-    { href: '/dashboard/downloads', icon: Download, label: 'My Downloads' },
     { href: '/dashboard/scholarship', icon: Award, label: 'scholarship' },
     { href: '/dashboard/papers', icon: Newspaper, label: 'Previous Papers' },
     { href: '/dashboard/news', icon: Newspaper, label: 'News' },
@@ -158,7 +157,7 @@ const AppSidebar = ({ isKidsMode, isMindSphereMode, appLogoUrl }: { isKidsMode: 
 
     return (
         <Sidebar>
-            <SidebarContent className="bg-background text-foreground border-r">
+            <SidebarContent className="bg-sidebar border-r border-sidebar-border">
                 <SidebarHeader>
                      <div className='flex items-center gap-2'>
                         {appLogoUrl ? (
@@ -252,7 +251,7 @@ const AppHeader = ({ appLogoUrl }: { appLogoUrl: string | null }) => {
                 </div>
                  <div className='hidden md:flex items-center gap-2'>
                     {appLogoUrl && (
-                        <Avatar className="h-8 w-8">
+                        <Avatar className="h-10 w-10">
                             <AvatarImage src={appLogoUrl} alt="App Logo" />
                             <AvatarFallback>L</AvatarFallback>
                         </Avatar>
@@ -261,9 +260,11 @@ const AppHeader = ({ appLogoUrl }: { appLogoUrl: string | null }) => {
                 </div>
             </div>
             <div className="flex items-center gap-2">
-                <Button variant="ghost" size="icon" className="rounded-full">
-                    <Bell />
-                    <span className="sr-only">Notifications</span>
+                <Button variant="ghost" size="icon" className="rounded-full" asChild>
+                    <Link href="/dashboard/my-learning?tab=notifications">
+                       <Bell />
+                       <span className="sr-only">Notifications</span>
+                    </Link>
                 </Button>
             </div>
         </header>
@@ -304,15 +305,14 @@ export default function DashboardLayout({
   // Handle foreground messages
   useEffect(() => {
     if (typeof window !== 'undefined' && 'serviceWorker' in navigator && window.Worker) {
-        const onMessageListener = (payload: any) => {
-            console.log('Foreground message received.', payload);
-            toast({
-              title: payload.notification?.title,
-              description: payload.notification?.body,
-            });
-        };
         if (messaging) {
-            const unsubscribe = onMessage(messaging, onMessageListener);
+            const unsubscribe = onMessage(messaging, (payload: any) => {
+                console.log('Foreground message received.', payload);
+                toast({
+                  title: payload.notification?.title,
+                  description: payload.notification?.body,
+                });
+            });
             return () => unsubscribe();
         }
     }
@@ -320,12 +320,12 @@ export default function DashboardLayout({
 
   // Request permission and register service worker
   useEffect(() => {
-    if ('serviceWorker' in navigator) {
+    if ('serviceWorker' in navigator && 'PushManager' in window) {
       navigator.serviceWorker.register('/firebase-messaging-sw.js')
         .then((registration) => {
           console.log('Service Worker registered with scope:', registration.scope);
         }).catch((err) => {
-          console.log('Service Worker registration failed:', err);
+          console.error('Service Worker registration failed:', err);
         });
     }
   }, []);

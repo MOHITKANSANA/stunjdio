@@ -13,7 +13,7 @@ import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/hooks/use-auth";
 import { useLanguage } from "@/hooks/use-language";
-import { Award, Pencil, Timer, Bell, Copy, Check, AlertTriangle } from "lucide-react";
+import { Award, Pencil, Timer, Bell, Copy, Check, AlertTriangle, Phone, MessageCircle } from "lucide-react";
 import Link from "next/link";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -121,7 +121,6 @@ const NotificationSettings = () => {
     const [permissionStatus, setPermissionStatus] = useState<NotificationPermission>('default');
     const [fcmToken, setFcmToken] = useState<string | null>(null);
     const [isCopied, setIsCopied] = useState(false);
-    const [showPermissionPopup, setShowPermissionPopup] = useState(false);
 
     useEffect(() => {
         if ('Notification' in window) {
@@ -151,14 +150,12 @@ const NotificationSettings = () => {
     const handleRequestPermission = async () => {
         if (!('Notification' in window) || !messaging || !user) {
             toast({ variant: 'destructive', title: 'Unsupported', description: 'Notifications are not supported on this browser or you are not logged in.' });
-            setShowPermissionPopup(false);
             return;
         }
 
         try {
             const permission = await Notification.requestPermission();
             setPermissionStatus(permission);
-            setShowPermissionPopup(false);
 
             if (permission === 'granted') {
                 toast({ title: 'Success', description: 'Notifications enabled!' });
@@ -169,7 +166,6 @@ const NotificationSettings = () => {
         } catch (error) {
             console.error('Error getting notification permission:', error);
             toast({ variant: 'destructive', title: 'Error', description: 'An error occurred while enabling notifications.' });
-            setShowPermissionPopup(false);
         }
     };
     
@@ -182,90 +178,67 @@ const NotificationSettings = () => {
     }
 
     return (
-        <>
-            <Dialog open={showPermissionPopup} onOpenChange={setShowPermissionPopup}>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Enable Notifications?</DialogTitle>
-                    </DialogHeader>
-                    <div className="py-4">
-                        <p>To receive important updates and alerts, please allow notifications from this app.</p>
+        <Card className="mt-6">
+            <CardHeader>
+                <CardTitle>Notification Settings</CardTitle>
+                <CardDescription>Manage how you receive notifications from the app.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+                <div className="flex items-center justify-between p-4 border rounded-lg">
+                    <div>
+                        <Label>Push Notifications</Label>
+                        <span className="text-sm text-muted-foreground ml-2">
+                            Status: <Badge variant={permissionStatus === 'granted' ? 'default' : (permissionStatus === 'denied' ? 'destructive' : 'secondary')}>{permissionStatus}</Badge>
+                        </span>
                     </div>
-                     <AlertDialogFooter>
-                        <Button variant="outline" onClick={() => setShowPermissionPopup(false)}>Later</Button>
-                        <Button onClick={handleRequestPermission}>Allow</Button>
-                    </AlertDialogFooter>
-                </DialogContent>
-            </Dialog>
-
-            <Card className="mt-6">
-                <CardHeader>
-                    <CardTitle>Notification Settings</CardTitle>
-                    <CardDescription>Manage how you receive notifications from the app.</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                    <div className="flex items-center justify-between p-4 border rounded-lg">
-                        <div>
-                            <Label>Push Notifications</Label>
-                            <span className="text-sm text-muted-foreground">
-                                Status: <Badge variant={permissionStatus === 'granted' ? 'default' : (permissionStatus === 'denied' ? 'destructive' : 'secondary')}>{permissionStatus}</Badge>
-                            </span>
-                        </div>
-                        {permissionStatus !== 'granted' && (
-                            <Button onClick={() => setShowPermissionPopup(true)}>
-                                <Bell className="mr-2" /> Enable Notifications
-                            </Button>
-                        )}
-                    </div>
-                    {fcmToken && (
-                        <div className="p-4 border rounded-lg space-y-2">
-                            <Label>Your Notification Token</Label>
-                            <div className="flex items-center gap-2">
-                            <Input readOnly value={fcmToken} className="bg-muted text-xs" />
-                            <Button variant="outline" size="icon" onClick={copyToken}>
-                                {isCopied ? <Check className="h-4 w-4 text-green-500"/> : <Copy className="h-4 w-4" />}
-                            </Button>
-                            </div>
-                        </div>
+                    {permissionStatus !== 'granted' && (
+                        <Button onClick={handleRequestPermission}>
+                            <Bell className="mr-2" /> Enable Notifications
+                        </Button>
                     )}
-                     {permissionStatus === 'granted' && !fcmToken && (
-                         <Button onClick={retrieveToken}>Get My Notification Token</Button>
-                     )}
-                </CardContent>
-            </Card>
-        </>
+                </div>
+                {permissionStatus === 'granted' && !fcmToken && (
+                     <Button onClick={retrieveToken}>Get My Notification Token</Button>
+                 )}
+                {fcmToken && (
+                    <div className="p-4 border rounded-lg space-y-2">
+                        <Label>Your Notification Token</Label>
+                        <div className="flex items-center gap-2">
+                        <Input readOnly value={fcmToken} className="bg-muted text-xs" />
+                        <Button variant="outline" size="icon" onClick={copyToken}>
+                            {isCopied ? <Check className="h-4 w-4 text-green-500"/> : <Copy className="h-4 w-4" />}
+                        </Button>
+                        </div>
+                    </div>
+                )}
+            </CardContent>
+        </Card>
     );
 };
 
-
-const userCourses = [
-  { name: "Algebra Fundamentals", progress: 75 },
-  { name: "World History", progress: 40 },
-  { name: "English Grammar", progress: 95 },
-];
-
-const testHistory = [
-  { name: "Maths Practice Test 1", score: "88%", date: "2023-10-15" },
-  { name: "General Knowledge Quiz", score: "72%", date: "2023-10-12" },
-];
-
-const certificates = [
-  {
-    studentName: "Student Name",
-    courseName: "Algebra Fundamentals - Final Test",
-    score: 88,
-    date: new Date().toLocaleDateString(),
-    status: 'pass'
-  },
-   {
-    studentName: "Student Name",
-    courseName: "World History",
-    score: 100,
-    date: new Date().toLocaleDateString(),
-    status: 'pass'
-  }
-];
-
+const HelplineSection = () => {
+    const helplineNumber = '9327175729';
+    return (
+        <Card className="mt-6">
+            <CardHeader>
+                <CardTitle>Helpline</CardTitle>
+                <CardDescription>Contact us for any support or queries.</CardDescription>
+            </CardHeader>
+            <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <a href={`tel:${helplineNumber}`}>
+                    <Button variant="outline" className="w-full h-16 text-lg">
+                        <Phone className="mr-3"/> Call Now
+                    </Button>
+                </a>
+                <a href={`https://wa.me/${helplineNumber}`} target="_blank" rel="noopener noreferrer">
+                    <Button variant="outline" className="w-full h-16 text-lg">
+                        <MessageCircle className="mr-3"/> WhatsApp
+                    </Button>
+                </a>
+            </CardContent>
+        </Card>
+    )
+}
 
 export default function ProfilePage() {
   const { user } = useAuth();
@@ -276,13 +249,14 @@ export default function ProfilePage() {
   useEffect(() => {
     if (user) {
       const userDocRef = doc(firestore, 'users', user.uid);
-      getDoc(userDocRef).then(docSnap => {
+      const unsubscribe = onSnapshot(userDocRef, (docSnap) => {
         if (docSnap.exists()) {
           const data = docSnap.data();
           setUserData(data);
           setIsKidsMode(data.ageGroup === '1-9');
         }
       });
+      return () => unsubscribe();
     }
   }, [user]);
 
@@ -315,77 +289,9 @@ export default function ProfilePage() {
       </div>
 
        <NotificationSettings />
+       <HelplineSection />
 
-      {isKidsMode ? <KidsProfileExtras /> : (
-        <Tabs defaultValue="courses" className="w-full">
-            <TabsList className="grid w-full grid-cols-3 max-w-lg">
-            <TabsTrigger value="courses">{t('my_courses')}</TabsTrigger>
-            <TabsTrigger value="tests">{t('test_history')}</TabsTrigger>
-            <TabsTrigger value="certificates">{t('certificates')}</TabsTrigger>
-            </TabsList>
-            <TabsContent value="courses" className="mt-6">
-            <Card>
-                <CardHeader>
-                <CardTitle>{t('my_courses')}</CardTitle>
-                <CardDescription>{t('your_enrolled_courses')}</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                {userCourses.map((course) => (
-                    <div key={course.name}>
-                    <div className="flex justify-between mb-2">
-                        <h3 className="font-semibold">{t(course.name.toLowerCase().replace(/ /g, '_'))}</h3>
-                        <p className="text-sm text-muted-foreground">{course.progress}% {t('complete')}</p>
-                    </div>
-                    <Progress value={course.progress} />
-                    </div>
-                ))}
-                </CardContent>
-            </Card>
-            </TabsContent>
-            <TabsContent value="tests" className="mt-6">
-            <Card>
-                <CardHeader>
-                <CardTitle>{t('test_history')}</CardTitle>
-                <CardDescription>{t('review_past_scores')}</CardDescription>
-                </CardHeader>
-                <CardContent>
-                <ul className="divide-y">
-                    {testHistory.map((test) => (
-                    <li key={test.name} className="flex items-center justify-between py-4">
-                        <div>
-                        <h3 className="font-semibold">{t(test.name.toLowerCase().replace(/ /g, '_'))}</h3>
-                        <p className="text-sm text-muted-foreground">{t('completed_on')} {test.date}</p>
-                        </div>
-                        <Badge variant={parseInt(test.score) > 80 ? "default" : "secondary"}>{t('score')}: {test.score}</Badge>
-                    </li>
-                    ))}
-                </ul>
-                </CardContent>
-            </Card>
-            </TabsContent>
-            <TabsContent value="certificates" className="mt-6">
-            <Card>
-                <CardHeader>
-                <CardTitle>{t('my_certificates')}</CardTitle>
-                <CardDescription>{t('your_earned_certificates')}</CardDescription>
-                </CardHeader>
-                <CardContent className="grid gap-6 md:grid-cols-1">
-                    {certificates.map((cert, index) => (
-                        <div key={index} className="p-4 border rounded-lg bg-muted/30">
-                            <Certificate
-                                studentName={user?.displayName || 'Student'}
-                                courseName={cert.courseName}
-                                score={cert.score}
-                                date={cert.date}
-                                status={cert.status}
-                            />
-                        </div>
-                    ))}
-                </CardContent>
-            </Card>
-            </TabsContent>
-        </Tabs>
-      )}
+      {isKidsMode && <KidsProfileExtras />}
 
     </div>
   );

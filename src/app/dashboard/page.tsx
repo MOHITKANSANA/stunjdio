@@ -12,6 +12,7 @@ import {
   BookCopy,
   Bot,
   Users,
+  Info,
 } from 'lucide-react';
 import Link from 'next/link';
 import { Card, CardContent } from '@/components/ui/card';
@@ -32,7 +33,7 @@ const quickAccessItems = [
   { label: "AI Tests", icon: ShieldQuestion, href: "/dashboard/tests", color: "from-purple-500 to-violet-500" },
   { label: "My Library", icon: Library, href: "/dashboard/my-learning", color: "from-fuchsia-500 to-pink-500" },
   { label: "Live Classes", icon: Clapperboard, href: "/dashboard/live-classes", color: "from-red-500 to-rose-500" },
-  { label: "Doubts", icon: HelpCircle, href: "/dashboard/my-learning?tab=notifications", color: "from-orange-500 to-amber-500" },
+  { label: "Why Us", icon: Info, href: "/p/why-us", color: "from-orange-500 to-amber-500" },
   { label: "Scholarship", icon: Award, href: "/dashboard/scholarship", color: "from-yellow-500 to-lime-500" },
   { label: "Profile", icon: User, href: "/dashboard/profile", color: "from-slate-500 to-gray-500" },
 ];
