@@ -5,7 +5,7 @@ import { firestore } from '@/lib/firebase';
 import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import { revalidatePath } from 'next/cache';
 import { getMessaging } from 'firebase-admin/messaging';
-import { auth as adminAuth, firestore as adminFirestore } from '@/lib/firebase-admin';
+import { auth as adminAuth } from '@/lib/firebase-admin';
 
 
 interface EnrollmentInput {
@@ -25,8 +25,9 @@ async function sendNotificationToAdmin(title: string, body: string) {
 
     try {
          // Ensure admin app is initialized
-        if (!adminAuth) {
-            throw new Error("Firebase Admin SDK not initialized correctly for notifications.");
+        if (!admin.apps.length) {
+            console.error("Firebase Admin SDK not initialized correctly for notifications.");
+            return;
         }
 
         const message = {

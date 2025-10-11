@@ -11,12 +11,12 @@ export async function sendNotificationsAction(
   message: string
 ): Promise<{ success: boolean; successCount?: number; error?: string }> {
   try {
-    if (!adminAuth) {
+    if (!admin.apps.length) {
         throw new Error("Firebase Admin SDK not initialized correctly.");
     }
     
-    // Use clientFirestore for querying user data
-    const usersSnapshot = await getDocs(collection(clientFirestore, 'users'));
+    // Use adminFirestore for querying user data on the server
+    const usersSnapshot = await adminFirestore.collection('users').get();
     const allTokens: string[] = [];
 
     usersSnapshot.forEach(doc => {
