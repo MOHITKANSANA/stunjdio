@@ -1,10 +1,8 @@
 
 'use server';
 
-import { auth as adminAuth, firestore as adminFirestore } from '@/lib/firebase-admin';
+import { admin, firestore as adminFirestore } from '@/lib/firebase-admin';
 import { getMessaging } from 'firebase-admin/messaging';
-import { collection, getDocs, query } from 'firebase/firestore';
-import { firestore as clientFirestore } from '@/lib/firebase';
 
 export async function sendNotificationsAction(
   title: string,
