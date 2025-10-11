@@ -1,18 +1,20 @@
 
 'use server';
 
-import * as admin from 'firebase-admin';
+import { auth as adminAuth, firestore as adminFirestore } from '@/lib/firebase-admin'; // Ensure this is the admin instance
 import { getDocs, collection } from 'firebase/firestore';
 import { firestore as clientFirestore } from '@/lib/firebase';
-import { auth as adminAuth } from '@/lib/firebase-admin'; // Import initialized admin
+import { getMessaging } from 'firebase-admin/messaging';
+
 
 export async function sendNotificationsAction(
   title: string,
   message: string
 ): Promise<{ success: boolean; successCount?: number; error?: string }> {
   try {
-    if (admin.apps.length === 0) {
-        throw new Error("Firebase Admin SDK not initialized.");
+    // This check might be redundant if firebase-admin is initialized correctly, but it's a good safeguard.
+    if (!adminAuth) {
+        throw new Error("Firebase Admin SDK not initialized correctly.");
     }
     
     const usersSnapshot = await getDocs(collection(clientFirestore, 'users'));
@@ -31,7 +33,7 @@ export async function sendNotificationsAction(
 
     const uniqueTokens = [...new Set(allTokens)];
 
-    const messagePayload: admin.messaging.MulticastMessage = {
+    const messagePayload = {
       notification: {
         title,
         body: message,
@@ -45,7 +47,8 @@ export async function sendNotificationsAction(
       tokens: uniqueTokens,
     };
     
-    const response = await admin.messaging().sendEachForMulticast(messagePayload);
+    // Use getMessaging() from firebase-admin/messaging
+    const response = await getMessaging().sendEachForMulticast(messagePayload);
 
     if (response.failureCount > 0) {
         const failedTokens: string[] = [];
@@ -56,7 +59,6 @@ export async function sendNotificationsAction(
         });
         console.error('List of tokens that caused failures: ' + failedTokens);
     }
-
 
     return { success: true, successCount: response.successCount };
   } catch (error: any) {

@@ -9,212 +9,11 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/hooks/use-auth";
 import { useLanguage } from "@/hooks/use-language";
-import { Award, Pencil, Timer, Bell, Copy, Check, AlertTriangle, Phone, MessageCircle } from "lucide-react";
+import { Pencil, Phone, MessageCircle, Bell } from "lucide-react";
 import Link from "next/link";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import Certificate from "@/components/certificate";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog"
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
-
-const KidsProfileExtras = () => {
-    const { user } = useAuth();
-    const { toast } = useToast();
-    const [screenTime, setScreenTime] = useState('');
-
-    useEffect(() => {
-        if (user) {
-            const userDocRef = doc(firestore, 'users', user.uid);
-            getDoc(userDocRef).then(docSnap => {
-                if (docSnap.exists()) {
-                    setScreenTime(docSnap.data().screenTimeLimit || '');
-                }
-            });
-        }
-    }, [user]);
-
-    const handleSaveScreenTime = async () => {
-        if (!user) return;
-        const timeInMinutes = parseInt(screenTime, 10);
-        if (isNaN(timeInMinutes) || timeInMinutes < 0) {
-            toast({ variant: 'destructive', title: 'Invalid time', description: 'Please enter a valid number for minutes.' });
-            return;
-        }
-        try {
-            const userDocRef = doc(firestore, 'users', user.uid);
-            await updateDoc(userDocRef, { screenTimeLimit: timeInMinutes });
-            toast({ title: 'Success', description: `Screen time limit set to ${timeInMinutes} minutes.` });
-        } catch (error) {
-            toast({ variant: 'destructive', title: 'Error', description: 'Could not save screen time.' });
-        }
-    };
-
-    return (
-        <Card className="mt-6">
-            <CardHeader>
-                <CardTitle>Parental Controls</CardTitle>
-                <CardDescription>Manage settings for your child's app usage.</CardDescription>
-            </CardHeader>
-            <CardContent>
-                <div className="flex items-center justify-between p-4 border rounded-lg">
-                    <div>
-                        <Label htmlFor="screen-time">Set Screen Time (minutes)</Label>
-                        <p className="text-sm text-muted-foreground">App will lock after this duration.</p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                         <Input 
-                            id="screen-time" 
-                            type="number" 
-                            className="w-24"
-                            value={screenTime}
-                            onChange={(e) => setScreenTime(e.target.value)}
-                            placeholder="e.g. 60"
-                        />
-                         <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                                <Button>Save</Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                                <AlertDialogHeader>
-                                <AlertDialogTitle>Confirm Screen Time Limit</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                    Are you sure you want to set the daily screen time limit to {screenTime} minutes?
-                                </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                <AlertDialogAction onClick={handleSaveScreenTime}>Confirm</AlertDialogAction>
-                                </AlertDialogFooter>
-                            </AlertDialogContent>
-                        </AlertDialog>
-                    </div>
-                </div>
-            </CardContent>
-        </Card>
-    )
-}
-
-const NotificationSettings = () => {
-    const { user } = useAuth();
-    const { toast } = useToast();
-    const [permissionStatus, setPermissionStatus] = useState<NotificationPermission>('default');
-    const [fcmToken, setFcmToken] = useState<string | null>(null);
-    const [isCopied, setIsCopied] = useState(false);
-
-    useEffect(() => {
-        if ('Notification' in window) {
-            setPermissionStatus(Notification.permission);
-        }
-    }, []);
-    
-    const retrieveToken = async () => {
-        if (!messaging || !user) return;
-        try {
-            const currentToken = await getToken(messaging, { vapidKey: 'BK7Em65W8CaTgTAkBNokkVuUr4OBe0FzjsbxcSsLtNNLdwWp9kv5KJvegTn99IdsIHZwKEqC8Zkgfs8XpRIqv6o' });
-            if (currentToken) {
-                setFcmToken(currentToken);
-                const userDocRef = doc(firestore, 'users', user.uid);
-                await updateDoc(userDocRef, {
-                    fcmTokens: arrayUnion(currentToken)
-                });
-            } else {
-                 toast({ variant: 'destructive', title: 'Token Error', description: 'Could not get notification token. Please ensure notifications are allowed in your browser settings.' });
-            }
-        } catch (err) {
-             console.log('An error occurred while retrieving token. ', err);
-             toast({ variant: 'destructive', title: 'Token Error', description: 'An error occurred while retrieving the notification token.' });
-        }
-    };
-
-    const handleRequestPermission = async () => {
-        if (!('Notification' in window) || !messaging || !user) {
-            toast({ variant: 'destructive', title: 'Unsupported', description: 'Notifications are not supported on this browser or you are not logged in.' });
-            return;
-        }
-
-        try {
-            const permission = await Notification.requestPermission();
-            setPermissionStatus(permission);
-
-            if (permission === 'granted') {
-                toast({ title: 'Success', description: 'Notifications enabled!' });
-                await retrieveToken();
-            } else {
-                toast({ variant: 'destructive', title: 'Permission Denied', description: 'You have blocked notifications.' });
-            }
-        } catch (error) {
-            console.error('Error getting notification permission:', error);
-            toast({ variant: 'destructive', title: 'Error', description: 'An error occurred while enabling notifications.' });
-        }
-    };
-    
-    const copyToken = () => {
-        if (!fcmToken) return;
-        navigator.clipboard.writeText(fcmToken);
-        setIsCopied(true);
-        toast({description: "Token copied to clipboard!"})
-        setTimeout(() => setIsCopied(false), 2000);
-    }
-
-    return (
-        <Card className="mt-6">
-            <CardHeader>
-                <CardTitle>Notification Settings</CardTitle>
-                <CardDescription>Manage how you receive notifications from the app.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-                <div className="flex items-center justify-between p-4 border rounded-lg">
-                    <div>
-                        <Label>Push Notifications</Label>
-                        <span className="text-sm text-muted-foreground ml-2">
-                            Status: <Badge variant={permissionStatus === 'granted' ? 'default' : (permissionStatus === 'denied' ? 'destructive' : 'secondary')}>{permissionStatus}</Badge>
-                        </span>
-                    </div>
-                    {permissionStatus !== 'granted' && (
-                        <Button onClick={handleRequestPermission}>
-                            <Bell className="mr-2" /> Enable Notifications
-                        </Button>
-                    )}
-                </div>
-                {permissionStatus === 'granted' && !fcmToken && (
-                     <Button onClick={retrieveToken}>Get My Notification Token</Button>
-                 )}
-                {fcmToken && (
-                    <div className="p-4 border rounded-lg space-y-2">
-                        <Label>Your Notification Token</Label>
-                        <div className="flex items-center gap-2">
-                        <Input readOnly value={fcmToken} className="bg-muted text-xs" />
-                        <Button variant="outline" size="icon" onClick={copyToken}>
-                            {isCopied ? <Check className="h-4 w-4 text-green-500"/> : <Copy className="h-4 w-4" />}
-                        </Button>
-                        </div>
-                    </div>
-                )}
-            </CardContent>
-        </Card>
-    );
-};
 
 const HelplineSection = () => {
     const helplineNumber = '9327175729';
@@ -225,12 +24,12 @@ const HelplineSection = () => {
                 <CardDescription>Contact us for any support or queries.</CardDescription>
             </CardHeader>
             <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <a href={`tel:${helplineNumber}`}>
+                <a href={`tel:${helplineNumber}`} className="block">
                     <Button variant="outline" className="w-full h-16 text-lg">
                         <Phone className="mr-3"/> Call Now
                     </Button>
                 </a>
-                <a href={`https://wa.me/${helplineNumber}`} target="_blank" rel="noopener noreferrer">
+                <a href={`https://wa.me/${helplineNumber}`} target="_blank" rel="noopener noreferrer" className="block">
                     <Button variant="outline" className="w-full h-16 text-lg">
                         <MessageCircle className="mr-3"/> WhatsApp
                     </Button>
@@ -243,7 +42,6 @@ const HelplineSection = () => {
 export default function ProfilePage() {
   const { user } = useAuth();
   const { t } = useLanguage();
-  const [isKidsMode, setIsKidsMode] = useState(false);
   const [userData, setUserData] = useState<any>(null);
 
   useEffect(() => {
@@ -253,7 +51,6 @@ export default function ProfilePage() {
         if (docSnap.exists()) {
           const data = docSnap.data();
           setUserData(data);
-          setIsKidsMode(data.ageGroup === '1-9');
         }
       });
       return () => unsubscribe();
@@ -287,12 +84,8 @@ export default function ProfilePage() {
           </Link>
         </Button>
       </div>
-
-       <NotificationSettings />
+      
        <HelplineSection />
-
-      {isKidsMode && <KidsProfileExtras />}
-
     </div>
   );
 }
