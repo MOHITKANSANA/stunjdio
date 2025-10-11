@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { doc, getDoc, updateDoc, arrayUnion, onSnapshot } from 'firebase/firestore';
+import { doc, updateDoc, arrayUnion, onSnapshot } from 'firebase/firestore';
 import { firestore, messaging } from '@/lib/firebase';
 import { getToken } from "firebase/messaging";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -11,9 +11,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/hooks/use-auth";
 import { useLanguage } from "@/hooks/use-language";
-import { Pencil, Phone, MessageCircle, Bell } from "lucide-react";
+import { Pencil, Phone, MessageCircle, Bell, Copy, Check } from "lucide-react";
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
+import { Input } from "@/components/ui/input";
 
 const HelplineSection = () => {
     const helplineNumber = '9327175729';
@@ -44,6 +45,7 @@ export default function ProfilePage() {
   const { t } = useLanguage();
   const [userData, setUserData] = useState<any>(null);
   const [fcmToken, setFcmToken] = useState<string | null>(null);
+  const [isTokenCopied, setIsTokenCopied] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -75,7 +77,7 @@ export default function ProfilePage() {
     try {
       const permission = await Notification.requestPermission();
       if (permission === 'granted') {
-        const currentToken = await getToken(messaging, { vapidKey: 'BDj_D88pTzY1nB-VjXgIu-Lw5-S8iH8z8c8c8c8c8c8c8c8c8c8c8c8' });
+        const currentToken = await getToken(messaging, { vapidKey: process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY });
         if (currentToken) {
           setFcmToken(currentToken);
           const userDocRef = doc(firestore, 'users', user.uid);
@@ -99,6 +101,15 @@ export default function ProfilePage() {
         title: "Token Error",
         description: err.message,
       });
+    }
+  };
+
+  const copyTokenToClipboard = () => {
+    if (fcmToken) {
+        navigator.clipboard.writeText(fcmToken);
+        setIsTokenCopied(true);
+        toast({ title: "Copied!", description: "FCM token copied to clipboard." });
+        setTimeout(() => setIsTokenCopied(false), 3000);
     }
   };
 
@@ -129,6 +140,30 @@ export default function ProfilePage() {
           </Link>
         </Button>
       </div>
+
+       <Card>
+            <CardHeader>
+                <CardTitle>Notifications</CardTitle>
+                <CardDescription>Manage your push notification settings.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <Button onClick={handleNotificationPermission} disabled={!!fcmToken}>
+                    <Bell className="mr-2"/>
+                    {fcmToken ? 'Notifications Enabled' : 'Enable Notifications'}
+                </Button>
+                {fcmToken && (
+                    <div className="mt-4 p-3 border rounded-lg bg-muted flex items-center justify-between gap-4">
+                        <div>
+                            <p className="text-sm font-semibold">Your Notification Token:</p>
+                            <p className="text-xs text-muted-foreground break-all">{fcmToken}</p>
+                        </div>
+                        <Button variant="ghost" size="icon" onClick={copyTokenToClipboard}>
+                           {isTokenCopied ? <Check className="text-green-500" /> : <Copy />}
+                        </Button>
+                    </div>
+                )}
+            </CardContent>
+        </Card>
       
        <HelplineSection />
     </div>

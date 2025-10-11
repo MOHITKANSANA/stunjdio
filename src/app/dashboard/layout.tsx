@@ -250,7 +250,7 @@ const AppHeader = ({ appLogoUrl }: { appLogoUrl: string | null }) => {
                 </div>
                  <div className='hidden md:flex items-center gap-2'>
                     {appLogoUrl && (
-                        <Avatar className="h-10 w-10">
+                        <Avatar className="h-10 w-10 rounded-full">
                             <AvatarImage src={appLogoUrl} alt="App Logo" />
                             <AvatarFallback>L</AvatarFallback>
                         </Avatar>
@@ -303,18 +303,23 @@ export default function DashboardLayout({
 
   // Handle foreground messages
   useEffect(() => {
+    let unsubscribe: () => void;
     if (typeof window !== 'undefined' && 'serviceWorker' in navigator && window.Worker) {
         if (messaging) {
-            const unsubscribe = onMessage(messaging, (payload: any) => {
+            unsubscribe = onMessage(messaging, (payload: any) => {
                 console.log('Foreground message received.', payload);
                 toast({
                   title: payload.notification?.title,
                   description: payload.notification?.body,
                 });
             });
-            return () => unsubscribe();
         }
     }
+    return () => {
+        if (unsubscribe) {
+            unsubscribe();
+        }
+    };
   }, [toast]);
 
   // Request permission and register service worker
@@ -331,13 +336,13 @@ export default function DashboardLayout({
   
   useEffect(() => {
     let timer: NodeJS.Timeout;
-    if (user) {
+    if (user && isKidsMode) {
         const userDocRef = doc(firestore, 'users', user.uid);
         const unsubscribe = onSnapshot(userDocRef, (docSnap) => {
             if (docSnap.exists()) {
                 const userData = docSnap.data();
                 const screenTimeLimit = userData.screenTimeLimit; // in minutes
-                if (isKidsMode && screenTimeLimit > 0) {
+                if (screenTimeLimit > 0) {
                     if (timer) clearInterval(timer);
                     timer = setInterval(() => {
                         setTimeUsed(prev => {

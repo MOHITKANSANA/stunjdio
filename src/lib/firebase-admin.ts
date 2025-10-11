@@ -1,17 +1,24 @@
 
 import * as admin from 'firebase-admin';
 
+// Check if the service account key is available
+const serviceAccountKey = process.env.FIREBASE_SERVICE_ACCOUNT;
+
 if (!admin.apps.length) {
   try {
-    const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT
-      ? JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT)
-      : undefined;
-
-    admin.initializeApp({
-      credential: admin.credential.cert(serviceAccount),
-    });
-  } catch (e) {
-    console.error('Firebase Admin Initialization Error:', e);
+    if (serviceAccountKey) {
+      admin.initializeApp({
+        credential: admin.credential.cert(JSON.parse(serviceAccountKey)),
+      });
+      console.log('Firebase Admin Initialized successfully.');
+    } else {
+      // This is a fallback for environments where the service account might
+      // be auto-discovered (like Google Cloud Functions or Cloud Run).
+      admin.initializeApp();
+      console.log('Firebase Admin Initialized with default credentials.');
+    }
+  } catch (e: any) {
+    console.error('Firebase Admin Initialization Error:', e.stack);
   }
 }
 
