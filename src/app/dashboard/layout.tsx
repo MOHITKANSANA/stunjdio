@@ -20,7 +20,6 @@ import {
   Library,
   Trophy,
   Clock,
-  Download,
   Youtube,
   Bot,
   Newspaper,
@@ -56,7 +55,7 @@ import { cn } from '@/lib/utils';
 import { useLanguage } from '@/hooks/use-language';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
-import { doc, getDoc, onSnapshot, collection, query, orderBy, updateDoc, arrayUnion } from 'firebase/firestore';
+import { doc, getDoc, onSnapshot, collection, query, orderBy } from 'firebase/firestore';
 import { firestore, messaging } from '@/lib/firebase';
 import { AppBottomNav } from './bottom-nav';
 import { onMessage } from 'firebase/messaging';
@@ -320,7 +319,7 @@ export default function DashboardLayout({
 
   // Request permission and register service worker
   useEffect(() => {
-    if ('serviceWorker' in navigator && 'PushManager' in window) {
+    if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('/firebase-messaging-sw.js')
         .then((registration) => {
           console.log('Service Worker registered with scope:', registration.scope);

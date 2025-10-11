@@ -1,7 +1,7 @@
 
 'use client';
 
-import { BookOpenCheck, Trophy, Library, BookMarked, BellDot, Newspaper, Trash2, Eye, Download, Book as EbookIcon } from "lucide-react";
+import { BookOpenCheck, Trophy, Library, BookMarked, BellDot, Newspaper, Trash2, Eye, Book as EbookIcon } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from '@/hooks/use-auth';
