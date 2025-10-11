@@ -5,7 +5,7 @@ import { firestore } from '@/lib/firebase';
 import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import { revalidatePath } from 'next/cache';
 import { getMessaging } from 'firebase-admin/messaging';
-import { auth as adminAuth } from '@/lib/firebase-admin';
+import { admin } from '@/lib/firebase-admin';
 
 
 interface EnrollmentInput {

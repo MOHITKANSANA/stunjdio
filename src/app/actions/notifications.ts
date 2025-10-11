@@ -60,7 +60,8 @@ export async function sendNotificationsAction(
 
     return { success: true, successCount: response.successCount };
   } catch (error: any) {
-    console.error('Error sending notifications:', error.stack);
-    return { success: false, error: error.message || 'Failed to send notifications.' };
+    console.error('Error sending notifications:', error);
+    // The error object might be complex, so we stringify it to see the details.
+    return { success: false, error: error.message || JSON.stringify(error) };
   }
 }
