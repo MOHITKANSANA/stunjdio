@@ -4,7 +4,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/use-auth";
-import { Shield, BookOpenCheck } from "lucide-react";
+import { BookOpenCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Image from "next/image";
 import { doc, onSnapshot } from "firebase/firestore";
@@ -49,9 +49,9 @@ export default function WelcomePage() {
             <div className="text-center">
                 <div className="relative inline-block splash-item splash-item-1">
                     {appLogoUrl ? (
-                         <Image src={appLogoUrl} alt="App Logo" width={96} height={96} className="h-24 w-24 rounded-full" />
+                         <Image src={appLogoUrl} alt="App Logo" width={144} height={144} className="h-36 w-36 rounded-full" priority />
                     ) : (
-                         <BookOpenCheck className="h-24 w-24 text-primary" />
+                         <BookOpenCheck className="h-36 w-36 text-primary" />
                     )}
                 </div>
                 <h1 className="splash-item splash-item-2 text-4xl md:text-5xl font-bold font-headline mt-4 metallic-text">Learn with Munedra</h1>

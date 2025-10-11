@@ -101,7 +101,7 @@
 }
 
 .splash-container {
-  background: linear-gradient(135deg, #2A002A, #1A001A);
+  background: linear-gradient(135deg, hsl(var(--background)), hsl(var(--card)));
 }
 
 .splash-container.fade-out {
@@ -125,13 +125,10 @@
 .feature-text-3 { color: #138808; } /* Green */
 
 
-.splash-item-1 { animation-delay: 0.2s; }
-.splash-item-2 { animation-delay: 0.6s; }
-.splash-item-3 { animation-delay: 1.0s; }
-.splash-item-4 { animation-delay: 1.4s; }
-.splash-item-5 { animation-delay: 1.6s; }
-.splash-item-6 { animation-delay: 1.8s; }
-.splash-item-7 { animation-delay: 2.0s; }
+.splash-item-1 { animation-delay: 0.1s; }
+.splash-item-2 { animation-delay: 0.5s; }
+.splash-item-3 { animation-delay: 0.9s; }
+
 
 /* Custom font styles */
 @font-face {
