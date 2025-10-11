@@ -1,31 +1,31 @@
 
 import * as admin from 'firebase-admin';
 
-// Check if the service account key is available
 const serviceAccountKey = process.env.FIREBASE_SERVICE_ACCOUNT;
+const adminAppAlreadyInitialized = admin.apps.length > 0;
 
-if (!admin.apps.length) {
-  try {
-    if (serviceAccountKey) {
+if (!adminAppAlreadyInitialized) {
+  if (serviceAccountKey) {
+    try {
       admin.initializeApp({
         credential: admin.credential.cert(JSON.parse(serviceAccountKey)),
       });
-      console.log('Firebase Admin Initialized successfully.');
-    } else {
-      // This is a fallback for environments where the service account might
-      // be auto-discovered (like Google Cloud Functions or Cloud Run).
-      // This is less reliable if env vars aren't set correctly.
-      console.warn('FIREBASE_SERVICE_ACCOUNT env var not set. Initializing with default credentials.');
+      console.log('Firebase Admin SDK initialized successfully.');
+    } catch (e: any) {
+      console.error('Firebase Admin SDK initialization error:', e);
+      // Fallback for environments like Google Cloud Run
       admin.initializeApp();
+      console.log('Firebase Admin SDK initialized with default credentials.');
     }
-  } catch (e: any) {
-    console.error('Firebase Admin Initialization Error:', e.stack);
+  } else {
+    // Fallback for environments where service account might be auto-discovered
+    console.warn('FIREBASE_SERVICE_ACCOUNT env var not set. Initializing with default credentials.');
+    admin.initializeApp();
   }
 } else {
-    console.log('Firebase Admin already initialized.');
+    console.log('Firebase Admin SDK already initialized.');
 }
 
-const auth = admin.auth();
 const firestore = admin.firestore();
 
-export { auth, firestore, admin };
+export { firestore, admin };

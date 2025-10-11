@@ -9,8 +9,9 @@ export async function sendNotificationsAction(
   message: string
 ): Promise<{ success: boolean; successCount?: number; error?: string }> {
   try {
+    // lib/firebase-admin now handles initialization, so this check is simpler.
     if (!admin.apps.length) {
-        throw new Error("Firebase Admin SDK not initialized correctly.");
+        throw new Error("Firebase Admin SDK is not initialized correctly.");
     }
     
     // Use adminFirestore for querying user data on the server
@@ -20,6 +21,7 @@ export async function sendNotificationsAction(
     usersSnapshot.forEach(doc => {
       const userData = doc.data();
       if (userData.fcmTokens && Array.isArray(userData.fcmTokens)) {
+        // Add all tokens from the array
         allTokens.push(...userData.fcmTokens);
       }
     });
@@ -28,6 +30,7 @@ export async function sendNotificationsAction(
       return { success: true, successCount: 0, error: "No registered devices found to send notifications." };
     }
 
+    // Ensure we only send to unique tokens to avoid duplicate messages and errors
     const uniqueTokens = [...new Set(allTokens)];
 
     const messagePayload = {
@@ -51,17 +54,19 @@ export async function sendNotificationsAction(
         const failedTokens: string[] = [];
         response.responses.forEach((resp, idx) => {
             if (!resp.success) {
-                failedTokens.push(uniqueTokens[idx]);
+                // Log the error and the token that failed.
                 console.error(`Failed to send to token ${uniqueTokens[idx]}:`, resp.error);
+                failedTokens.push(uniqueTokens[idx]);
             }
         });
         console.error('List of tokens that caused failures: ' + failedTokens);
+        // We still count it as a partial success if some notifications were sent.
+        return { success: true, successCount: response.successCount, error: `${response.failureCount} notifications failed to send.`};
     }
 
     return { success: true, successCount: response.successCount };
   } catch (error: any) {
     console.error('Error sending notifications:', error);
-    // The error object might be complex, so we stringify it to see the details.
-    return { success: false, error: error.message || JSON.stringify(error) };
+    return { success: false, error: error.message || 'An unknown server error occurred.' };
   }
 }

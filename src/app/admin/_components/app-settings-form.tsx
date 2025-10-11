@@ -11,10 +11,11 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { doc, setDoc, updateDoc, arrayUnion, arrayRemove, onSnapshot, collection } from 'firebase/firestore';
 import { firestore } from '@/lib/firebase';
-import { Loader2, Upload, Trash2, Link, PlusCircle } from 'lucide-react';
+import { Loader2, Upload, Trash2, Link as LinkIcon, PlusCircle, Youtube, Instagram, Facebook, Twitter, Linkedin } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import Image from 'next/image';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 
 const qrCodeSchema = z.object({
   qrCodeFile: z.any().refine(file => file, 'QR Code image is required.'),
@@ -39,7 +40,7 @@ type LogoFormValues = z.infer<typeof logoSchema>;
 const socialLinkSchema = z.object({
     name: z.string().min(1, "Name is required"),
     url: z.string().url("Invalid URL"),
-    icon: z.string().min(1, "Lucide icon name is required (e.g., 'youtube')"),
+    icon: z.string().min(1, "An icon is required"),
 });
 
 const appSettingsSchema = z.object({
@@ -56,6 +57,15 @@ function fileToDataUrl(file: File): Promise<string> {
     reader.readAsDataURL(file);
   });
 }
+
+const socialIconOptions = [
+    { value: 'youtube', label: 'YouTube', icon: <Youtube className="h-4 w-4" /> },
+    { value: 'instagram', label: 'Instagram', icon: <Instagram className="h-4 w-4" /> },
+    { value: 'facebook', label: 'Facebook', icon: <Facebook className="h-4 w-4" /> },
+    { value: 'twitter', label: 'Twitter / X', icon: <Twitter className="h-4 w-4" /> },
+    { value: 'linkedin', label: 'LinkedIn', icon: <Linkedin className="h-4 w-4" /> },
+    { value: 'link', label: 'Generic Link', icon: <LinkIcon className="h-4 w-4" /> },
+];
 
 export function AppSettingsForm() {
   const { toast } = useToast();
@@ -194,30 +204,6 @@ export function AppSettingsForm() {
     <div className="space-y-8">
         <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-8">
             <Card>
-                <CardHeader><CardTitle>App Logo</CardTitle><CardDescription>Update the main logo for the splash screen and PWA.</CardDescription></CardHeader>
-                <CardContent>
-                    <Form {...logoForm}>
-                        <form onSubmit={logoForm.handleSubmit(onLogoSubmit)} className="space-y-4">
-                            <FormField
-                                control={logoForm.control} name="logoFile"
-                                render={({ field }) => (
-                                    <FormItem><FormLabel>Logo Image</FormLabel>
-                                    <FormControl>
-                                        <div>
-                                            <Button type="button" variant="outline" className="w-full" onClick={() => logoFileInputRef.current?.click()}><Upload className="mr-2 h-4 w-4" />{logoPreview ? 'Change Logo' : 'Upload Logo'}</Button>
-                                            <input type="file" ref={logoFileInputRef} onChange={handleLogoFileChange} className="hidden" accept="image/*" />
-                                        </div>
-                                    </FormControl>
-                                    {logoPreview && <Image src={logoPreview} alt="Logo preview" width={120} height={120} className="mt-4 rounded-full mx-auto" />}
-                                    <FormMessage /></FormItem>
-                                )}
-                            />
-                            <Button type="submit" disabled={isLogoLoading}> {isLogoLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Save Logo </Button>
-                        </form>
-                    </Form>
-                </CardContent>
-            </Card>
-            <Card>
                 <CardHeader><CardTitle>Payment QR Code</CardTitle><CardDescription>Upload the QR code for payment pages.</CardDescription></CardHeader>
                 <CardContent>
                     <Form {...qrForm}>
@@ -258,8 +244,6 @@ export function AppSettingsForm() {
                                                 type="file"
                                                 accept="image/*"
                                                 onChange={(e) => onChange(e.target.files?.[0])}
-                                                // @ts-ignore
-                                                value={value?.fileName}
                                             />
                                             <Button type="submit" disabled={isCarouselLoading}>
                                                 {isCarouselLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Add'}
@@ -302,16 +286,39 @@ export function AppSettingsForm() {
                         {fields.map((field, index) => (
                              <div key={field.id} className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end p-4 border rounded-lg">
                                 <FormField control={socialForm.control} name={`socialMediaLinks.${index}.name`} render={({ field }) => (
-                                    <FormItem><FormLabel>Name</FormLabel><FormControl><Input placeholder="e.g. YouTube" {...field} /></FormControl><FormMessage /></FormItem>
+                                    <FormItem><FormLabel>Name</FormLabel><FormControl><Input placeholder="e.g. YouTube Channel" {...field} /></FormControl><FormMessage /></FormItem>
                                 )}/>
-                                 <FormField control={socialForm.control} name={`socialMediaLinks.${index}.url`} render={({ field }) => (
+                                <FormField control={socialForm.control} name={`socialMediaLinks.${index}.url`} render={({ field }) => (
                                     <FormItem className="md:col-span-2"><FormLabel>URL</FormLabel><FormControl><Input placeholder="https://youtube.com/..." {...field} /></FormControl><FormMessage /></FormItem>
                                 )}/>
-                               <div className="flex items-center gap-2">
-                                 <FormField control={socialForm.control} name={`socialMediaLinks.${index}.icon`} render={({ field }) => (
-                                    <FormItem className="flex-1"><FormLabel>Icon</FormLabel><FormControl><Input placeholder="youtube" {...field} /></FormControl></FormItem>
-                                )}/>
-                                <Button type="button" variant="destructive" size="icon" onClick={() => remove(index)}><Trash2 className="h-4 w-4" /></Button>
+                                <div className="flex items-center gap-2">
+                                     <FormField
+                                        control={socialForm.control}
+                                        name={`socialMediaLinks.${index}.icon`}
+                                        render={({ field }) => (
+                                            <FormItem className="flex-1">
+                                                <FormLabel>Icon</FormLabel>
+                                                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                                    <FormControl>
+                                                        <SelectTrigger>
+                                                            <SelectValue placeholder="Select Icon" />
+                                                        </SelectTrigger>
+                                                    </FormControl>
+                                                    <SelectContent>
+                                                        {socialIconOptions.map(opt => (
+                                                            <SelectItem key={opt.value} value={opt.value}>
+                                                                <div className="flex items-center gap-2">
+                                                                    {opt.icon}
+                                                                    <span>{opt.label}</span>
+                                                                </div>
+                                                            </SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                            </FormItem>
+                                        )}
+                                    />
+                                    <Button type="button" variant="destructive" size="icon" onClick={() => remove(index)}><Trash2 className="h-4 w-4" /></Button>
                                </div>
                             </div>
                         ))}
