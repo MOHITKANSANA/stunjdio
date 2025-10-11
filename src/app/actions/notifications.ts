@@ -4,26 +4,17 @@
 import * as admin from 'firebase-admin';
 import { getDocs, collection } from 'firebase/firestore';
 import { firestore as clientFirestore } from '@/lib/firebase';
-try {
-    const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT
-      ? JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT)
-      : undefined;
-
-    if (!admin.apps.length) {
-      admin.initializeApp({
-        credential: admin.credential.cert(serviceAccount),
-      });
-    }
-} catch (e) {
-    console.error('Firebase Admin Initialization Error in notifications action:', e);
-}
-
+import { auth as adminAuth } from '@/lib/firebase-admin'; // Import initialized admin
 
 export async function sendNotificationsAction(
   title: string,
   message: string
 ): Promise<{ success: boolean; successCount?: number; error?: string }> {
   try {
+    if (admin.apps.length === 0) {
+        throw new Error("Firebase Admin SDK not initialized.");
+    }
+    
     const usersSnapshot = await getDocs(collection(clientFirestore, 'users'));
     const allTokens: string[] = [];
 
@@ -55,6 +46,17 @@ export async function sendNotificationsAction(
     };
     
     const response = await admin.messaging().sendEachForMulticast(messagePayload);
+
+    if (response.failureCount > 0) {
+        const failedTokens: string[] = [];
+        response.responses.forEach((resp, idx) => {
+            if (!resp.success) {
+                failedTokens.push(uniqueTokens[idx]);
+            }
+        });
+        console.error('List of tokens that caused failures: ' + failedTokens);
+    }
+
 
     return { success: true, successCount: response.successCount };
   } catch (error: any) {
