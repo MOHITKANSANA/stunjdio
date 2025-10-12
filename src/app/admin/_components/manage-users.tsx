@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useCollection } from 'react-firebase-hooks/firestore';
+import { useCollection, useDocumentData } from 'react-firebase-hooks/firestore';
 import { collection, query, orderBy, doc, updateDoc, setDoc } from 'firebase/firestore';
 import { firestore } from '@/lib/firebase';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -13,10 +13,50 @@ import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Trash2 } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 
-function ManageTopStudents({ users, loading, topStudentUids, onSelectionChange }: { users: any[] | undefined, loading: boolean, topStudentUids: string[], onSelectionChange: (uid: string) => void }) {
-    if (loading) return <Skeleton className="h-64 w-full" />
+const TopStudentsManager = ({ users, loading }: { users: any[] | undefined, loading: boolean }) => {
+    const { toast } = useToast();
+    const [topStudentUids, setTopStudentUids] = useState<string[]>([]);
+    const [isSavingTop, setIsSavingTop] = useState(false);
+    
+    const [settingsDoc, settingsLoading] = useDocumentData(doc(firestore, 'settings', 'topStudents'));
+
+    useEffect(() => {
+        if (settingsDoc) {
+            setTopStudentUids(settingsDoc.uids || []);
+        }
+    }, [settingsDoc]);
+
+    const handleTopStudentSelection = (uid: string) => {
+        setTopStudentUids(prev => {
+            if (prev.includes(uid)) {
+                return prev.filter(id => id !== uid);
+            }
+            if (prev.length < 10) {
+                return [...prev, uid];
+            }
+            toast({ variant: 'destructive', description: "You can only select up to 10 top students." });
+            return prev;
+      });
+    };
+
+    const saveTopStudents = async () => {
+        setIsSavingTop(true);
+        try {
+            const topStudentsRef = doc(firestore, 'settings', 'topStudents');
+            await setDoc(topStudentsRef, { uids: topStudentUids });
+            toast({ title: "Success!", description: "Top students list has been updated." });
+        } catch (error) {
+            toast({ variant: 'destructive', title: "Error", description: "Could not save top students." });
+        } finally {
+            setIsSavingTop(false);
+        }
+    };
+
+    if (loading || settingsLoading) return <Skeleton className="h-64 w-full" />
     
     return (
         <Card>
@@ -42,7 +82,7 @@ function ManageTopStudents({ users, loading, topStudentUids, onSelectionChange }
                                     <TableCell>
                                         <Checkbox 
                                             checked={isChecked}
-                                            onCheckedChange={() => onSelectionChange(uid)}
+                                            onCheckedChange={() => handleTopStudentSelection(uid)}
                                             disabled={!isChecked && topStudentUids.length >= 10}
                                         />
                                     </TableCell>
@@ -64,55 +104,47 @@ function ManageTopStudents({ users, loading, topStudentUids, onSelectionChange }
                     </TableBody>
                 </Table>
             </CardContent>
+            <CardContent>
+                 <Button onClick={saveTopStudents} disabled={isSavingTop}>
+                    {isSavingTop && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
+                    Save Top Students
+                </Button>
+            </CardContent>
         </Card>
     );
 }
 
 
 export function ManageUsers() {
-  const [users, usersLoading] = useCollection(query(collection(firestore, 'users'), orderBy('createdAt', 'desc')));
+  const [usersCollection, usersLoading] = useCollection(query(collection(firestore, 'users'), orderBy('createdAt', 'desc')));
   const [searchTerm, setSearchTerm] = useState('');
-  const [topStudentUids, setTopStudentUids] = useState<string[]>([]);
-  const [isSavingTop, setIsSavingTop] = useState(false);
   const { toast } = useToast();
+  
+  const ADMIN_PASSWORD = "ADMIN@123"; // The password required to make a user an admin.
 
-  useEffect(() => {
-      const topStudentsRef = doc(firestore, 'settings', 'topStudents');
-      const unsubscribe = onSnapshot(topStudentsRef, (doc) => {
-          if (doc.exists()) {
-              setTopStudentUids(doc.data().uids || []);
-          }
-      });
-      return () => unsubscribe();
-  }, []);
+  const handleDeleteUser = async (uid: string) => {
+    // This is a placeholder. Deleting users should be handled with a server-side function
+    // for security reasons (e.g., deleting associated data).
+    if(window.confirm('Are you sure you want to delete this user? This action cannot be undone.')) {
+        toast({ title: "Action not implemented", description: "User deletion must be configured on the server."});
+    }
+  }
 
-  const handleTopStudentSelection = (uid: string) => {
-      setTopStudentUids(prev => {
-          if (prev.includes(uid)) {
-              return prev.filter(id => id !== uid);
-          }
-          if (prev.length < 10) {
-              return [...prev, uid];
-          }
-          toast({ variant: 'destructive', description: "You can only select up to 10 top students." });
-          return prev;
-      });
-  };
+  const handleToggleAdmin = async (uid: string, currentIsAdmin: boolean) => {
+    const password = prompt('Please enter the admin password to proceed:');
+    if (password === ADMIN_PASSWORD) {
+        try {
+            await updateDoc(doc(firestore, 'users', uid), { isAdmin: !currentIsAdmin });
+            toast({ title: 'Success!', description: `User admin status updated.` });
+        } catch (error) {
+            toast({ variant: 'destructive', title: 'Error', description: 'Could not update user status.' });
+        }
+    } else if (password !== null) {
+        toast({ variant: 'destructive', title: 'Incorrect Password' });
+    }
+  }
 
-  const saveTopStudents = async () => {
-      setIsSavingTop(true);
-      try {
-          const topStudentsRef = doc(firestore, 'settings', 'topStudents');
-          await setDoc(topStudentsRef, { uids: topStudentUids });
-          toast({ title: "Success!", description: "Top students list has been updated." });
-      } catch (error) {
-          toast({ variant: 'destructive', title: "Error", description: "Could not save top students." });
-      } finally {
-          setIsSavingTop(false);
-      }
-  };
-
-  const filteredUsers = users?.docs.filter(doc => {
+  const filteredUsers = usersCollection?.docs.filter(doc => {
       const data = doc.data();
       const name = data.displayName?.toLowerCase() || '';
       const email = data.email?.toLowerCase() || '';
@@ -138,8 +170,8 @@ export function ManageUsers() {
                     <TableRow>
                     <TableHead>User</TableHead>
                     <TableHead>Contact</TableHead>
-                    <TableHead>Location</TableHead>
-                    <TableHead>Class/Exam</TableHead>
+                    <TableHead>Role</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -169,11 +201,21 @@ export function ManageUsers() {
                                 <TableCell>
                                     <p>{user.phone}</p>
                                 </TableCell>
-                                <TableCell>
-                                    <p>{user.district}, {user.state}</p>
+                                 <TableCell>
+                                    <p>{user.isAdmin ? 'Admin' : 'Student'}</p>
                                 </TableCell>
-                                <TableCell>
-                                    <p>{user.classOrExam}</p>
+                                <TableCell className="text-right space-x-2">
+                                     <div className="flex items-center justify-end gap-2">
+                                        <Label htmlFor={`admin-switch-${doc.id}`} className="text-sm font-medium">Admin</Label>
+                                        <Switch
+                                            id={`admin-switch-${doc.id}`}
+                                            checked={!!user.isAdmin}
+                                            onCheckedChange={() => handleToggleAdmin(doc.id, !!user.isAdmin)}
+                                        />
+                                        <Button variant="destructive" size="icon" onClick={() => handleDeleteUser(doc.id)}>
+                                            <Trash2 className="h-4 w-4"/>
+                                        </Button>
+                                    </div>
                                 </TableCell>
                             </TableRow>
                         )
@@ -191,16 +233,7 @@ export function ManageUsers() {
           </CardContent>
         </Card>
         
-        <ManageTopStudents 
-            users={users?.docs}
-            loading={usersLoading}
-            topStudentUids={topStudentUids}
-            onSelectionChange={handleTopStudentSelection}
-        />
-        <Button onClick={saveTopStudents} disabled={isSavingTop}>
-            {isSavingTop && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
-            Save Top Students
-        </Button>
+        <TopStudentsManager users={usersCollection?.docs} loading={usersLoading} />
     </div>
   );
 }

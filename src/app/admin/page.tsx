@@ -22,6 +22,23 @@ import { ManagePromotions } from "./_components/manage-promotions";
 import { SendNotificationsForm } from "./_components/send-notifications-form";
 
 
+const PwaInstallations = () => {
+    // This is a placeholder. Actual implementation requires a backend mechanism
+    // to track which users have installed the PWA, likely by having the app
+    // report back to the server upon successful installation.
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle>PWA Installations</CardTitle>
+                <CardDescription>Users who have installed the app on their device.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <p className="text-muted-foreground text-center p-8">This feature is under construction.</p>
+            </CardContent>
+        </Card>
+    )
+}
+
 export default function AdminPage() {
     return (
         <div className="space-y-8 p-4 md:p-8">
@@ -40,6 +57,7 @@ export default function AdminPage() {
                     <TabsTrigger value="scholarships">Scholarships</TabsTrigger>
                     <TabsTrigger value="kids_tube">Kids Tube</TabsTrigger>
                     <TabsTrigger value="promotions">Promotions</TabsTrigger>
+                    <TabsTrigger value="pwa">PWA Installations</TabsTrigger>
                     <TabsTrigger value="html_editor">HTML Editor</TabsTrigger>
                     <TabsTrigger value="settings">App Settings</TabsTrigger>
                 </TabsList>
@@ -150,6 +168,10 @@ export default function AdminPage() {
 
                  <TabsContent value="promotions" className="mt-6 md:mt-0">
                     <ManagePromotions />
+                </TabsContent>
+
+                <TabsContent value="pwa" className="mt-6 md:mt-0">
+                    <PwaInstallations />
                 </TabsContent>
 
                 <TabsContent value="html_editor" className="mt-6 md:mt-0">

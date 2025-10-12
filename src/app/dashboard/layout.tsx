@@ -57,7 +57,7 @@ import { cn } from '@/lib/utils';
 import { useLanguage } from '@/hooks/use-language';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
-import { doc, getDoc, onSnapshot, collection, query, orderBy } from 'firebase/firestore';
+import { doc, getDoc, onSnapshot, collection, query, orderBy, where } from 'firebase/firestore';
 import { firestore, messaging } from '@/lib/firebase';
 import { AppBottomNav } from './bottom-nav';
 import { onMessage } from 'firebase/messaging';
@@ -217,16 +217,19 @@ const AppSidebar = ({ isKidsMode, isMindSphereMode, appLogoUrl }: { isKidsMode: 
                                 />
                             )
                         })}
-
-                        <SidebarSeparator />
-                        <SidebarMenuItem>
-                            <Link href="/admin" onClick={closeSidebar}>
-                            <SidebarMenuButton>
-                                    <UserCog />
-                                    <span>Admin</span>
-                                </SidebarMenuButton>
-                            </Link>
-                        </SidebarMenuItem>
+                        {userData?.isAdmin && (
+                            <>
+                            <SidebarSeparator />
+                            <SidebarMenuItem>
+                                <Link href="/admin" onClick={closeSidebar}>
+                                <SidebarMenuButton>
+                                        <UserCog />
+                                        <span>Admin</span>
+                                    </SidebarMenuButton>
+                                </Link>
+                            </SidebarMenuItem>
+                            </>
+                        )}
                     </SidebarMenu>
 
                     <div className="p-3 bg-yellow-400/10 m-2 rounded-lg group-data-[collapsible=icon]:p-0 group-data-[collapsible=icon]:bg-transparent">
@@ -267,26 +270,21 @@ const AppSidebar = ({ isKidsMode, isMindSphereMode, appLogoUrl }: { isKidsMode: 
 
 
 const AppHeader = ({ appLogoUrl }: { appLogoUrl: string | null }) => {
+  const { user } = useAuth();
   return (
       <header className={cn("flex h-16 shrink-0 items-center justify-between gap-4 px-4 md:px-6 bg-transparent sticky top-0 z-20")}>
-            <div className='flex items-center gap-2'>
+            <div className='flex items-center gap-4'>
                 <div className='md:hidden'>
                     <SidebarTrigger />
                 </div>
                  <div className='hidden md:flex items-center gap-2'>
-                    {appLogoUrl && (
-                        <Avatar className="h-10 w-10 rounded-full">
-                            <AvatarImage src={appLogoUrl} alt="App Logo" />
-                            <AvatarFallback>L</AvatarFallback>
-                        </Avatar>
-                    )}
-                    <span className="text-lg font-semibold font-headline">Learn with Munedra</span>
+                    <h1 className="text-2xl font-bold text-white">Hello, {user?.displayName || 'Student'}!</h1>
                 </div>
             </div>
             <div className="flex items-center gap-2">
                 <Button variant="ghost" size="icon" className="rounded-full" asChild>
                     <Link href="/dashboard/my-learning?tab=notifications">
-                       <Bell />
+                       <Bell className='text-white' />
                        <span className="sr-only">Notifications</span>
                     </Link>
                 </Button>
@@ -441,7 +439,7 @@ export default function DashboardLayout({
   }, [user, loading, router, pathname]);
   
   if (loading) {
-    return null;
+    return <LoadingScreen />;
   }
 
 
@@ -449,6 +447,10 @@ export default function DashboardLayout({
       <SidebarProvider>
           <div className="flex h-screen w-full flex-col bg-background">
              {isScreenLocked && <ScreenTimeLock />}
+             <div 
+                 className="fixed top-0 left-0 right-0 h-[30vh] bg-gradient-to-b from-yellow-500 via-yellow-400 to-yellow-300 -z-10" 
+                 style={{clipPath: 'polygon(0 0, 100% 0, 100% 80%, 0 100%)'}}
+            />
              {!isVideoPlaybackPage && <AppHeader appLogoUrl={appLogoUrl} />}
              <div className={cn("flex flex-col md:flex-row w-full h-full overflow-hidden")}>
                 {!isVideoPlaybackPage && <AppSidebar isKidsMode={isKidsMode} isMindSphereMode={isMindSphereMode} appLogoUrl={appLogoUrl} />}
