@@ -40,7 +40,7 @@ type LogoFormValues = z.infer<typeof logoSchema>;
 const socialLinkSchema = z.object({
     name: z.string().min(1, "Name is required"),
     url: z.string().url("Invalid URL"),
-    icon: z.string().min(1, "An icon is required"),
+    icon: z.any().refine(file => file, 'An icon image is required.'),
 });
 
 const appSettingsSchema = z.object({
@@ -58,14 +58,23 @@ function fileToDataUrl(file: File): Promise<string> {
   });
 }
 
-const socialIconOptions = [
-    { value: 'youtube', label: 'YouTube', icon: <Youtube className="h-4 w-4" /> },
-    { value: 'instagram', label: 'Instagram', icon: <Instagram className="h-4 w-4" /> },
-    { value: 'facebook', label: 'Facebook', icon: <Facebook className="h-4 w-4" /> },
-    { value: 'twitter', label: 'Twitter / X', icon: <Twitter className="h-4 w-4" /> },
-    { value: 'linkedin', label: 'LinkedIn', icon: <Linkedin className="h-4 w-4" /> },
-    { value: 'link', label: 'Generic Link', icon: <LinkIcon className="h-4 w-4" /> },
-];
+const SocialIcon = ({ icon }: { icon: string | File }) => {
+    const [iconUrl, setIconUrl] = useState('');
+
+    useEffect(() => {
+        if(typeof icon === 'string') {
+            setIconUrl(icon)
+        } else if (icon instanceof File) {
+            const url = URL.createObjectURL(icon);
+            setIconUrl(url);
+            return () => URL.revokeObjectURL(url);
+        }
+    }, [icon]);
+    
+    if (!iconUrl) return <LinkIcon className="h-10 w-10" />
+
+    return <Image src={iconUrl} alt="icon" width={40} height={40} className="rounded-full" />
+};
 
 export function AppSettingsForm() {
   const { toast } = useToast();
@@ -168,10 +177,20 @@ export function AppSettingsForm() {
     }
   };
 
-  const onSocialSubmit = async (data: AppSettingsFormValues) => {
+   const onSocialSubmit = async (data: AppSettingsFormValues) => {
     setIsSocialLoading(true);
     try {
-      await setDoc(doc(firestore, 'settings', 'appConfig'), { socialMediaLinks: data.socialMediaLinks }, { merge: true });
+      const linksToSave = await Promise.all(
+        data.socialMediaLinks!.map(async (link) => {
+          if (link.icon instanceof File) {
+            const iconUrl = await fileToDataUrl(link.icon);
+            return { name: link.name, url: link.url, icon: iconUrl };
+          }
+          return link;
+        })
+      );
+
+      await setDoc(doc(firestore, 'settings', 'appConfig'), { socialMediaLinks: linksToSave }, { merge: true });
       toast({ title: 'Success', description: 'Social media links updated.' });
     } catch (error: any) {
       toast({ variant: 'destructive', title: 'Error', description: error.message });
@@ -295,26 +314,12 @@ export function AppSettingsForm() {
                                      <FormField
                                         control={socialForm.control}
                                         name={`socialMediaLinks.${index}.icon`}
-                                        render={({ field }) => (
+                                        render={({ field: { onChange, value, ...rest } }) => (
                                             <FormItem className="flex-1">
                                                 <FormLabel>Icon</FormLabel>
-                                                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                                    <FormControl>
-                                                        <SelectTrigger>
-                                                            <SelectValue placeholder="Select Icon" />
-                                                        </SelectTrigger>
-                                                    </FormControl>
-                                                    <SelectContent>
-                                                        {socialIconOptions.map(opt => (
-                                                            <SelectItem key={opt.value} value={opt.value}>
-                                                                <div className="flex items-center gap-2">
-                                                                    {opt.icon}
-                                                                    <span>{opt.label}</span>
-                                                                </div>
-                                                            </SelectItem>
-                                                        ))}
-                                                    </SelectContent>
-                                                </Select>
+                                                <FormControl>
+                                                    <Input type="file" accept="image/*" onChange={(e) => onChange(e.target.files?.[0])} />
+                                                </FormControl>
                                             </FormItem>
                                         )}
                                     />

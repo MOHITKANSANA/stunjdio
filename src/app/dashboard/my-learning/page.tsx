@@ -1,7 +1,7 @@
 
 'use client';
 
-import { BookOpenCheck, Trophy, Library, BookMarked, BellDot, Newspaper, Trash2, Eye, Book as EbookIcon } from "lucide-react";
+import { BookOpenCheck, Library, Trash2, Eye, Book as EbookIcon, CheckCircle } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from '@/hooks/use-auth';
@@ -12,31 +12,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import Image from 'next/image';
 import Link from 'next/link';
 import { useState, useEffect } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-
-const PDFViewer = ({ pdfUrl, title, onOpenChange }: { pdfUrl: string, title: string, onOpenChange: (open: boolean) => void }) => {
-    return (
-        <Dialog open={true} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-4xl h-[90vh] p-4 flex flex-col">
-                <DialogHeader>
-                    <DialogTitle>{title}</DialogTitle>
-                </DialogHeader>
-                <div className="flex-grow">
-                    <iframe
-                        src={pdfUrl}
-                        width="100%"
-                        height="100%"
-                        className="rounded-lg border"
-                        title={title}
-                    ></iframe>
-                </div>
-            </DialogContent>
-        </Dialog>
-    );
-};
 
 
 const CourseCard = ({ course, courseId, enrollmentId, onUnenroll }: { course: any, courseId: string, enrollmentId: string, onUnenroll: (id: string, title: string) => void }) => {
@@ -64,55 +41,9 @@ const CourseCard = ({ course, courseId, enrollmentId, onUnenroll }: { course: an
     );
 };
 
-const EBookCard = ({ ebook, onClick }: { ebook: any, onClick: () => void }) => {
-    return (
-        <Card className="flex flex-col overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300 cursor-pointer" onClick={onClick}>
-            <div className="relative h-48 w-full">
-                <Image src={ebook.thumbnailUrl || `https://picsum.photos/seed/${ebook.id}/600/400`} alt={ebook.title} fill style={{objectFit: "cover"}} data-ai-hint="book cover" />
-            </div>
-            <CardHeader>
-                <CardTitle className="text-xl">{ebook.title}</CardTitle>
-                <CardDescription>{ebook.description}</CardDescription>
-            </CardHeader>
-        </Card>
-    );
-}
-
-const DownloadCard = ({ item }: { item: any }) => {
-    const { toast } = useToast();
-    
-    const handleDownloadDelete = async (id: string) => {
-        if (window.confirm("Are you sure you want to remove this from your downloads?")) {
-            try {
-                await deleteDoc(doc(firestore, 'userDownloads', id));
-                toast({ description: "Item removed from downloads." });
-            } catch (error) {
-                toast({ variant: "destructive", description: "Failed to remove item." });
-            }
-        }
-    };
-    
-    return (
-         <Card>
-            <CardHeader>
-                <CardTitle className="text-lg">{item.title}</CardTitle>
-                 <CardDescription>Type: {item.type}</CardDescription>
-            </CardHeader>
-            <CardFooter className="gap-2">
-                 <a href={item.url} target="_blank" rel="noopener noreferrer" className="w-full">
-                    <Button className="w-full"><Eye className="mr-2"/>View</Button>
-                 </a>
-                 <Button variant="destructive" onClick={() => handleDownloadDelete(item.id)}>
-                    <Trash2 className="mr-2"/> Remove
-                </Button>
-            </CardFooter>
-        </Card>
-    )
-}
 
 export default function MyLearningPage() {
     const { user, loading: authLoading } = useAuth();
-    const [selectedPdf, setSelectedPdf] = useState<{ url: string, title: string } | null>(null);
     const { toast } = useToast();
     
     const enrollmentsQuery = user 
@@ -133,36 +64,6 @@ export default function MyLearningPage() {
         ) : null;
     const [myCourses, myCoursesLoading, myCoursesError] = useCollection(coursesQuery);
     
-    const [ebooks, ebooksLoading, ebooksError] = useCollection(
-        query(collection(firestore, 'ebooks'), orderBy('createdAt', 'desc'))
-    );
-    
-    const [notifications, notificationsLoading, notificationsError] = useCollection(
-        user ? query(collection(firestore, 'users', user.uid, 'notifications'), orderBy('createdAt', 'desc')) : null
-    );
-
-    const unreadNotifications = notifications?.docs.filter(doc => !doc.data().read);
-    const hasNewReplies = unreadNotifications && unreadNotifications.length > 0;
-
-    
-    const handleEbookClick = (ebookData: any) => {
-        const pdfUrlWithViewer = `https://docs.google.com/gview?url=${encodeURIComponent(ebookData.fileUrl)}&embedded=true`;
-        setSelectedPdf({ url: pdfUrlWithViewer, title: ebookData.title });
-    };
-
-    const markAllAsRead = async () => {
-        if (!user || !unreadNotifications) return;
-        
-        const batch = unreadNotifications.map(docSnapshot => 
-            updateDoc(doc(firestore, 'users', user.uid, 'notifications', docSnapshot.id), { read: true })
-        );
-
-        try {
-            await Promise.all(batch);
-        } catch (error) {
-            toast({ variant: 'destructive', title: 'Error', description: 'Could not mark notifications as read.' });
-        }
-    }
 
     const handleUnenroll = async (enrollmentId: string, courseTitle: string) => {
         if (window.confirm(`Are you sure you want to un-enroll from "${courseTitle}"?`)) {
@@ -190,116 +91,67 @@ export default function MyLearningPage() {
         return acc;
     }, {} as Record<string, string>);
     
+    const paidCourses = myCourses?.docs.filter(doc => !doc.data().isFree);
+    const freeCourses = myCourses?.docs.filter(doc => doc.data().isFree);
+
+    const renderCourseGrid = (courses: any[] | undefined) => {
+        if (authLoading || enrollmentsLoading || myCoursesLoading) {
+             return (
+                 <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                    {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-80 w-full" />)}
+                </div>
+             );
+        }
+
+        if (enrollmentsError || myCoursesError) {
+            return <p className="text-destructive text-center">Could not load your courses.</p>;
+        }
+
+        if (!courses || courses.length === 0) {
+            return (
+                <div className="text-center py-12">
+                    <BookOpenCheck className="mx-auto h-12 w-12 text-muted-foreground" />
+                    <h3 className="mt-4 text-lg font-semibold">No Courses Here</h3>
+                    <p className="mt-1 text-sm text-muted-foreground">You haven't enrolled in any courses in this category yet.</p>
+                </div>
+            );
+        }
+
+        return (
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                {courses.map(doc => {
+                    const enrollmentId = courseIdToEnrollmentIdMap?.[doc.id];
+                    if (!enrollmentId) return null;
+                    return (
+                        <CourseCard key={doc.id} course={doc.data()} courseId={doc.id} enrollmentId={enrollmentId} onUnenroll={handleUnenroll}/>
+                    )
+                })}
+            </div>
+        );
+    };
+
+    
     return (
         <div className="space-y-8 p-4 md:p-8">
-             {selectedPdf && (
-                <PDFViewer 
-                    pdfUrl={selectedPdf.url}
-                    title={selectedPdf.title}
-                    onOpenChange={(isOpen) => !isOpen && setSelectedPdf(null)}
-                />
-            )}
             <div>
                  <div className="flex items-center gap-3">
                     <Library className="h-10 w-10 text-primary" />
                     <h1 className="text-3xl md:text-4xl font-bold font-headline">
                         My Library
                     </h1>
-                     {hasNewReplies && (
-                        <Badge variant="destructive" className="animate-pulse">
-                            <BellDot className="h-4 w-4 mr-1.5"/> New Replies
-                        </Badge>
-                    )}
                  </div>
-                <p className="text-muted-foreground mt-2">All your learning materials in one place.</p>
+                <p className="text-muted-foreground mt-2">All your enrolled courses in one place.</p>
             </div>
-             <Tabs defaultValue="courses" className="w-full">
-                <TabsList className="grid w-full grid-cols-3 max-w-lg">
-                    <TabsTrigger value="courses">My Courses</TabsTrigger>
-                    <TabsTrigger value="ebooks">E-Books</TabsTrigger>
-                    <TabsTrigger value="notifications">Notifications</TabsTrigger>
+             <Tabs defaultValue="paid" className="w-full">
+                <TabsList className="grid w-full grid-cols-2 max-w-sm">
+                    <TabsTrigger value="paid">Paid Courses</TabsTrigger>
+                    <TabsTrigger value="free">Free Courses</TabsTrigger>
                 </TabsList>
-                <TabsContent value="courses" className="mt-6">
-                    {(authLoading || enrollmentsLoading || myCoursesLoading) && (
-                         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                            {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-80 w-full" />)}
-                        </div>
-                    )}
-                     {(enrollmentsError || myCoursesError) && <p className="text-destructive text-center">Could not load your courses.</p>}
-                    
-                    {!(myCoursesLoading || authLoading || enrollmentsLoading) && (!myCourses || myCourses.empty) && (
-                         <div className="text-center py-12">
-                            <BookOpenCheck className="mx-auto h-12 w-12 text-muted-foreground" />
-                            <h3 className="mt-4 text-lg font-semibold">No Courses Here</h3>
-                            <p className="mt-1 text-sm text-muted-foreground">You haven't enrolled in any courses yet.</p>
-                        </div>
-                    )}
-                    
-                    <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                        {myCourses?.docs.map(doc => {
-                             const enrollmentId = courseIdToEnrollmentIdMap?.[doc.id];
-                             if (!enrollmentId) return null;
-                            return (
-                                <CourseCard key={doc.id} course={doc.data()} courseId={doc.id} enrollmentId={enrollmentId} onUnenroll={handleUnenroll}/>
-                            )
-                        })}
-                    </div>
+                <TabsContent value="paid" className="mt-6">
+                    {renderCourseGrid(paidCourses)}
                 </TabsContent>
-                <TabsContent value="ebooks" className="mt-6">
-                     {ebooksLoading && (
-                         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                            {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-80 w-full" />)}
-                        </div>
-                    )}
-                    {ebooksError && <p className="text-destructive text-center">Could not load E-books.</p>}
-                     {!(ebooksLoading) && (!ebooks || ebooks.empty) && (
-                         <div className="text-center py-12">
-                            <EbookIcon className="mx-auto h-12 w-12 text-muted-foreground" />
-                            <h3 className="mt-4 text-lg font-semibold">No E-Books Available</h3>
-                            <p className="mt-1 text-sm text-muted-foreground">Please check back later for new e-books.</p>
-                        </div>
-                    )}
-                     <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                        {ebooks?.docs.map(doc => (
-                            <EBookCard key={doc.id} ebook={{id: doc.id, ...doc.data()}} onClick={() => handleEbookClick(doc.data())} />
-                        ))}
-                    </div>
-                </TabsContent>
-                 <TabsContent value="notifications" className="mt-6">
-                    <Card>
-                        <CardHeader className="flex flex-row items-center justify-between">
-                            <div>
-                                <CardTitle>Notifications</CardTitle>
-                                <CardDescription>Replies to your doubts and other updates.</CardDescription>
-                            </div>
-                            {hasNewReplies && <Button onClick={markAllAsRead}>Mark all as read</Button>}
-                        </CardHeader>
-                        <CardContent>
-                            {notificationsLoading && <Skeleton className="h-24 w-full" />}
-                            {notificationsError && <p className="text-destructive">Could not load notifications.</p>}
-                            {notifications && !notifications.empty ? (
-                                <div className="space-y-4">
-                                    {notifications.docs.map(doc => {
-                                        const notif = doc.data();
-                                        return (
-                                            <Link href={`/dashboard/courses/${notif.courseId}?tab=doubts`} key={doc.id}>
-                                            <div className="p-3 border rounded-lg hover:bg-muted">
-                                                <p><span className="font-bold">{notif.replierName}</span> replied to your doubt:</p>
-                                                <p className="text-sm text-muted-foreground italic">"{notif.doubtText}"</p>
-                                                <p className="text-xs text-muted-foreground mt-1">{notif.createdAt?.toDate().toLocaleString()}</p>
-                                            </div>
-                                            </Link>
-                                        )
-                                    })}
-                                </div>
-                            ) : (
-                                <div className="text-center py-12">
-                                    <BellDot className="mx-auto h-12 w-12 text-muted-foreground" />
-                                    <h3 className="mt-4 text-lg font-semibold">No New Notifications</h3>
-                                </div>
-                            )}
-                        </CardContent>
-                    </Card>
+                <TabsContent value="free" className="mt-6">
+                    {renderCourseGrid(freeCourses)}
                 </TabsContent>
             </Tabs>
         </div>

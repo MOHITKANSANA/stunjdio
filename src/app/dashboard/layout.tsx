@@ -31,6 +31,8 @@ import {
   Calendar,
   Info,
   Languages,
+  Gift,
+  Rss,
 } from 'lucide-react';
 
 import { useAuth } from '@/hooks/use-auth';
@@ -76,6 +78,7 @@ const sidebarNavItems = [
     { href: '/dashboard/tutor', icon: Bot, label: 'AI Tutor' },
     { href: '/dashboard/tests', icon: ShieldQuestion, label: 'ai_tests' },
     { href: '/dashboard/golingua', icon: Languages, label: 'GoLingua' },
+    { href: '/dashboard/feed', icon: Rss, label: 'Feed' },
 ];
 
 const kidsSidebarNavItems = [
@@ -125,9 +128,10 @@ const SidebarMenuItemWithHandler = ({ href, icon: Icon, label, closeSidebar }: {
 const AppSidebar = ({ isKidsMode, isMindSphereMode, appLogoUrl }: { isKidsMode: boolean, isMindSphereMode: boolean, appLogoUrl: string | null }) => {
     const { isMobile, setOpenMobile } = useSidebar();
     const { t } = useLanguage();
-    const { logout } = useAuth();
+    const { user, logout } = useAuth();
     const router = useRouter();
     const [customPages, setCustomPages] = useState<any[]>([]);
+     const [userData, setUserData] = useState<any>(null);
 
     useEffect(() => {
         const q = query(collection(firestore, "htmlPages"), orderBy("slug"));
@@ -136,6 +140,18 @@ const AppSidebar = ({ isKidsMode, isMindSphereMode, appLogoUrl }: { isKidsMode: 
         });
         return () => unsubscribe();
     }, []);
+    
+     useEffect(() => {
+        if (user) {
+        const userDocRef = doc(firestore, 'users', user.uid);
+        const unsubscribe = onSnapshot(userDocRef, (docSnap) => {
+            if (docSnap.exists()) {
+            setUserData(docSnap.data());
+            }
+        });
+        return () => unsubscribe();
+        }
+    }, [user]);
 
     const closeSidebar = () => {
         if (isMobile) {
@@ -156,85 +172,94 @@ const AppSidebar = ({ isKidsMode, isMindSphereMode, appLogoUrl }: { isKidsMode: 
 
     return (
         <Sidebar>
-            <SidebarContent className="bg-sidebar border-r border-sidebar-border">
-                <SidebarHeader>
-                     <div className='flex items-center gap-2'>
-                        {appLogoUrl ? (
-                            <Avatar className="h-8 w-8">
-                                <AvatarImage src={appLogoUrl} alt="App Logo" />
-                                <AvatarFallback>L</AvatarFallback>
+            <SidebarContent className="bg-sidebar border-r border-sidebar-border w-[250px] group-data-[collapsible=icon]:w-[52px]">
+                <div className="flex flex-col h-full">
+                     <div className="p-3 bg-yellow-400/10 m-2 rounded-lg">
+                        <div className="flex items-center gap-3">
+                            <Avatar className="h-12 w-12 border-2 border-yellow-400">
+                                <AvatarImage src={user?.photoURL || undefined} />
+                                <AvatarFallback className="bg-background text-foreground">{user?.displayName?.charAt(0) || 'U'}</AvatarFallback>
                             </Avatar>
-                        ) : (
-                            <Shield className="h-7 w-7 text-primary" />
-                        )}
-                        <span className="text-lg font-semibold font-headline">Learn with Munedra</span>
+                             <div className="group-data-[collapsible=icon]:hidden">
+                                <p className="font-bold text-yellow-300">{user?.displayName}</p>
+                                <p className="text-xs text-yellow-300/70">{userData?.phone || user?.email}</p>
+                            </div>
+                        </div>
                     </div>
-                </SidebarHeader>
-                <SidebarMenu>
-                    {navItems.map((item) => (
-                        <SidebarMenuItemWithHandler
-                            key={item.label}
-                            href={item.href}
-                            icon={item.icon}
-                            label={item.label}
-                            closeSidebar={closeSidebar}
-                        />
-                    ))}
-
-                    <SidebarMenuItemWithHandler
-                        href="/p/why-us"
-                        icon={Info}
-                        label="Why Us"
-                        closeSidebar={closeSidebar}
-                    />
-                     <SidebarMenuItemWithHandler
-                        href="/dashboard/my-learning?tab=ebooks"
-                        icon={BookCopy}
-                        label="E-books"
-                        closeSidebar={closeSidebar}
-                    />
-
-                    {customPages.map((page) => {
-                        if (page.id === 'why-us') return null; // Avoid duplicating "Why Us"
-                        return (
+                    
+                    <SidebarMenu className="flex-1 px-2">
+                        {navItems.map((item) => (
                             <SidebarMenuItemWithHandler
-                                key={page.id}
-                                href={`/p/${page.slug}`}
-                                icon={FileCode}
-                                label={page.slug.replace(/-/g, ' ')}
+                                key={item.label}
+                                href={item.href}
+                                icon={item.icon}
+                                label={item.label}
                                 closeSidebar={closeSidebar}
                             />
-                        )
-                    })}
+                        ))}
 
-                     <SidebarSeparator />
-                     <SidebarMenuItem>
-                        <Link href="/admin" onClick={closeSidebar}>
-                           <SidebarMenuButton>
-                                <UserCog />
-                                <span>Admin</span>
-                            </SidebarMenuButton>
-                        </Link>
-                    </SidebarMenuItem>
-                </SidebarMenu>
-                <SidebarFooter>
-                    <SidebarMenu>
+                        <SidebarMenuItemWithHandler
+                            href="/p/why-us"
+                            icon={Info}
+                            label="Why Us"
+                            closeSidebar={closeSidebar}
+                        />
+
+                        {customPages.map((page) => {
+                            if (page.id === 'why-us') return null; // Avoid duplicating "Why Us"
+                            return (
+                                <SidebarMenuItemWithHandler
+                                    key={page.id}
+                                    href={`/p/${page.slug}`}
+                                    icon={FileCode}
+                                    label={page.slug.replace(/-/g, ' ')}
+                                    closeSidebar={closeSidebar}
+                                />
+                            )
+                        })}
+
+                        <SidebarSeparator />
                         <SidebarMenuItem>
-                             <Link href="/dashboard/settings" onClick={closeSidebar}>
-                                <SidebarMenuButton>
-                                    <Settings />
-                                    <span>{t('settings')}</span>
+                            <Link href="/admin" onClick={closeSidebar}>
+                            <SidebarMenuButton>
+                                    <UserCog />
+                                    <span>Admin</span>
                                 </SidebarMenuButton>
                             </Link>
                         </SidebarMenuItem>
-                        <SidebarMenuItem>
-                            <SidebarMenuButton onClick={handleLogout}>
-                                <LogOut />
-                                <span>{t('log_out')}</span>
-                            </SidebarMenuButton>
-                        </SidebarMenuItem>
                     </SidebarMenu>
-                </SidebarFooter>
+
+                    <div className="p-3 bg-yellow-400/10 m-2 rounded-lg group-data-[collapsible=icon]:p-0 group-data-[collapsible=icon]:bg-transparent">
+                        <Link href="/refer">
+                             <div className="flex items-center gap-3 justify-center">
+                                <Gift className="text-yellow-400 h-8 w-8" />
+                                <div className="group-data-[collapsible=icon]:hidden">
+                                    <p className="font-bold text-yellow-300">Refer & Earn</p>
+                                    <p className="text-xs text-yellow-300/70">Invite friends & get rewards</p>
+                                </div>
+                            </div>
+                        </Link>
+                    </div>
+
+                    <SidebarFooter className="px-2 pb-2">
+                        <SidebarMenu>
+                             <SidebarMenuItem>
+                                <Link href="/dashboard/settings" onClick={closeSidebar}>
+                                    <SidebarMenuButton>
+                                        <Settings />
+                                        <span>{t('settings')}</span>
+                                    </SidebarMenuButton>
+                                </Link>
+                            </SidebarMenuItem>
+                            <SidebarMenuItem>
+                                <SidebarMenuButton onClick={handleLogout}>
+                                    <LogOut />
+                                    <span>{t('log_out')}</span>
+                                </SidebarMenuButton>
+                            </SidebarMenuItem>
+                        </SidebarMenu>
+                    </SidebarFooter>
+                </div>
             </SidebarContent>
         </Sidebar>
     )
@@ -422,7 +447,7 @@ export default function DashboardLayout({
 
   return (
       <SidebarProvider>
-          <div className="flex h-screen w-full flex-col bg-gray-50 dark:bg-gray-950">
+          <div className="flex h-screen w-full flex-col bg-background">
              {isScreenLocked && <ScreenTimeLock />}
              {!isVideoPlaybackPage && <AppHeader appLogoUrl={appLogoUrl} />}
              <div className={cn("flex flex-col md:flex-row w-full h-full overflow-hidden")}>
