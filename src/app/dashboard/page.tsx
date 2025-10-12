@@ -19,7 +19,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { useAuth } from '@/hooks/use-auth';
 import { cn } from '@/lib/utils';
 import { LiveClassTimer, TopStudentsSection, InstallPwaPrompt, SocialMediaLinks, StudentReviews, DashboardMarquee } from './_components/dashboard-widgets';
-import { doc, getDoc, onSnapshot, collection } from 'firebase/firestore';
+import { doc, getDoc, onSnapshot, collection, query, orderBy } from 'firebase/firestore';
 import { firestore } from '@/lib/firebase';
 import { Button } from '@/components/ui/button';
 import { Loader2 } from 'lucide-react';
@@ -39,7 +39,7 @@ const quickAccessItems = [
 ];
 
 const OurEducators = () => {
-    const [educators, loading] = useCollection(collection(firestore, 'educators'));
+    const [educators, loading] = useCollection(query(collection(firestore, 'educators'), orderBy('createdAt', 'desc')));
 
     if (loading) return null;
     if (!educators || educators.empty) return null;

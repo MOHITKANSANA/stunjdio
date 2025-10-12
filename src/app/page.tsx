@@ -8,7 +8,6 @@ import { cn } from "@/lib/utils";
 import Image from "next/image";
 import { doc, onSnapshot } from "firebase/firestore";
 import { firestore } from "@/lib/firebase";
-import { Badge } from "@/components/ui/badge";
 
 export default function WelcomePage() {
     const { user, loading: authLoading } = useAuth();
@@ -25,7 +24,7 @@ export default function WelcomePage() {
 
         const redirectTimer = setTimeout(() => {
             setIsFading(true);
-        }, 3500);
+        }, 2500);
 
         const navigationTimer = setTimeout(() => {
             if (!authLoading) {
@@ -35,7 +34,7 @@ export default function WelcomePage() {
                     router.replace('/login');
                 }
             }
-        }, 4000); // Wait for fade-out animation
+        }, 3000); // Wait for fade-out animation
 
         return () => {
             appConfigUnsub();
@@ -45,29 +44,28 @@ export default function WelcomePage() {
     }, [user, authLoading, router]);
 
     return (
-        <div className={cn("splash-container h-screen w-screen flex items-center justify-center transition-opacity duration-500", isFading && "opacity-0")}>
-            <div className="text-center p-4">
+        <div className={cn("splash-container h-screen w-screen flex flex-col items-center justify-center transition-opacity duration-500", isFading && "opacity-0")}>
+            <div className="flex-grow flex flex-col items-center justify-center text-center p-4">
                  <div className="relative inline-block splash-item splash-item-1">
                     {appLogoUrl ? (
-                         <Image src={appLogoUrl} alt="App Logo" width={160} height={160} className="h-40 w-40 rounded-full" priority />
+                         <Image src={appLogoUrl} alt="App Logo" width={180} height={180} className="h-44 w-44 rounded-full shadow-lg" priority />
                     ) : (
-                         <div className="h-40 w-40 rounded-full bg-primary/20 flex items-center justify-center">
-                            <span className="text-5xl font-bold text-primary">L</span>
+                         <div className="h-44 w-44 rounded-full bg-primary/20 flex items-center justify-center shadow-lg">
+                            <span className="text-6xl font-bold text-primary">L</span>
                          </div>
                     )}
                 </div>
 
                 <h1 className="splash-item splash-item-2 text-4xl md:text-5xl font-bold font-headline mt-6 metallic-text">Learn with Munedra</h1>
+                 <p className="splash-item splash-item-2 text-lg text-muted-foreground mt-2">Learn. Practice. Succeed.</p>
                 
-                <div className="splash-item splash-item-3 mt-12 space-y-4">
-                     <p className="text-sm font-medium text-muted-foreground uppercase tracking-widest">
-                        UPSC • SSC • NDA • Sainik School
-                     </p>
-                     <p className="text-sm text-muted-foreground">Mobile: +91 9327175729</p>
-                </div>
             </div>
-             <div className="absolute bottom-6 text-center w-full splash-item splash-item-3">
-                 <p className="text-sm font-medium text-muted-foreground">
+             <div className="w-full text-center pb-8 splash-item splash-item-3">
+                 <p className="text-sm font-medium text-muted-foreground uppercase tracking-widest">
+                    UPSC • SSC • NDA • Sainik School
+                 </p>
+                 <p className="text-sm text-muted-foreground mt-2">Mobile: +91 9327175729</p>
+                 <p className="text-xs font-medium text-muted-foreground/80 mt-4">
                     Made with ❤️ in India
                  </p>
             </div>

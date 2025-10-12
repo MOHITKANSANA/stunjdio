@@ -181,14 +181,18 @@ export const InstallPwaPrompt = () => {
 export const SocialMediaLinks = () => {
     const [socialLinks, loading] = useDocumentData(doc(firestore, 'settings', 'appConfig'));
 
-    const SocialIcon = ({ name }: { name: string }) => {
-        switch (name.toLowerCase()) {
+    const SocialIcon = ({ iconName, iconUrl }: { iconName?: string, iconUrl?: string }) => {
+        switch (iconName) {
             case 'youtube': return <Youtube />;
             case 'facebook': return <Facebook />;
             case 'instagram': return <Instagram />;
             case 'twitter': return <Twitter />;
             case 'linkedin': return <Linkedin />;
-            default: return <LinkIcon />;
+            default:
+                if (iconUrl) {
+                    return <Image src={iconUrl} alt="social icon" width={20} height={20} className="rounded-full"/>;
+                }
+                return <LinkIcon />;
         }
     }
 
@@ -202,7 +206,7 @@ export const SocialMediaLinks = () => {
                 {socialLinks.socialMediaLinks.map((link: any) => (
                     <a key={link.url} href={link.url} target="_blank" rel="noopener noreferrer">
                         <Button variant="outline" size="icon" className="rounded-full h-12 w-12">
-                            <SocialIcon name={link.icon} />
+                            <SocialIcon iconName={link.iconName} iconUrl={link.icon} />
                         </Button>
                     </a>
                 ))}

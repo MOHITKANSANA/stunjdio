@@ -14,15 +14,17 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 const PDFViewer = ({ pdfUrl, title, onOpenChange }: { pdfUrl: string, title: string, onOpenChange: (open: boolean) => void }) => {
     
     let effectiveUrl = pdfUrl;
-    if (!pdfUrl.includes('drive.google.com/file') && !pdfUrl.includes('embed')) {
-        // Use Google Docs viewer for direct links, but not for Google Drive links which need a different format.
-        effectiveUrl = `https://docs.google.com/gview?url=${encodeURIComponent(pdfUrl)}&embedded=true`;
-    }
 
     if (pdfUrl.includes('drive.google.com/file')) {
         const fileId = pdfUrl.split('/d/')[1].split('/')[0];
         effectiveUrl = `https://drive.google.com/file/d/${fileId}/preview`;
+    } else if (pdfUrl.includes('workdrive.zoho.in/file')) {
+        const fileId = pdfUrl.split('/file/')[1];
+        effectiveUrl = `https://workdrive.zoho.in/embed/${fileId}`;
+    } else if (!pdfUrl.includes('embed') && !pdfUrl.startsWith('https://docs.google.com/gview')) {
+        effectiveUrl = `https://docs.google.com/gview?url=${encodeURIComponent(pdfUrl)}&embedded=true`;
     }
+
 
     return (
         <Dialog open={true} onOpenChange={onOpenChange}>
@@ -66,7 +68,11 @@ export default function EbooksPage() {
     const [selectedPdf, setSelectedPdf] = useState<{ url: string, title: string } | null>(null);
 
     const handleEbookClick = (ebookData: any) => {
-        setSelectedPdf({ url: ebookData.fileUrl, title: ebookData.title });
+        if (ebookData.viewType === 'browser') {
+            window.open(ebookData.fileUrl, '_blank');
+        } else {
+            setSelectedPdf({ url: ebookData.fileUrl, title: ebookData.title });
+        }
     };
     
     return (

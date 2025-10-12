@@ -1,27 +1,27 @@
 
 'use server';
 
-import { admin, firestore as adminFirestore } from '@/lib/firebase-admin';
-import { getMessaging } from 'firebase-admin/messaging';
+import { admin, messaging } from '@/lib/firebase-admin';
 
 export async function sendNotificationsAction(
   title: string,
   message: string
 ): Promise<{ success: boolean; successCount?: number; error?: string }> {
   try {
-    // lib/firebase-admin now handles initialization, so this check is simpler.
     if (!admin.apps.length) {
-        throw new Error("Firebase Admin SDK is not initialized correctly.");
+        console.error("Firebase Admin SDK is not initialized correctly.");
+        // Attempt to re-initialize or handle the error gracefully.
+        // For now, we'll throw an error that the client can catch.
+        throw new Error("Firebase Admin SDK is not initialized on the server.");
     }
     
-    // Use adminFirestore for querying user data on the server
-    const usersSnapshot = await adminFirestore.collection('users').get();
+    // Use admin firestore instance
+    const usersSnapshot = await admin.firestore().collection('users').get();
     const allTokens: string[] = [];
 
     usersSnapshot.forEach(doc => {
       const userData = doc.data();
       if (userData.fcmTokens && Array.isArray(userData.fcmTokens)) {
-        // Add all tokens from the array
         allTokens.push(...userData.fcmTokens);
       }
     });
@@ -30,7 +30,6 @@ export async function sendNotificationsAction(
       return { success: true, successCount: 0, error: "No registered devices found to send notifications." };
     }
 
-    // Ensure we only send to unique tokens to avoid duplicate messages and errors
     const uniqueTokens = [...new Set(allTokens)];
 
     const messagePayload = {
@@ -47,20 +46,17 @@ export async function sendNotificationsAction(
       tokens: uniqueTokens,
     };
     
-    // Use getMessaging() from firebase-admin/messaging
-    const response = await getMessaging().sendEachForMulticast(messagePayload);
+    const response = await messaging.sendEachForMulticast(messagePayload);
 
     if (response.failureCount > 0) {
         const failedTokens: string[] = [];
         response.responses.forEach((resp, idx) => {
             if (!resp.success) {
-                // Log the error and the token that failed.
                 console.error(`Failed to send to token ${uniqueTokens[idx]}:`, resp.error);
                 failedTokens.push(uniqueTokens[idx]);
             }
         });
-        console.error('List of tokens that caused failures: ' + failedTokens);
-        // We still count it as a partial success if some notifications were sent.
+        console.error('List of tokens that caused failures: ' + failedTokens.join(', '));
         return { success: true, successCount: response.successCount, error: `${response.failureCount} notifications failed to send.`};
     }
 

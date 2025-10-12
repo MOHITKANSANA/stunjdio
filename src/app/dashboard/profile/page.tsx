@@ -81,9 +81,17 @@ export default function ProfilePage() {
         if (currentToken) {
           setFcmToken(currentToken);
           const userDocRef = doc(firestore, 'users', user.uid);
-          await updateDoc(userDocRef, {
-            fcmTokens: arrayUnion(currentToken)
+          // Check if token already exists to avoid duplicates
+          const userDoc = await onSnapshot(userDocRef, (doc) => {
+              if (doc.exists() && doc.data().fcmTokens?.includes(currentToken)) {
+                  // Token already exists
+              } else {
+                  updateDoc(userDocRef, {
+                    fcmTokens: arrayUnion(currentToken)
+                  });
+              }
           });
+          
           toast({
             title: "Notifications Enabled",
             description: "You will now receive notifications.",

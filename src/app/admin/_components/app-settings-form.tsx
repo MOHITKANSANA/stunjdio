@@ -40,7 +40,8 @@ type LogoFormValues = z.infer<typeof logoSchema>;
 const socialLinkSchema = z.object({
     name: z.string().min(1, "Name is required"),
     url: z.string().url("Invalid URL"),
-    icon: z.any().refine(file => file, 'An icon image is required.'),
+    icon: z.any().optional(), // Make icon optional for predefined ones
+    iconName: z.string().optional(),
 });
 
 const appSettingsSchema = z.object({
@@ -58,7 +59,7 @@ function fileToDataUrl(file: File): Promise<string> {
   });
 }
 
-const SocialIcon = ({ icon }: { icon: string | File }) => {
+const SocialIcon = ({ icon, iconName }: { icon?: string | File, iconName?: string }) => {
     const [iconUrl, setIconUrl] = useState('');
 
     useEffect(() => {
@@ -68,12 +69,20 @@ const SocialIcon = ({ icon }: { icon: string | File }) => {
             const url = URL.createObjectURL(icon);
             setIconUrl(url);
             return () => URL.revokeObjectURL(url);
+        } else {
+            setIconUrl('');
         }
     }, [icon]);
-    
-    if (!iconUrl) return <LinkIcon className="h-10 w-10" />
 
-    return <Image src={iconUrl} alt="icon" width={40} height={40} className="rounded-full" />
+    if (iconName === 'youtube') return <Youtube className="h-10 w-10 text-red-600" />
+    if (iconName === 'instagram') return <Instagram className="h-10 w-10 text-pink-600" />
+    if (iconName === 'facebook') return <Facebook className="h-10 w-10 text-blue-600" />
+    if (iconName === 'twitter') return <Twitter className="h-10 w-10 text-sky-500" />
+    if (iconName === 'linkedin') return <Linkedin className="h-10 w-10 text-blue-700" />
+    
+    if (iconUrl) return <Image src={iconUrl} alt="icon" width={40} height={40} className="rounded-full" />
+    
+    return <LinkIcon className="h-10 w-10" />
 };
 
 export function AppSettingsForm() {
@@ -181,12 +190,14 @@ export function AppSettingsForm() {
     setIsSocialLoading(true);
     try {
       const linksToSave = await Promise.all(
-        data.socialMediaLinks!.map(async (link) => {
+        (data.socialMediaLinks || []).map(async (link) => {
+          let iconUrl = '';
           if (link.icon instanceof File) {
-            const iconUrl = await fileToDataUrl(link.icon);
-            return { name: link.name, url: link.url, icon: iconUrl };
+            iconUrl = await fileToDataUrl(link.icon);
+          } else if (typeof link.icon === 'string') {
+            iconUrl = link.icon;
           }
-          return link;
+          return { name: link.name, url: link.url, icon: iconUrl, iconName: link.iconName };
         })
       );
 
@@ -302,33 +313,59 @@ export function AppSettingsForm() {
             <CardContent>
                  <Form {...socialForm}>
                     <form onSubmit={socialForm.handleSubmit(onSocialSubmit)} className="space-y-6">
-                        {fields.map((field, index) => (
+                        {fields.map((field, index) => {
+                             const selectedIconName = socialForm.watch(`socialMediaLinks.${index}.iconName`);
+                             return (
                              <div key={field.id} className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end p-4 border rounded-lg">
                                 <FormField control={socialForm.control} name={`socialMediaLinks.${index}.name`} render={({ field }) => (
                                     <FormItem><FormLabel>Name</FormLabel><FormControl><Input placeholder="e.g. YouTube Channel" {...field} /></FormControl><FormMessage /></FormItem>
                                 )}/>
                                 <FormField control={socialForm.control} name={`socialMediaLinks.${index}.url`} render={({ field }) => (
-                                    <FormItem className="md:col-span-2"><FormLabel>URL</FormLabel><FormControl><Input placeholder="https://youtube.com/..." {...field} /></FormControl><FormMessage /></FormItem>
+                                    <FormItem><FormLabel>URL</FormLabel><FormControl><Input placeholder="https://youtube.com/..." {...field} /></FormControl><FormMessage /></FormItem>
                                 )}/>
+                                <FormField
+                                    control={socialForm.control}
+                                    name={`socialMediaLinks.${index}.iconName`}
+                                    render={({ field }) => (
+                                      <FormItem>
+                                        <FormLabel>Icon</FormLabel>
+                                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                          <FormControl>
+                                            <SelectTrigger><SelectValue placeholder="Select Icon" /></SelectTrigger>
+                                          </FormControl>
+                                          <SelectContent>
+                                            <SelectItem value="youtube">YouTube</SelectItem>
+                                            <SelectItem value="instagram">Instagram</SelectItem>
+                                            <SelectItem value="facebook">Facebook</SelectItem>
+                                            <SelectItem value="twitter">Twitter</SelectItem>
+                                            <SelectItem value="linkedin">LinkedIn</SelectItem>
+                                            <SelectItem value="custom">Custom...</SelectItem>
+                                          </SelectContent>
+                                        </Select>
+                                      </FormItem>
+                                    )}
+                                  />
                                 <div className="flex items-center gap-2">
-                                     <FormField
-                                        control={socialForm.control}
-                                        name={`socialMediaLinks.${index}.icon`}
-                                        render={({ field: { onChange, value, ...rest } }) => (
-                                            <FormItem className="flex-1">
-                                                <FormLabel>Icon</FormLabel>
-                                                <FormControl>
-                                                    <Input type="file" accept="image/*" onChange={(e) => onChange(e.target.files?.[0])} />
-                                                </FormControl>
-                                            </FormItem>
-                                        )}
-                                    />
+                                     {selectedIconName === 'custom' && (
+                                        <FormField
+                                            control={socialForm.control}
+                                            name={`socialMediaLinks.${index}.icon`}
+                                            render={({ field: { onChange, value, ...rest } }) => (
+                                                <FormItem className="flex-1">
+                                                    <FormLabel className="sr-only">Upload</FormLabel>
+                                                    <FormControl>
+                                                        <Input type="file" accept="image/*" onChange={(e) => onChange(e.target.files?.[0])} />
+                                                    </FormControl>
+                                                </FormItem>
+                                            )}
+                                        />
+                                     )}
                                     <Button type="button" variant="destructive" size="icon" onClick={() => remove(index)}><Trash2 className="h-4 w-4" /></Button>
                                </div>
                             </div>
-                        ))}
+                         )})}
                          <div className="flex justify-between items-center">
-                             <Button type="button" variant="outline" onClick={() => append({ name: '', url: '', icon: '' })}><PlusCircle className="mr-2"/>Add Link</Button>
+                             <Button type="button" variant="outline" onClick={() => append({ name: '', url: '', iconName: 'link' })}><PlusCircle className="mr-2"/>Add Link</Button>
                              <Button type="submit" disabled={isSocialLoading}>
                                 {isSocialLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                 Save Social Links

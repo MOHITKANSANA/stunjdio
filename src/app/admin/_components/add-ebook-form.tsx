@@ -14,11 +14,13 @@ import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import { firestore } from '@/lib/firebase';
 import { Loader2, Upload } from 'lucide-react';
 import Image from 'next/image';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const ebookSchema = z.object({
   title: z.string().min(1, 'Title is required.'),
   description: z.string().optional(),
   fileUrl: z.string().url('Must be a valid PDF URL.'),
+  viewType: z.enum(['in-app', 'browser'], { required_error: 'Please select a view type.' }),
   thumbnailFile: z.any().refine(file => file, 'Thumbnail is required.'),
 });
 
@@ -45,6 +47,7 @@ export function AddEbookForm() {
       title: '',
       description: '',
       fileUrl: '',
+      viewType: 'in-app',
     },
   });
 
@@ -65,6 +68,7 @@ export function AddEbookForm() {
         title: data.title,
         description: data.description,
         fileUrl: data.fileUrl,
+        viewType: data.viewType,
         thumbnailUrl: thumbnailUrl,
         createdAt: serverTimestamp(),
       });
@@ -120,6 +124,29 @@ export function AddEbookForm() {
         <FormField control={form.control} name="fileUrl" render={({ field }) => (
           <FormItem><FormLabel>PDF File URL</FormLabel><FormControl><Input placeholder="https://example.com/ebook.pdf" {...field} /></FormControl><FormMessage /></FormItem>
         )} />
+        
+        <FormField
+          control={form.control}
+          name="viewType"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>View Type</FormLabel>
+              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="How should the PDF open?" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  <SelectItem value="in-app">View in App</SelectItem>
+                  <SelectItem value="browser">Open in New Tab</SelectItem>
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        
         <Button type="submit" disabled={isLoading}>
           {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
           Add E-book
