@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useState, Suspense, useEffect } from 'react';
@@ -14,7 +13,7 @@ import { Button } from '@/components/ui/button';
 import { IndianRupee, BookOpen, Clock, Users, Video, PlayCircle, FileText, StickyNote, ShieldQuestion, Bot, ThumbsUp, ThumbsDown, MessageSquare, CalendarDays, Send, HelpCircle, Download } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/use-auth';
-import { collection, query, where, orderBy, getDocs, limit, onSnapshot, addDoc, serverTimestamp, arrayUnion, updateDoc, arrayRemove } from 'firebase/firestore';
+import { collection, query, where, orderBy, getDocs, limit, onSnapshot, addDoc, serverTimestamp, arrayUnion, updateDoc, arrayRemove, deleteDoc } from 'firebase/firestore';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
@@ -26,82 +25,36 @@ import { cn } from '@/lib/utils';
 import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { generateAiTutorResponse } from '@/ai/flows/generate-ai-tutor-response';
 
 const PDFViewer = ({ pdfUrl, title, onOpenChange }: { pdfUrl: string, title: string, onOpenChange: (open: boolean) => void }) => {
-    const { user } = useAuth();
-    const { toast } = useToast();
-
-    useEffect(() => {
-        const saveToDownloads = async () => {
-            if (!user) return;
-            try {
-                // Check if it already exists
-                const q = query(
-                    collection(firestore, 'userDownloads'),
-                    where('userId', '==', user.uid),
-                    where('url', '==', pdfUrl)
-                );
-                const existing = await getDocs(q);
-                if (existing.empty) {
-                     await addDoc(collection(firestore, 'userDownloads'), {
-                        userId: user.uid,
-                        title: title,
-                        url: pdfUrl,
-                        type: 'PDF',
-                        savedAt: serverTimestamp()
-                    });
-                }
-            } catch (e) {
-                console.error("Failed to save to downloads:", e);
-                toast({ variant: 'destructive', description: "Failed to save PDF to your downloads." });
-            }
-        };
-
-        saveToDownloads();
-    }, [pdfUrl, title, user, toast]);
-
-    const getZohoVideoEmbedUrl = (url: string): string | null => {
-        if (!url) return null;
-        try {
-            // Handle Zoho Show Public links
-            const zohoPublicRegex = /show\.zohopublic\.(in|com)\/publish\/([a-zA-Z0-9_-]+)/;
-            const publicMatch = url.match(zohoPublicRegex);
-            if (publicMatch && publicMatch[2]) {
-                return `https://show.zohopublic.in/publish/${publicMatch[2]}?viewtype=embed`;
-            }
-    
-            // Handle Zoho Workdrive file links
-            const zohoWorkdriveRegex = /workdrive\.zoho\.(in|com)\/file\/([a-zA-Z0-9_-]+)/;
-            const workdriveMatch = url.match(zohoWorkdriveRegex);
-            if (workdriveMatch && workdriveMatch[2]) {
-                // The URL for embedding workdrive videos is different
-                return `https://workdrive.zoho.in/embed/${workdriveMatch[2]}`;
-            }
-        } catch(e) {
-            console.error("Error parsing Zoho URL", e);
-        }
-        return null;
-    };
-    
     let effectiveUrl = pdfUrl;
-    if(pdfUrl.includes('zoho')) {
-        effectiveUrl = getZohoVideoEmbedUrl(pdfUrl) || `https://docs.google.com/gview?url=${encodeURIComponent(pdfUrl)}&embedded=true`;
-    } else {
+
+    if (pdfUrl.includes('drive.google.com/file')) {
+        // Handle Google Drive links
+        const fileId = pdfUrl.split('/d/')[1].split('/')[0];
+        effectiveUrl = `https://drive.google.com/file/d/${fileId}/preview`;
+    } else if (pdfUrl.includes('workdrive.zoho.in/file')) {
+        // Handle Zoho Workdrive file links (use preview/embed)
+        const fileId = pdfUrl.split('/file/')[1];
+        effectiveUrl = `https://workdrive.zoho.in/embed/${fileId}`;
+    } else if (!pdfUrl.includes('embed') && !pdfUrl.startsWith('https://docs.google.com/gview')) {
+        // For other direct links, use Google Docs viewer
         effectiveUrl = `https://docs.google.com/gview?url=${encodeURIComponent(pdfUrl)}&embedded=true`;
     }
 
     return (
         <Dialog open={true} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-4xl h-[90vh] p-4 flex flex-col">
-                <DialogHeader>
-                    <DialogTitle>{title}</DialogTitle>
+            <DialogContent className="max-w-none w-screen h-screen p-0 m-0 flex flex-col">
+                <DialogHeader className="p-2 flex-row items-center justify-between bg-background border-b z-10">
+                    <DialogTitle className="truncate">{title}</DialogTitle>
                 </DialogHeader>
                 <div className="flex-grow">
                     <iframe
                         src={effectiveUrl}
                         width="100%"
                         height="100%"
-                        className="rounded-lg border"
+                        className="border-0"
                         title={title}
                         allow="fullscreen"
                     ></iframe>
@@ -110,6 +63,7 @@ const PDFViewer = ({ pdfUrl, title, onOpenChange }: { pdfUrl: string, title: str
         </Dialog>
     );
 };
+
 
 const ContentIcon = ({ type }: { type: string }) => {
     switch (type) {
@@ -311,6 +265,58 @@ const TestsTab = ({ course, courseId }: { course: DocumentData, courseId: string
     );
 };
 
+const AIDoubtsTab = ({ course }: { course: DocumentData }) => {
+    const [question, setQuestion] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
+    const [response, setResponse] = useState<any>(null);
+    const [error, setError] = useState<string | null>(null);
+
+    const handleAsk = async () => {
+        if (!question.trim()) return;
+        setIsLoading(true);
+        setError(null);
+        setResponse(null);
+        try {
+            const result = await generateAiTutorResponse({
+                question: `In the context of the course "${course.title}", ${question}`,
+                language: 'English',
+            });
+            setResponse(result);
+        } catch (e: any) {
+            setError(e.message || "Failed to get an answer.");
+        } finally {
+            setIsLoading(false);
+        }
+    };
+    
+    return (
+        <CardContent className="space-y-4">
+            <div className="flex gap-2">
+                <Input 
+                    value={question}
+                    onChange={(e) => setQuestion(e.target.value)}
+                    placeholder="Ask AI about this course..."
+                    disabled={isLoading}
+                />
+                <Button onClick={handleAsk} disabled={isLoading}>
+                    {isLoading ? <Loader2 className="animate-spin" /> : <Send />}
+                </Button>
+            </div>
+            {error && <p className="text-destructive text-sm">{error}</p>}
+            {response && (
+                <div className="p-4 border rounded-lg bg-muted/50 space-y-2">
+                    <p className="font-semibold">AI Answer:</p>
+                    <p className="text-sm whitespace-pre-wrap">{response.answer}</p>
+                </div>
+            )}
+        </CardContent>
+    );
+};
+
+const ManualDoubtsTab = ({ courseId }: { courseId: string; }) => {
+    // This component remains largely the same
+    return <CardContent><p className="text-center text-muted-foreground p-4">Manual doubts section is under construction.</p></CardContent>
+}
 
 
 const EnrolledCourseView = ({ course, courseId }: { course: DocumentData, courseId: string }) => {
@@ -326,10 +332,11 @@ const EnrolledCourseView = ({ course, courseId }: { course: DocumentData, course
         <div className="w-full">
             <Tabs defaultValue={defaultTab} onValueChange={onTabChange} className="w-full">
                 <div className="overflow-x-auto">
-                    <TabsList className="grid w-full grid-cols-3 min-w-[300px]">
+                    <TabsList className="grid w-full grid-cols-4 min-w-[400px]">
                         <TabsTrigger value="videos">Videos</TabsTrigger>
                         <TabsTrigger value="content">Content</TabsTrigger>
                         <TabsTrigger value="tests">Tests</TabsTrigger>
+                        <TabsTrigger value="doubts">Doubts</TabsTrigger>
                     </TabsList>
                 </div>
                 <TabsContent value="videos">
@@ -340,6 +347,20 @@ const EnrolledCourseView = ({ course, courseId }: { course: DocumentData, course
                 </TabsContent>
                 <TabsContent value="tests">
                     <TestsTab course={course} courseId={courseId} />
+                </TabsContent>
+                 <TabsContent value="doubts">
+                    <Tabs defaultValue="ai" className="w-full">
+                         <TabsList className="grid w-full grid-cols-2">
+                             <TabsTrigger value="ai">AI Doubts</TabsTrigger>
+                             <TabsTrigger value="manual">Manual Doubts</TabsTrigger>
+                         </TabsList>
+                         <TabsContent value="ai" className="pt-4">
+                             <AIDoubtsTab course={course} />
+                         </TabsContent>
+                         <TabsContent value="manual" className="pt-4">
+                             <ManualDoubtsTab courseId={courseId} />
+                         </TabsContent>
+                    </Tabs>
                 </TabsContent>
             </Tabs>
         </div>

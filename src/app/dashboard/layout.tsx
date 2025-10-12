@@ -68,10 +68,10 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 const sidebarNavItems = [
     { href: '/dashboard', icon: Home, label: 'home' },
     { href: '/dashboard/my-learning', icon: Library, label: 'My Library' },
+    { href: '/dashboard/ebooks', icon: BookCopy, label: 'E-Books' },
     { href: '/dashboard/profile', icon: User, label: 'profile' },
     { href: '/dashboard/courses', icon: Book, label: 'courses' },
     { href: '/dashboard/live-classes', icon: Clapperboard, label: 'Live Classes' },
-    { href: '/dashboard/courses/free', icon: BookCopy, label: 'Free Courses' },
     { href: '/dashboard/scholarship', icon: Award, label: 'scholarship' },
     { href: '/dashboard/papers', icon: Newspaper, label: 'Previous Papers' },
     { href: '/dashboard/news', icon: Newspaper, label: 'News' },
@@ -234,8 +234,8 @@ const AppSidebar = ({ isKidsMode, isMindSphereMode, appLogoUrl }: { isKidsMode: 
                              <div className="flex items-center gap-3 justify-center">
                                 <Gift className="text-yellow-400 h-8 w-8" />
                                 <div className="group-data-[collapsible=icon]:hidden">
-                                    <p className="font-bold text-yellow-300">Refer & Earn</p>
-                                    <p className="text-xs text-yellow-300/70">Invite friends & get rewards</p>
+                                    <p className="font-bold text-yellow-300">Refer &amp; Earn</p>
+                                    <p className="text-xs text-yellow-300/70">Invite friends &amp; get rewards</p>
                                 </div>
                             </div>
                         </Link>
@@ -454,7 +454,7 @@ export default function DashboardLayout({
                 {!isVideoPlaybackPage && <AppSidebar isKidsMode={isKidsMode} isMindSphereMode={isMindSphereMode} appLogoUrl={appLogoUrl} />}
                  <main className="flex-1 overflow-y-auto h-full">
                     <SidebarInset>
-                        <div className={cn(!isVideoPlaybackPage && '')}>
+                        <div className={cn(!isVideoPlaybackPage && 'p-4 md:p-6')}>
                             {children}
                         </div>
                     </SidebarInset>
