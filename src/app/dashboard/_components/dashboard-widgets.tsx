@@ -20,6 +20,7 @@ import { useAuth } from '@/hooks/use-auth';
 import Autoplay from "embla-carousel-autoplay";
 import { cn } from '@/lib/utils';
 import { getAudioAction } from '@/app/actions/ai-tutor';
+import NextImage from 'next/image';
 
 export const LiveClassTimer = () => {
     const [liveClass, setLiveClass] = useState<any>(null);
@@ -190,7 +191,7 @@ export const SocialMediaLinks = () => {
             case 'linkedin': return <Linkedin />;
             default:
                 if (iconUrl) {
-                    return <Image src={iconUrl} alt="social icon" width={20} height={20} className="rounded-full"/>;
+                    return <NextImage src={iconUrl} alt="social icon" width={20} height={20} className="rounded-full"/>;
                 }
                 return <LinkIcon />;
         }
