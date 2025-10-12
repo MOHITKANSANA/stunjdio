@@ -21,6 +21,7 @@ import Autoplay from "embla-carousel-autoplay";
 import { cn } from '@/lib/utils';
 import { getAudioAction } from '@/app/actions/ai-tutor';
 import NextImage from 'next/image';
+import { trackPwaInstallAction } from '@/app/actions/pwa';
 
 export const LiveClassTimer = () => {
     const [liveClass, setLiveClass] = useState<any>(null);
@@ -130,6 +131,7 @@ export const TopStudentsSection = () => {
 }
 
 export const InstallPwaPrompt = () => {
+    const { user } = useAuth();
     const [installPrompt, setInstallPrompt] = useState<any>(null);
     const [isVisible, setIsVisible] = useState(false);
 
@@ -155,6 +157,9 @@ export const InstallPwaPrompt = () => {
             installPrompt.userChoice.then((choiceResult: { outcome: string }) => {
                 if (choiceResult.outcome === 'accepted') {
                    setIsVisible(false);
+                   if (user) {
+                       trackPwaInstallAction(user.uid);
+                   }
                 }
             });
         }

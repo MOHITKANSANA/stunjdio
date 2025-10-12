@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { doc, updateDoc, arrayUnion, onSnapshot } from 'firebase/firestore';
+import { doc, updateDoc, arrayUnion, onSnapshot, getDoc } from 'firebase/firestore';
 import { firestore, messaging } from '@/lib/firebase';
 import { getToken } from "firebase/messaging";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -82,15 +82,14 @@ export default function ProfilePage() {
           setFcmToken(currentToken);
           const userDocRef = doc(firestore, 'users', user.uid);
           // Check if token already exists to avoid duplicates
-          const userDoc = await onSnapshot(userDocRef, (doc) => {
-              if (doc.exists() && doc.data().fcmTokens?.includes(currentToken)) {
-                  // Token already exists
-              } else {
-                  updateDoc(userDocRef, {
-                    fcmTokens: arrayUnion(currentToken)
-                  });
-              }
-          });
+          const docSnap = await getDoc(userDocRef);
+          if (docSnap.exists() && docSnap.data().fcmTokens?.includes(currentToken)) {
+              // Token already exists
+          } else {
+              await updateDoc(userDocRef, {
+                fcmTokens: arrayUnion(currentToken)
+              });
+          }
           
           toast({
             title: "Notifications Enabled",

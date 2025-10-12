@@ -20,12 +20,19 @@ import { AppSettingsForm } from "./_components/app-settings-form";
 import { ManageUsers } from "./_components/manage-users";
 import { ManagePromotions } from "./_components/manage-promotions";
 import { SendNotificationsForm } from "./_components/send-notifications-form";
+import { useCollection } from "react-firebase-hooks/firestore";
+import { collection, query, where } from "firebase/firestore";
+import { firestore } from "@/lib/firebase";
+import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 
 
 const PwaInstallations = () => {
-    // This is a placeholder. Actual implementation requires a backend mechanism
-    // to track which users have installed the PWA, likely by having the app
-    // report back to the server upon successful installation.
+    const [users, loading, error] = useCollection(
+        query(collection(firestore, 'users'), where('pwaInstalled', '==', true))
+    );
+    
     return (
         <Card>
             <CardHeader>
@@ -33,7 +40,49 @@ const PwaInstallations = () => {
                 <CardDescription>Users who have installed the app on their device.</CardDescription>
             </CardHeader>
             <CardContent>
-                <p className="text-muted-foreground text-center p-8">This feature is under construction.</p>
+                {loading && <Skeleton className="h-48 w-full" />}
+                {error && <p className="text-destructive">Error: {error.message}</p>}
+                {!loading && users && (
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>User</TableHead>
+                                <TableHead>Installed At</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {users.docs.length === 0 && (
+                                <TableRow>
+                                    <TableCell colSpan={2} className="text-center text-muted-foreground">
+                                        No PWA installations recorded yet.
+                                    </TableCell>
+                                </TableRow>
+                            )}
+                            {users.docs.map(doc => {
+                                const user = doc.data();
+                                return (
+                                    <TableRow key={doc.id}>
+                                        <TableCell>
+                                            <div className="flex items-center gap-3">
+                                                <Avatar>
+                                                    <AvatarImage src={user.photoURL} />
+                                                    <AvatarFallback>{user.displayName?.charAt(0) || 'U'}</AvatarFallback>
+                                                </Avatar>
+                                                <div>
+                                                    <p className="font-medium">{user.displayName}</p>
+                                                    <p className="text-xs text-muted-foreground">{user.email}</p>
+                                                </div>
+                                            </div>
+                                        </TableCell>
+                                        <TableCell>
+                                            {user.pwaInstalledAt ? new Date(user.pwaInstalledAt.seconds * 1000).toLocaleString() : 'N/A'}
+                                        </TableCell>
+                                    </TableRow>
+                                )
+                            })}
+                        </TableBody>
+                    </Table>
+                )}
             </CardContent>
         </Card>
     )

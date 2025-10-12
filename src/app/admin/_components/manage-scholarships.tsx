@@ -1,8 +1,7 @@
-
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { useCollection } from 'react-firebase-hooks/firestore';
+import { useCollection, useDocumentData } from 'react-firebase-hooks/firestore';
 import { collection, query, orderBy, doc, updateDoc, getDoc, setDoc, addDoc, serverTimestamp, where } from 'firebase/firestore';
 import { firestore } from '@/lib/firebase';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -46,10 +45,24 @@ const testCreationSchema = z.object({
 });
 type TestCreationFormValues = z.infer<typeof testCreationSchema>;
 
+const jsonTestSchema = z.object({
+    title: z.string().min(1, 'Title is required.'),
+    jsonContent: z.string().refine(val => {
+        try {
+            const parsed = JSON.parse(val);
+            return z.array(questionSchema).min(1).safeParse(parsed).success;
+        } catch {
+            return false;
+        }
+    }, { message: "Invalid JSON format or doesn't match question schema." }),
+});
+type JsonTestFormValues = z.infer<typeof jsonTestSchema>;
+
 
 const ScholarshipSettings = () => {
     const { toast } = useToast();
     const [isLoading, setIsLoading] = useState(true);
+    const [docData, setDocData] = useDocumentData(doc(firestore, 'settings', 'scholarship'));
 
     const form = useForm<SettingsFormValues>({
         resolver: zodResolver(settingsSchema),
@@ -59,30 +72,20 @@ const ScholarshipSettings = () => {
     });
     
     useEffect(() => {
-        const fetchSettings = async () => {
-            setIsLoading(true);
-            try {
-                const settingsDoc = await getDoc(doc(firestore, 'settings', 'scholarship'));
-                if (settingsDoc.exists()) {
-                    const data = settingsDoc.data();
-                    form.reset({
-                        startDate: data.startDate?.toDate(),
-                        endDate: data.endDate?.toDate(),
-                        testStartDate: data.testStartDate?.toDate(),
-                        testEndDate: data.testEndDate?.toDate(),
-                        resultDate: data.resultDate?.toDate(),
-                        isTestFree: data.isTestFree || false,
-                    });
-                }
-            } catch (error) {
-                console.error("Error fetching settings:", error);
-                toast({ variant: 'destructive', title: 'Error', description: 'Could not fetch settings.' });
-            } finally {
-                setIsLoading(false);
-            }
-        };
-        fetchSettings();
-    }, [form, toast]);
+        if (docData) {
+            form.reset({
+                startDate: docData.startDate?.toDate(),
+                endDate: docData.endDate?.toDate(),
+                testStartDate: docData.testStartDate?.toDate(),
+                testEndDate: docData.testEndDate?.toDate(),
+                resultDate: docData.resultDate?.toDate(),
+                isTestFree: docData.isTestFree || false,
+            });
+             setIsLoading(false);
+        } else {
+             setIsLoading(false);
+        }
+    }, [docData, form]);
 
 
     const onSubmit = async (data: SettingsFormValues) => {
@@ -152,119 +155,128 @@ const ScholarshipSettings = () => {
 }
 
 const ScholarshipTestCreator = () => {
-  const { toast } = useToast();
-  const [isLoading, setIsLoading] = useState(false);
+    const { toast } = useToast();
+    const [isLoading, setIsLoading] = useState(false);
+    const [testData, testLoading] = useDocumentData(doc(firestore, 'settings', 'scholarshipTest'));
 
-  const form = useForm<TestCreationFormValues>({
-    resolver: zodResolver(testCreationSchema),
-    defaultValues: {
-      title: 'Go Swami National Scholarship Test (GSNST)',
-      questions: [],
-    },
-  });
+    const manualForm = useForm<TestCreationFormValues>({
+        resolver: zodResolver(testCreationSchema),
+        defaultValues: { title: 'Go Swami National Scholarship Test (GSNST)', questions: [] },
+    });
+    
+    const jsonForm = useForm<JsonTestFormValues>({
+        resolver: zodResolver(jsonTestSchema),
+        defaultValues: { title: 'Go Swami National Scholarship Test (GSNST)', jsonContent: '' },
+    });
 
-  const { fields, append, remove } = useFieldArray({
-    control: form.control,
-    name: 'questions',
-  });
+    const { fields, append, remove, replace } = useFieldArray({
+        control: manualForm.control,
+        name: 'questions',
+    });
+    
+    useEffect(() => {
+        if(testData) {
+            manualForm.reset({
+                title: testData.title,
+                questions: testData.questions
+            });
+            jsonForm.setValue('title', testData.title);
+        }
+    }, [testData, manualForm, jsonForm]);
 
-  const onSubmit = async (data: TestCreationFormValues) => {
-    setIsLoading(true);
-    try {
-      const testRef = doc(firestore, 'settings', 'scholarshipTest');
-      await setDoc(testRef, {
-        ...data,
-        createdAt: serverTimestamp(),
-      });
-      toast({ title: 'Success', description: 'Scholarship Test saved successfully.' });
-    } catch (error) {
-      console.error('Error saving test:', error);
-      toast({ variant: 'destructive', title: 'Error', description: 'Could not save the test.' });
-    } finally {
-      setIsLoading(false);
+    const onManualSubmit = async (data: TestCreationFormValues) => {
+        setIsLoading(true);
+        try {
+            await setDoc(doc(firestore, 'settings', 'scholarshipTest'), { ...data, createdAt: serverTimestamp() }, { merge: true });
+            toast({ title: 'Success', description: 'Scholarship Test saved successfully.' });
+        } catch (error) {
+            console.error('Error saving test:', error);
+            toast({ variant: 'destructive', title: 'Error', description: 'Could not save the test.' });
+        } finally {
+            setIsLoading(false);
+        }
+    };
+    
+    const onJsonSubmit = async (data: JsonTestFormValues) => {
+        setIsLoading(true);
+        try {
+            const questions = JSON.parse(data.jsonContent);
+            await setDoc(doc(firestore, 'settings', 'scholarshipTest'), { title: data.title, questions, createdAt: serverTimestamp() }, { merge: true });
+            toast({ title: 'Success', description: 'Test saved from JSON.'});
+        } catch (error) {
+            toast({ variant: 'destructive', title: 'Error', description: 'Could not save test from JSON.'});
+        } finally {
+            setIsLoading(false);
+        }
     }
-  };
 
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Create/Manage Scholarship Test</CardTitle>
-        <CardDescription>Add or edit questions for the scholarship test.</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="title"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Test Title</FormLabel>
-                  <FormControl><Input {...field} /></FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold">Questions</h3>
-              {fields.map((field, index) => (
-                <div key={field.id} className="p-4 border rounded-lg space-y-3 relative bg-muted/50">
-                  <FormField
-                    control={form.control}
-                    name={`questions.${index}.text`}
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Question {index + 1}</FormLabel>
-                        <FormControl><Textarea {...field} /></FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  {Array(4).fill(0).map((_, optionIndex) => (
-                    <FormField
-                      key={optionIndex}
-                      control={form.control}
-                      name={`questions.${index}.options.${optionIndex}`}
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Option {optionIndex + 1}</FormLabel>
-                          <FormControl><Input {...field} /></FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  ))}
-                  <FormField
-                    control={form.control}
-                    name={`questions.${index}.correctAnswer`}
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Correct Answer</FormLabel>
-                        <FormControl><Input placeholder="Copy one of the options above" {...field} /></FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <Button type="button" variant="destructive" size="icon" onClick={() => remove(index)} className="absolute top-2 right-2 h-7 w-7">
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              ))}
-              <Button type="button" variant="outline" onClick={() => append({ text: '', options: ['', '', '', ''], correctAnswer: '' })}>
-                <PlusCircle className="mr-2" />Add Question
-              </Button>
-            </div>
+    if (testLoading) {
+        return <Skeleton className="h-96 w-full" />
+    }
 
-            <Button type="submit" disabled={isLoading} className="w-full">
-              {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Save Scholarship Test
-            </Button>
-          </form>
-        </Form>
-      </CardContent>
-    </Card>
-  );
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle>Create/Manage Scholarship Test</CardTitle>
+                <CardDescription>Add or edit questions for the scholarship test.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <Tabs defaultValue="manual">
+                    <TabsList className="grid w-full grid-cols-2">
+                        <TabsTrigger value="manual">Manual Entry</TabsTrigger>
+                        <TabsTrigger value="json">JSON Upload</TabsTrigger>
+                    </TabsList>
+                    <TabsContent value="manual" className="mt-4">
+                        <Form {...manualForm}>
+                            <form onSubmit={manualForm.handleSubmit(onManualSubmit)} className="space-y-4">
+                                <FormField control={manualForm.control} name="title" render={({ field }) => (
+                                    <FormItem><FormLabel>Test Title</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+                                )} />
+                                <div className="space-y-4">
+                                    <h3 className="text-lg font-semibold">Questions</h3>
+                                    {fields.map((field, index) => (
+                                        <div key={field.id} className="p-4 border rounded-lg space-y-3 relative bg-muted/50">
+                                            <FormField control={manualForm.control} name={`questions.${index}.text`} render={({ field }) => (
+                                                <FormItem><FormLabel>Question {index + 1}</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>
+                                            )} />
+                                            {Array(4).fill(0).map((_, optionIndex) => (
+                                                <FormField key={optionIndex} control={manualForm.control} name={`questions.${index}.options.${optionIndex}`} render={({ field }) => (
+                                                    <FormItem><FormLabel>Option {optionIndex + 1}</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+                                                )} />
+                                            ))}
+                                            <FormField control={manualForm.control} name={`questions.${index}.correctAnswer`} render={({ field }) => (
+                                                <FormItem><FormLabel>Correct Answer</FormLabel><FormControl><Input placeholder="Copy one of the options above" {...field} /></FormControl><FormMessage /></FormItem>
+                                            )} />
+                                            <Button type="button" variant="destructive" size="icon" onClick={() => remove(index)} className="absolute top-2 right-2 h-7 w-7"><Trash2 className="h-4 w-4" /></Button>
+                                        </div>
+                                    ))}
+                                    <Button type="button" variant="outline" onClick={() => append({ text: '', options: ['', '', '', ''], correctAnswer: '' })}><PlusCircle className="mr-2" />Add Question</Button>
+                                </div>
+                                <Button type="submit" disabled={isLoading} className="w-full">{isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Save Test</Button>
+                            </form>
+                        </Form>
+                    </TabsContent>
+                    <TabsContent value="json" className="mt-4">
+                         <Form {...jsonForm}>
+                            <form onSubmit={jsonForm.handleSubmit(onJsonSubmit)} className="space-y-4">
+                                <FormField control={jsonForm.control} name="title" render={({ field }) => (
+                                    <FormItem><FormLabel>Test Title</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+                                )}/>
+                                <FormField control={jsonForm.control} name="jsonContent" render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Questions JSON</FormLabel>
+                                        <FormControl><Textarea className="min-h-[200px] font-mono" placeholder='[{"text": "Q1", "options": ["A", "B", "C", "D"], "correctAnswer": "A"}]' {...field} /></FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}/>
+                                 <Button type="submit" disabled={isLoading} className="w-full">{isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Save from JSON</Button>
+                            </form>
+                        </Form>
+                    </TabsContent>
+                </Tabs>
+            </CardContent>
+        </Card>
+    );
 };
 
 
