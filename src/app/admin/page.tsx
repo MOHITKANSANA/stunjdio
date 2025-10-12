@@ -21,11 +21,14 @@ import { ManageUsers } from "./_components/manage-users";
 import { ManagePromotions } from "./_components/manage-promotions";
 import { SendNotificationsForm } from "./_components/send-notifications-form";
 import { useCollection } from "react-firebase-hooks/firestore";
-import { collection, query, where } from "firebase/firestore";
+import { collection, query, where, doc, deleteDoc } from "firebase/firestore";
 import { firestore } from "@/lib/firebase";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import { Trash2 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 
 const PwaInstallations = () => {
@@ -88,6 +91,65 @@ const PwaInstallations = () => {
     )
 }
 
+const ManageAllContent = () => {
+    const { toast } = useToast();
+    const [courses, coursesLoading] = useCollection(collection(firestore, 'courses'));
+    const [liveClasses, liveClassesLoading] = useCollection(collection(firestore, 'live_classes'));
+    const [ebooks, ebooksLoading] = useCollection(collection(firestore, 'ebooks'));
+    const [testSeries, testSeriesLoading] = useCollection(collection(firestore, 'testSeries'));
+
+    const handleDelete = async (collectionName: string, docId: string, title: string) => {
+        if (window.confirm(`Are you sure you want to delete "${title}"? This cannot be undone.`)) {
+            try {
+                await deleteDoc(doc(firestore, collectionName, docId));
+                toast({ description: `"${title}" has been deleted.` });
+            } catch (error: any) {
+                toast({ variant: 'destructive', description: `Failed to delete: ${error.message}` });
+            }
+        }
+    };
+
+    const renderTable = (title: string, data: any, loading: boolean, collectionName: string) => (
+        <Card>
+            <CardHeader><CardTitle>{title}</CardTitle></CardHeader>
+            <CardContent>
+                {loading && <Skeleton className="h-24 w-full" />}
+                {!loading && (
+                    <Table>
+                        <TableHeader>
+                            <TableRow><TableHead>Title</TableHead><TableHead className="text-right">Action</TableHead></TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {data?.docs.length === 0 ? (
+                                <TableRow><TableCell colSpan={2} className="text-center text-muted-foreground">No content found.</TableCell></TableRow>
+                            ) : data?.docs.map((d: any) => (
+                                <TableRow key={d.id}>
+                                    <TableCell>{d.data().title}</TableCell>
+                                    <TableCell className="text-right">
+                                        <Button variant="destructive" size="icon" onClick={() => handleDelete(collectionName, d.id, d.data().title)}>
+                                            <Trash2 className="h-4 w-4" />
+                                        </Button>
+                                    </TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                )}
+            </CardContent>
+        </Card>
+    );
+
+    return (
+        <div className="space-y-6">
+            {renderTable("Manage Courses", courses, coursesLoading, 'courses')}
+            {renderTable("Manage Live Classes", liveClasses, liveClassesLoading, 'live_classes')}
+            {renderTable("Manage E-Books", ebooks, ebooksLoading, 'ebooks')}
+            {renderTable("Manage Test Series", testSeries, testSeriesLoading, 'testSeries')}
+        </div>
+    );
+};
+
+
 export default function AdminPage() {
     return (
         <div className="space-y-8 p-4 md:p-8">
@@ -99,6 +161,7 @@ export default function AdminPage() {
              <Tabs defaultValue="content" className="w-full" orientation="vertical">
                 <TabsList className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-1 md:w-48 lg:w-56 shrink-0 h-max">
                     <TabsTrigger value="content">Content</TabsTrigger>
+                    <TabsTrigger value="manage_content">Manage Content</TabsTrigger>
                     <TabsTrigger value="users">Manage Users</TabsTrigger>
                     <TabsTrigger value="notifications">Notifications</TabsTrigger>
                     <TabsTrigger value="course_enrollments">Course Enrollments</TabsTrigger>
@@ -146,6 +209,10 @@ export default function AdminPage() {
                             </Card>
                         </div>
                     </div>
+                </TabsContent>
+
+                <TabsContent value="manage_content" className="mt-6 md:mt-0">
+                    <ManageAllContent />
                 </TabsContent>
 
                 <TabsContent value="users" className="mt-6 md:mt-0">

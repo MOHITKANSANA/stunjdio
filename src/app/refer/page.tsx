@@ -19,6 +19,10 @@ export default function ReferPage() {
     const referralMessage = `Join me on Learn with Munedra! Use my referral code ${referralCode} to get a special discount. Download the app here: ${appLink}`;
 
     const copyToClipboard = () => {
+        if (!user) {
+            toast({ variant: 'destructive', title: 'Please log in to get your referral code.' });
+            return;
+        }
         navigator.clipboard.writeText(referralCode);
         setIsCopied(true);
         toast({ title: "Copied!", description: "Referral code copied to clipboard." });
@@ -26,12 +30,16 @@ export default function ReferPage() {
     };
 
     const shareOnWhatsApp = () => {
+        if (!user) {
+            toast({ variant: 'destructive', title: 'Please log in to share your referral code.' });
+            return;
+        }
         const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(referralMessage)}`;
         window.open(whatsappUrl, '_blank');
     };
 
     return (
-        <div className="max-w-2xl mx-auto space-y-8">
+        <div className="max-w-2xl mx-auto space-y-8 p-4 md:p-6">
             <div className="text-center">
                 <Gift className="mx-auto h-16 w-16 text-primary mb-4" />
                 <h1 className="text-4xl font-bold font-headline">Refer &amp; Earn</h1>

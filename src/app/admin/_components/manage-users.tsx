@@ -120,13 +120,11 @@ export function ManageUsers() {
   const [searchTerm, setSearchTerm] = useState('');
   const { toast } = useToast();
   
-  const ADMIN_PASSWORD = "ADMIN@123"; // The password required to make a user an admin.
+  const ADMIN_PASSWORD = "ADMIN@123";
 
   const handleDeleteUser = async (uid: string) => {
-    // This is a placeholder. Deleting users should be handled with a server-side function
-    // for security reasons (e.g., deleting associated data).
-    if(window.confirm('Are you sure you want to delete this user? This action cannot be undone.')) {
-        toast({ title: "Action not implemented", description: "User deletion must be configured on the server."});
+    if(window.confirm('Are you sure you want to delete this user? This action cannot be undone and must be handled server-side.')) {
+        toast({ title: "Action not implemented", description: "User deletion must be configured on the server for security."});
     }
   }
 

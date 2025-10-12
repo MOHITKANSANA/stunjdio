@@ -154,11 +154,11 @@ export const InstallPwaPrompt = () => {
     const handleInstallClick = () => {
         if (installPrompt) {
             installPrompt.prompt();
-            installPrompt.userChoice.then((choiceResult: { outcome: string }) => {
+            installPrompt.userChoice.then(async (choiceResult: { outcome: string }) => {
                 if (choiceResult.outcome === 'accepted') {
                    setIsVisible(false);
                    if (user) {
-                       trackPwaInstallAction(user.uid);
+                       await trackPwaInstallAction(user.uid);
                    }
                 }
             });
@@ -196,7 +196,7 @@ export const SocialMediaLinks = () => {
             case 'linkedin': return <Linkedin />;
             default:
                 if (iconUrl) {
-                    return <NextImage src={iconUrl} alt="social icon" width={20} height={20} className="rounded-full"/>;
+                    return <NextImage src={iconUrl} alt="social icon" width={24} height={24} className="rounded-full h-6 w-6"/>;
                 }
                 return <LinkIcon />;
         }
@@ -209,8 +209,8 @@ export const SocialMediaLinks = () => {
         <div className="space-y-4 text-center">
             <h2 className="text-lg font-semibold text-foreground/80">Join Our Social Media</h2>
              <div className="flex justify-center items-center gap-4">
-                {socialLinks.socialMediaLinks.map((link: any) => (
-                    <a key={link.url} href={link.url} target="_blank" rel="noopener noreferrer">
+                {socialLinks.socialMediaLinks.map((link: any, index: number) => (
+                    <a key={index} href={link.url} target="_blank" rel="noopener noreferrer">
                         <Button variant="outline" size="icon" className="rounded-full h-12 w-12">
                             <SocialIcon iconName={link.iconName} iconUrl={link.icon} />
                         </Button>
@@ -399,7 +399,7 @@ export const DashboardMarquee = () => {
     );
 
     if (loading || error || !promotions || promotions.empty) {
-        return null; // Don't render anything if there's nothing to show
+        return null;
     }
 
     return (
