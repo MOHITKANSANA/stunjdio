@@ -1,5 +1,5 @@
 
-'use client'
+'use client';
 import React, { useEffect, useState, useCallback } from 'react';
 import {
   Book,
@@ -33,6 +33,7 @@ import {
   Languages,
   Gift,
   Rss,
+  Swords,
 } from 'lucide-react';
 
 import { useAuth, updateUserInFirestore } from '@/hooks/use-auth';
@@ -72,6 +73,7 @@ const sidebarNavItems = [
     { href: '/dashboard/profile', icon: User, label: 'profile' },
     { href: '/dashboard/courses', icon: Book, label: 'courses' },
     { href: '/dashboard/live-classes', icon: Clapperboard, label: 'Live Classes' },
+    { href: '/dashboard/battle-quiz', icon: Swords, label: 'Battle Quiz' },
     { href: '/dashboard/scholarship', icon: Award, label: 'scholarship' },
     { href: '/dashboard/papers', icon: Newspaper, label: 'Previous Papers' },
     { href: '/dashboard/news', icon: Newspaper, label: 'News' },
@@ -101,21 +103,11 @@ const SidebarMenuItemWithHandler = ({ href, icon: Icon, label, closeSidebar }: {
     const pathname = usePathname();
     const { t } = useLanguage();
     const isActive = pathname === href || (href !== '/dashboard' && pathname.startsWith(href));
-    const [activeButton, setActiveButton] = useState<string | null>(null);
-
-    const handlePress = () => {
-        setActiveButton(label);
-        setTimeout(() => {
-            setActiveButton(null);
-            closeSidebar();
-        }, 300);
-    };
-
 
     return (
         <SidebarMenuItem>
-            <Link href={href} onClick={handlePress}>
-                <SidebarMenuButton isActive={isActive} className={cn(activeButton === label && 'ring-2 ring-primary ring-offset-2 ring-offset-sidebar-background')}>
+            <Link href={href} onClick={closeSidebar}>
+                <SidebarMenuButton isActive={isActive}>
                     <Icon />
                     <span className="capitalize">{label}</span>
                 </SidebarMenuButton>
@@ -278,7 +270,7 @@ const AppHeader = ({ appLogoUrl }: { appLogoUrl: string | null }) => {
                     <SidebarTrigger />
                 </div>
                  <div className='hidden md:flex items-center gap-2'>
-                    <h1 className="text-2xl font-bold text-white">Hello, {user?.displayName || 'Student'}!</h1>
+                    <h1 className="text-2xl font-bold text-white">Hello, {user?.displayName?.split(' ')[0] || 'Student'}!</h1>
                 </div>
             </div>
             <div className="flex items-center gap-2">

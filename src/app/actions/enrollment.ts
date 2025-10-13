@@ -2,17 +2,19 @@
 'use server';
 
 import { firestore } from '@/lib/firebase';
-import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
+import { addDoc, collection, serverTimestamp, doc, getDoc, updateDoc, increment, query, where, getDocs, writeBatch } from 'firebase/firestore';
 import { revalidatePath } from 'next/cache';
 import { getMessaging } from 'firebase-admin/messaging';
 import { admin } from '@/lib/firebase-admin';
-
 
 interface EnrollmentInput {
   enrollmentType: string;
   courseId: string | null;
   courseTitle: string;
   screenshotDataUrl: string;
+  couponCode?: string | null;
+  referralCode?: string | null;
+  finalPrice: number;
 }
 
 async function sendNotificationToAdmin(title: string, body: string) {
@@ -24,7 +26,6 @@ async function sendNotificationToAdmin(title: string, body: string) {
     }
 
     try {
-         // Ensure admin app is initialized
         if (!admin.apps.length) {
             console.error("Firebase Admin SDK not initialized correctly for notifications.");
             return;
@@ -45,9 +46,28 @@ async function sendNotificationToAdmin(title: string, body: string) {
     }
 }
 
+async function applyReferralReward(referralCode: string, referringUserUid: string) {
+    const batch = writeBatch(firestore);
+
+    // 1. Award 10 points to the referring user
+    const referringUserRef = doc(firestore, 'users', referringUserUid);
+    batch.update(referringUserRef, { rewardPoints: increment(10) });
+
+    // 2. Log the referral transaction for tracking
+    const referralLogRef = doc(collection(firestore, 'referralLogs'));
+    batch.set(referralLogRef, {
+        referralCode: referralCode,
+        referringUserUid: referringUserUid,
+        pointsAwarded: 10,
+        awardedAt: serverTimestamp()
+    });
+
+    await batch.commit();
+}
+
 
 export async function submitEnrollmentAction(input: EnrollmentInput, user: { uid: string, email: string | null, displayName: string | null }): Promise<{ success: boolean; error?: string }> {
-  const { enrollmentType, courseId, courseTitle, screenshotDataUrl } = input;
+  const { enrollmentType, courseId, courseTitle, screenshotDataUrl, couponCode, referralCode, finalPrice } = input;
 
   if (!user) {
       return { success: false, error: 'You must be logged in to enroll.' };
@@ -56,7 +76,6 @@ export async function submitEnrollmentAction(input: EnrollmentInput, user: { uid
   if (!screenshotDataUrl.startsWith('data:image/')) {
     return { success: false, error: 'Invalid image format. Please upload a valid screenshot.' };
   }
-
 
   try {
     await addDoc(collection(firestore, 'enrollments'), {
@@ -67,11 +86,22 @@ export async function submitEnrollmentAction(input: EnrollmentInput, user: { uid
       userEmail: user.email,
       userDisplayName: user.displayName,
       screenshotDataUrl, 
-      status: 'pending', // initial status
+      couponCode,
+      referralCode,
+      finalPrice,
+      status: 'pending',
       createdAt: serverTimestamp(),
     });
 
-    // Send notification to admin
+    if (referralCode) {
+        const referralUserQuery = query(collection(firestore, 'users'), where('referralCode', '==', referralCode.toUpperCase()));
+        const referralUserSnapshot = await getDocs(referralUserQuery);
+        if (!referralUserSnapshot.empty) {
+            const referringUser = referralUserSnapshot.docs[0];
+            await applyReferralReward(referralCode, referringUser.id);
+        }
+    }
+
     await sendNotificationToAdmin(
         'New Enrollment Request',
         `${courseTitle} by ${user.displayName || 'a new user'}`

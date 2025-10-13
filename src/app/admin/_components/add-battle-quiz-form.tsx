@@ -51,6 +51,8 @@ export function AddBattleQuizForm() {
       await addDoc(collection(firestore, 'battleQuizzes'), {
         ...data,
         createdAt: serverTimestamp(),
+        isActive: true, // Make it active by default
+        participants: [],
       });
       toast({ title: 'Success', description: 'Battle Quiz added successfully.' });
       form.reset();

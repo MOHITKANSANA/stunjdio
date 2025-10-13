@@ -38,7 +38,7 @@ const CourseCard = ({ course, courseId, isEnrolled }: { course: any, courseId: s
                 </div>
             </CardContent>
             <CardFooter>
-                 <Button asChild className="w-full">
+                 <Button asChild className="w-full active:scale-95 transition-transform">
                     <Link href={`/dashboard/courses/${courseId}`}>
                         {isEnrolled ? 'View Course' : 'View Details'}
                     </Link>

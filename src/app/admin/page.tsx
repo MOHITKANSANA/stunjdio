@@ -30,6 +30,7 @@ import { Button } from "@/components/ui/button";
 import { Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { AddBattleQuizForm } from "./_components/add-battle-quiz-form";
+import { ManageCoupons } from "./_components/manage-coupons";
 
 
 const PwaInstallations = () => {
@@ -170,6 +171,7 @@ export default function AdminPage() {
                     <TabsTrigger value="scholarships">Scholarships</TabsTrigger>
                     <TabsTrigger value="battle_quiz">Battle Quiz</TabsTrigger>
                     <TabsTrigger value="kids_tube">Kids Tube</TabsTrigger>
+                    <TabsTrigger value="coupons">Coupons</TabsTrigger>
                     <TabsTrigger value="promotions">Promotions</TabsTrigger>
                     <TabsTrigger value="pwa">PWA Installations</TabsTrigger>
                     <TabsTrigger value="html_editor">HTML Editor</TabsTrigger>
@@ -201,10 +203,6 @@ export default function AdminPage() {
                             </Card>
                         </div>
                         <div className="space-y-8">
-                             <Card>
-                                <CardHeader><CardTitle>Add Battle Quiz</CardTitle></CardHeader>
-                                <CardContent><AddBattleQuizForm /></CardContent>
-                            </Card>
                             <Card>
                                 <CardHeader><CardTitle>Add New Live Class</CardTitle></CardHeader>
                                 <CardContent><ManageLiveClass /></CardContent>
@@ -298,6 +296,10 @@ export default function AdminPage() {
                             </CardContent>
                         </Card>
                     </div>
+                </TabsContent>
+
+                <TabsContent value="coupons" className="mt-6 md:mt-0">
+                    <ManageCoupons />
                 </TabsContent>
 
                  <TabsContent value="promotions" className="mt-6 md:mt-0">

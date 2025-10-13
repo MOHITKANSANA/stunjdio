@@ -27,12 +27,12 @@ const CourseCard = ({ course, courseId, enrollmentId, onUnenroll }: { course: an
             </CardHeader>
             <CardContent className="flex-grow" />
             <CardFooter className="flex flex-col sm:flex-row gap-2">
-                 <Button asChild className="w-full">
+                 <Button asChild className="w-full active:scale-95 transition-transform">
                     <Link href={`/dashboard/courses/${courseId}`}>
                        <Eye className="mr-2 h-4 w-4" /> View Course
                     </Link>
                 </Button>
-                <Button variant="destructive" className="w-full" onClick={() => onUnenroll(enrollmentId, course.title)}>
+                <Button variant="destructive" className="w-full active:scale-95 transition-transform" onClick={() => onUnenroll(enrollmentId, course.title)}>
                     <Trash2 className="mr-2 h-4 w-4" /> Un-enroll
                 </Button>
             </CardFooter>

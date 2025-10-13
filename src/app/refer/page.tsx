@@ -1,21 +1,41 @@
 
 'use client';
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Gift, Copy, Check } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { doc, onSnapshot } from 'firebase/firestore';
+import { firestore } from '@/lib/firebase';
+import { Progress } from '@/components/ui/progress';
 
 export default function ReferPage() {
     const { user } = useAuth();
     const { toast } = useToast();
     const [isCopied, setIsCopied] = useState(false);
+    const [appLink, setAppLink] = useState('');
+    const [points, setPoints] = useState(0);
 
-    // This would be generated and stored for the user in a real implementation
-    const referralCode = user ? `REF${user.uid.substring(0, 5).toUpperCase()}` : 'LOGINTOSEE';
-    const appLink = 'https://learn-with-munedra.web.app'; // This should be configured in admin settings
+    useEffect(() => {
+        const unsub = onSnapshot(doc(firestore, 'settings', 'appConfig'), (doc) => {
+            if (doc.exists()) {
+                setAppLink(doc.data().referralLink || 'https://yourapp.com');
+            }
+        });
+
+        if (user) {
+            const userUnsub = onSnapshot(doc(firestore, 'users', user.uid), (doc) => {
+                setPoints(doc.data()?.rewardPoints || 0);
+            });
+            return () => userUnsub();
+        }
+
+        return () => unsub();
+    }, [user]);
+
+    const referralCode = user?.referralCode || 'LOGINTOSEE';
     const referralMessage = `Join me on Learn with Munedra! Use my referral code ${referralCode} to get a special discount. Download the app here: ${appLink}`;
 
     const copyToClipboard = () => {
@@ -58,6 +78,28 @@ export default function ReferPage() {
                         </Button>
                     </div>
                 </CardContent>
+                 <CardFooter>
+                    <Button onClick={shareOnWhatsApp} className="w-full text-lg">Share on WhatsApp</Button>
+                 </CardFooter>
+            </Card>
+
+            <Card>
+                <CardHeader>
+                    <CardTitle>Your Reward Points</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <div className="text-center">
+                        <p className="text-6xl font-bold text-primary">{points}</p>
+                        <p className="text-muted-foreground">points</p>
+                    </div>
+                    <div className="mt-4">
+                        <Progress value={(points / 200) * 100} />
+                        <p className="text-center text-sm text-muted-foreground mt-2">{200 - points} points needed to redeem a free course.</p>
+                    </div>
+                </CardContent>
+                <CardFooter>
+                    <Button disabled={points < 200} className="w-full">Redeem Free Course</Button>
+                </CardFooter>
             </Card>
 
              <Card>
@@ -67,11 +109,8 @@ export default function ReferPage() {
                 <CardContent className="space-y-4 text-muted-foreground">
                     <p>1. Share your unique referral code and app link with your friends.</p>
                     <p>2. Your friend gets a 10% discount on their first course purchase using your code.</p>
-                    <p>3. You receive reward points in your account once their purchase is complete.</p>
-                    <p>4. Use your reward points to get discounts on your future course enrollments!</p>
-                </CardContent>
-                 <CardContent>
-                    <Button onClick={shareOnWhatsApp} className="w-full text-lg">Share on WhatsApp</Button>
+                    <p>3. You receive 10 reward points in your account once their purchase is complete.</p>
+                    <p>4. Collect 200 points to redeem any course for free!</p>
                 </CardContent>
             </Card>
         </div>

@@ -10,7 +10,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
-import { IndianRupee, BookOpen, Clock, Users, Video, PlayCircle, FileText, StickyNote, ShieldQuestion, Bot, ThumbsUp, ThumbsDown, MessageSquare, CalendarDays, Send, HelpCircle, Download, CheckCircle } from 'lucide-react';
+import { IndianRupee, BookOpen, Clock, Users, Video, PlayCircle, FileText, StickyNote, ShieldQuestion, Bot, ThumbsUp, ThumbsDown, MessageSquare, CalendarDays, Send, HelpCircle, Download, CheckCircle, MessageCircle as WhatsAppIcon } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/use-auth';
 import { collection, query, where, orderBy, getDocs, limit, onSnapshot, addDoc, serverTimestamp, arrayUnion, updateDoc, arrayRemove, deleteDoc } from 'firebase/firestore';
@@ -65,7 +65,7 @@ const ContentTab = ({ courseId }: { courseId: string }) => {
               {sortedContent.map(doc => {
                 const content = doc.data();
                 return (
-                  <div key={doc.id} onClick={() => handleContentClick(content)} className="flex items-center justify-between p-3 rounded-lg border bg-muted/50 cursor-pointer hover:bg-muted transition-colors">
+                  <div key={doc.id} onClick={() => handleContentClick(content)} className="flex items-center justify-between p-3 rounded-lg border bg-muted/50 cursor-pointer hover:bg-muted transition-colors active:scale-[0.98]">
                     <div className="flex items-center gap-3">
                        <ContentIcon type={content.type} />
                        <p className="font-semibold">{content.title}</p>
@@ -112,7 +112,7 @@ const VideoLecturesTab = ({ courseId }: { courseId: string; }) => {
                     {sortedVideos.map(doc => {
                         const content = { id: doc.id, ...doc.data() };
                         return (
-                            <div key={doc.id} className={cn("flex items-center justify-between p-3 rounded-lg border cursor-pointer transition-colors", 'bg-muted/50 hover:bg-muted')} onClick={() => handleVideoClick(content.id)}>
+                            <div key={doc.id} className={cn("flex items-center justify-between p-3 rounded-lg border cursor-pointer transition-colors active:scale-[0.98]", 'bg-muted/50 hover:bg-muted')} onClick={() => handleVideoClick(content.id)}>
                                 <div className="flex items-center gap-3 overflow-hidden">
                                     <ContentIcon type={content.type} />
                                     <p className="font-semibold break-words">{content.title}</p>
@@ -180,7 +180,7 @@ const TestsTab = ({ course, courseId }: { course: DocumentData, courseId: string
                                 const content = doc.data();
                                 return (
                                     <Link href={`/dashboard/test-series/${content.testSeriesId}`} key={doc.id}>
-                                        <div className="flex items-center justify-between p-3 rounded-lg border bg-muted/50 hover:bg-muted transition-colors">
+                                        <div className="flex items-center justify-between p-3 rounded-lg border bg-muted/50 hover:bg-muted transition-colors active:scale-[0.98]">
                                             <div className="flex items-center gap-3">
                                                 <ContentIcon type={content.type} />
                                                 <p className="font-semibold">{content.title}</p>
@@ -200,7 +200,7 @@ const TestsTab = ({ course, courseId }: { course: DocumentData, courseId: string
                 </TabsContent>
                 <TabsContent value="ai" className="pt-4">
                      <div 
-                        className="p-6 border-2 border-dashed rounded-lg text-center cursor-pointer hover:border-primary hover:bg-primary/5 transition-colors"
+                        className="p-6 border-2 border-dashed rounded-lg text-center cursor-pointer hover:border-primary hover:bg-primary/5 transition-colors active:scale-[0.98]"
                         onClick={() => setIsAiTestModalOpen(true)}
                      >
                         <div className="w-fit mx-auto p-3 rounded-full bg-gradient-to-br from-purple-500 to-blue-500 text-white mb-3">
@@ -317,6 +317,101 @@ const EnrolledCourseView = ({ course, courseId }: { course: DocumentData, course
     )
 }
 
+const EnrollmentStatusChecker = ({ courseId }: { courseId: string }) => {
+    const { user } = useAuth();
+    const [enrollment, setEnrollment] = useState<any>(null);
+    const [timeLeft, setTimeLeft] = useState(7200); // 2 hours in seconds
+    const router = useRouter();
+
+    useEffect(() => {
+        if (user) {
+            const q = query(
+                collection(firestore, 'enrollments'),
+                where('userId', '==', user.uid),
+                where('courseId', '==', courseId),
+                orderBy('createdAt', 'desc'),
+                limit(1)
+            );
+            const unsubscribe = onSnapshot(q, (snapshot) => {
+                if (!snapshot.empty) {
+                    const doc = snapshot.docs[0];
+                    setEnrollment({ id: doc.id, ...doc.data() });
+                }
+            });
+            return () => unsubscribe();
+        }
+    }, [user, courseId]);
+
+    useEffect(() => {
+        if (enrollment?.status === 'pending') {
+            const createdAt = enrollment.createdAt.toDate();
+            const twoHoursLater = new Date(createdAt.getTime() + 2 * 60 * 60 * 1000);
+            
+            const interval = setInterval(() => {
+                const now = new Date();
+                const remaining = Math.max(0, Math.floor((twoHoursLater.getTime() - now.getTime()) / 1000));
+                setTimeLeft(remaining);
+                if (remaining === 0) {
+                    clearInterval(interval);
+                }
+            }, 1000);
+            return () => clearInterval(interval);
+        }
+    }, [enrollment]);
+
+    if (!enrollment) {
+        return (
+             <Button asChild size="lg" className="w-full text-lg bg-green-600 hover:bg-green-700 active:bg-green-800 transition-all duration-150 active:scale-95">
+                <Link href={`/dashboard/payment-verification?courseId=${courseId}`}>
+                    Enroll Now
+                </Link>
+            </Button>
+        );
+    }
+    
+    if (enrollment.status === 'approved') {
+         router.refresh(); // Refresh page to show enrolled view
+         return <p>Enrollment Approved! Reloading...</p>;
+    }
+
+    const minutes = Math.floor(timeLeft / 60);
+    const seconds = timeLeft % 60;
+    const isHelpActive = timeLeft === 0;
+
+    return (
+        <div className="w-full space-y-4">
+             <Button size="lg" className="w-full text-lg" disabled>
+                {enrollment.status === 'rejected' ? 'Enrollment Rejected' : 'Approval Pending'}
+            </Button>
+            {enrollment.status === 'pending' && (
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Status: Pending</CardTitle>
+                        <CardDescription>Your enrollment request is being reviewed.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <p className="text-sm text-muted-foreground mb-2">If you do not get a response within 2 hours, you can contact support.</p>
+                         <div className="text-center font-mono text-xl p-2 bg-muted rounded-md">
+                            {String(minutes).padStart(2, '0')}:{String(seconds).padStart(2, '0')}
+                        </div>
+                    </CardContent>
+                     <CardFooter>
+                         <Button className="w-full" disabled={!isHelpActive} asChild>
+                            <a href={`https://wa.me/9327175729?text=Hello, my enrollment for course ID ${courseId} is still pending.`} target="_blank">
+                                <WhatsAppIcon className="mr-2" />
+                                WhatsApp Help
+                            </a>
+                        </Button>
+                     </CardFooter>
+                </Card>
+            )}
+             {enrollment.status === 'rejected' && (
+                 <p className="text-sm text-center text-destructive">Your enrollment was rejected. Please contact support or try enrolling again with correct details.</p>
+             )}
+        </div>
+    )
+}
+
 
 function CourseDetailPageContent() {
   const { user, loading: authLoading } = useAuth();
@@ -330,15 +425,14 @@ function CourseDetailPageContent() {
         collection(firestore, 'enrollments'), 
         where('userId', '==', user.uid), 
         where('courseId', '==', courseId),
-        orderBy('createdAt', 'desc'),
+        where('status', '==', 'approved'),
         limit(1)
       )
     : null;
     
   const [enrollmentDocs, enrollmentLoading] = useCollection(enrollmentsQuery);
 
-  const isEnrolled = !!enrollmentDocs && !enrollmentDocs.empty && enrollmentDocs.docs[0].data().status === 'approved';
-  const enrollmentStatus = enrollmentDocs?.docs[0]?.data().status;
+  const isEnrolled = !!enrollmentDocs && !enrollmentDocs.empty;
   
   if (courseLoading || authLoading || enrollmentLoading) {
     return (
@@ -414,23 +508,13 @@ function CourseDetailPageContent() {
               <CardDescription>One-time payment</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-                 { enrollmentStatus === 'pending' ? (
-                     <Button size="lg" className="w-full text-lg" disabled>
-                        Approval Pending
-                    </Button>
-                 ) : (
-                    <Button asChild size="lg" className="w-full text-lg bg-green-600 hover:bg-green-700">
-                       <Link href={`/dashboard/payment-verification?courseId=${courseId}`}>
-                            Enroll Now
-                       </Link>
-                    </Button>
-                 )}
-              <div className="space-y-3 pt-4 text-sm text-muted-foreground">
-                <div className="flex items-center gap-3"><BookOpen className="h-5 w-5 text-primary" /><span>Full course access</span></div>
-                <div className="flex items-center gap-3"><Clock className="h-5 w-5 text-primary" /><span>Lifetime access</span></div>
-                <div className="flex items-center gap-3"><CalendarDays className="h-5 w-5 text-primary" /><span>{course.validity || 'Unlimited'} days validity</span></div>
-                 <div className="flex items-center gap-3"><Users className="h-5 w-5 text-primary" /><span>Community access</span></div>
-              </div>
+                 <EnrollmentStatusChecker courseId={courseId} />
+                 <div className="space-y-3 pt-4 text-sm text-muted-foreground">
+                    <div className="flex items-center gap-3"><BookOpen className="h-5 w-5 text-primary" /><span>Full course access</span></div>
+                    <div className="flex items-center gap-3"><Clock className="h-5 w-5 text-primary" /><span>Lifetime access</span></div>
+                    <div className="flex items-center gap-3"><CalendarDays className="h-5 w-5 text-primary" /><span>{course.validity || 'Unlimited'} days validity</span></div>
+                    <div className="flex items-center gap-3"><Users className="h-5 w-5 text-primary" /><span>Community access</span></div>
+                 </div>
             </CardContent>
           </Card>
         </div>

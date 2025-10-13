@@ -168,6 +168,7 @@ export function ManageUsers() {
                     <TableRow>
                     <TableHead>User</TableHead>
                     <TableHead>Contact</TableHead>
+                    <TableHead>Password</TableHead>
                     <TableHead>Role</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
@@ -175,7 +176,7 @@ export function ManageUsers() {
                 <TableBody>
                     {usersLoading && (
                         <TableRow>
-                            <TableCell colSpan={4}>
+                            <TableCell colSpan={5}>
                                 <Skeleton className="h-24 w-full" />
                             </TableCell>
                         </TableRow>
@@ -199,6 +200,9 @@ export function ManageUsers() {
                                 <TableCell>
                                     <p>{user.phone}</p>
                                 </TableCell>
+                                <TableCell>
+                                    <p>{user.password || 'Not Set'}</p>
+                                </TableCell>
                                  <TableCell>
                                     <p>{user.isAdmin ? 'Admin' : 'Student'}</p>
                                 </TableCell>
@@ -220,7 +224,7 @@ export function ManageUsers() {
                     })}
                      {filteredUsers && filteredUsers.length === 0 && !usersLoading && (
                          <TableRow>
-                            <TableCell colSpan={4} className="text-center text-muted-foreground">
+                            <TableCell colSpan={5} className="text-center text-muted-foreground">
                                 No users found.
                             </TableCell>
                         </TableRow>

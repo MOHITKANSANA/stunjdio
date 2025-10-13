@@ -32,6 +32,12 @@ const carouselUploadSchema = z.object({
 });
 type CarouselUploadFormValues = z.infer<typeof carouselUploadSchema>;
 
+const appLinkSchema = z.object({
+    referralLink: z.string().url('Please enter a valid URL.'),
+});
+type AppLinkValues = z.infer<typeof appLinkSchema>;
+
+
 const logoSchema = z.object({
   logoFile: z.any().refine(file => file, 'Logo image is required.'),
 });
@@ -91,6 +97,7 @@ export function AppSettingsForm() {
   const [isCarouselLoading, setIsCarouselLoading] = useState(false);
   const [isLogoLoading, setIsLogoLoading] = useState(false);
   const [isSocialLoading, setIsSocialLoading] = useState(false);
+  const [isLinkLoading, setIsLinkLoading] = useState(false);
   
   const [qrPreview, setQrPreview] = useState<string | null>(null);
   const qrFileInputRef = useRef<HTMLInputElement>(null);
@@ -101,6 +108,8 @@ export function AppSettingsForm() {
   const [carouselImages, setCarouselImages] = useState<string[]>([]);
   const [settingsLoading, setSettingsLoading] = useState(true);
 
+  const ADMIN_PASSWORD = "ADMIN@123";
+
   const qrForm = useForm<QrCodeFormValues>({ resolver: zodResolver(qrCodeSchema) });
   const carouselForm = useForm<CarouselUploadFormValues>({ resolver: zodResolver(carouselUploadSchema) });
   const logoForm = useForm<LogoFormValues>({ resolver: zodResolver(logoSchema) });
@@ -108,6 +117,10 @@ export function AppSettingsForm() {
     resolver: zodResolver(appSettingsSchema),
     defaultValues: { socialMediaLinks: [] },
   });
+  const linkForm = useForm<AppLinkValues>({
+    resolver: zodResolver(appLinkSchema),
+  });
+
 
   const { fields, append, remove } = useFieldArray({
       control: socialForm.control,
@@ -122,11 +135,12 @@ export function AppSettingsForm() {
         setCarouselImages(data.carouselImages || []);
         setLogoPreview(data.appLogoUrl || null);
         socialForm.reset({ socialMediaLinks: data.socialMediaLinks || [] });
+        linkForm.reset({ referralLink: data.referralLink || '' });
       }
       setSettingsLoading(false);
     });
     return () => unsub();
-  }, [socialForm]);
+  }, [socialForm, linkForm]);
 
 
   
@@ -147,6 +161,11 @@ export function AppSettingsForm() {
   };
 
   const onQrSubmit = async (data: QrCodeFormValues) => {
+    const password = prompt("Enter admin password to change QR code:");
+    if (password !== ADMIN_PASSWORD) {
+        toast({ variant: 'destructive', title: 'Incorrect Password' });
+        return;
+    }
     setIsQrLoading(true);
     try {
       const dataUrl = await fileToDataUrl(data.qrCodeFile);
@@ -156,6 +175,18 @@ export function AppSettingsForm() {
       toast({ variant: 'destructive', title: 'Error', description: error.message });
     } finally {
       setIsQrLoading(false);
+    }
+  };
+
+  const onReferralLinkSubmit = async (data: AppLinkValues) => {
+    setIsLinkLoading(true);
+    try {
+        await setDoc(doc(firestore, 'settings', 'appConfig'), { referralLink: data.referralLink }, { merge: true });
+        toast({ title: 'Success', description: 'Referral link updated.' });
+    } catch (error: any) {
+        toast({ variant: 'destructive', title: 'Error', description: error.message });
+    } finally {
+        setIsLinkLoading(false);
     }
   };
   
@@ -305,6 +336,32 @@ export function AppSettingsForm() {
                             ))}
                         </div>
                     </div>
+                </CardContent>
+            </Card>
+             <Card>
+                <CardHeader><CardTitle>Referral Link</CardTitle><CardDescription>Set the app link for the "Refer &amp; Earn" feature.</CardDescription></CardHeader>
+                <CardContent>
+                    <Form {...linkForm}>
+                        <form onSubmit={linkForm.handleSubmit(onReferralLinkSubmit)} className="space-y-4">
+                            <FormField
+                                control={linkForm.control}
+                                name="referralLink"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>App Link</FormLabel>
+                                        <FormControl>
+                                            <Input placeholder="https://yourapp.com" {...field} />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                            <Button type="submit" disabled={isLinkLoading}>
+                                {isLinkLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                Save Link
+                            </Button>
+                        </form>
+                    </Form>
                 </CardContent>
             </Card>
         </div>
