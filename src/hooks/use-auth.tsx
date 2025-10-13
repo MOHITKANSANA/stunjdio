@@ -26,7 +26,7 @@ export const updateUserInFirestore = async (user: User, additionalData: Record<s
     if (!docSnap.exists()) {
         await setDoc(userRef, {
             ...dataToWrite,
-            fcmTokens: [], // Initialize fcmTokens field
+            fcmTokens: [], // Initialize fcmTokens field for new users
             createdAt: serverTimestamp(),
         });
     } else {

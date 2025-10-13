@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, Suspense, useEffect } from 'react';
@@ -27,44 +26,6 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { generateAiTutorResponse } from '@/ai/flows/generate-ai-tutor-response';
 
-const PDFViewer = ({ pdfUrl, title, onOpenChange }: { pdfUrl: string, title: string, onOpenChange: (open: boolean) => void }) => {
-    let effectiveUrl = pdfUrl;
-
-    if (pdfUrl.includes('drive.google.com/file')) {
-        // Handle Google Drive links
-        const fileId = pdfUrl.split('/d/')[1].split('/')[0];
-        effectiveUrl = `https://drive.google.com/file/d/${fileId}/preview`;
-    } else if (pdfUrl.includes('workdrive.zoho.in/file')) {
-        // Handle Zoho Workdrive file links (use preview/embed)
-        const fileId = pdfUrl.split('/file/')[1];
-        effectiveUrl = `https://workdrive.zoho.in/embed/${fileId}`;
-    } else if (!pdfUrl.includes('embed') && !pdfUrl.startsWith('https://docs.google.com/gview')) {
-        // For other direct links, use Google Docs viewer
-        effectiveUrl = `https://docs.google.com/gview?url=${encodeURIComponent(pdfUrl)}&embedded=true`;
-    }
-
-    return (
-        <Dialog open={true} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-none w-screen h-screen p-0 m-0 flex flex-col">
-                <DialogHeader className="p-2 flex-row items-center justify-between bg-background border-b z-10">
-                    <DialogTitle className="truncate">{title}</DialogTitle>
-                </DialogHeader>
-                <div className="flex-grow">
-                    <iframe
-                        src={effectiveUrl}
-                        width="100%"
-                        height="100%"
-                        className="border-0"
-                        title={title}
-                        allow="fullscreen"
-                    ></iframe>
-                </div>
-            </DialogContent>
-        </Dialog>
-    );
-};
-
-
 const ContentIcon = ({ type }: { type: string }) => {
     switch (type) {
         case 'video': return <Video className="h-5 w-5 text-primary"/>;
@@ -81,8 +42,6 @@ const ContentTab = ({ courseId }: { courseId: string }) => {
     const [courseContentCollection, courseContentLoading, courseContentError] = useCollection(
         query(collection(firestore, 'courses', courseId, 'content'))
     );
-    const [isPdfOpen, setIsPdfOpen] = useState(false);
-    const [selectedPdf, setSelectedPdf] = useState<{ url: string, title: string } | null>(null);
 
     const sortedContent = courseContentCollection?.docs
         .filter(doc => ['pdf', 'note'].includes(doc.data().type))
@@ -93,44 +52,34 @@ const ContentTab = ({ courseId }: { courseId: string }) => {
         });
 
     const handleContentClick = (content: any) => {
-        setSelectedPdf({ url: content.url, title: content.title });
-        setIsPdfOpen(true);
+        window.open(content.url, '_blank');
     };
 
     return (
-        <>
-            {isPdfOpen && selectedPdf && (
-                 <PDFViewer 
-                    pdfUrl={selectedPdf.url}
-                    title={selectedPdf.title}
-                    onOpenChange={(isOpen) => !isOpen && setIsPdfOpen(false)}
-                />
-            )}
-            <CardContent>
-              {courseContentError && <p className="text-destructive">Could not load course content: {courseContentError.message}</p>}
-              {courseContentLoading && <Skeleton className="w-full h-24" />}
-              {sortedContent && sortedContent.length > 0 ? (
-                <div className="space-y-4">
-                  {sortedContent.map(doc => {
-                    const content = doc.data();
-                    return (
-                      <div key={doc.id} onClick={() => handleContentClick(content)} className="flex items-center justify-between p-3 rounded-lg border bg-muted/50 cursor-pointer hover:bg-muted transition-colors">
-                        <div className="flex items-center gap-3">
-                           <ContentIcon type={content.type} />
-                           <p className="font-semibold">{content.title}</p>
-                        </div>
-                         <Button variant="ghost" size="icon">
-                            <PlayCircle className="h-6 w-6" />
-                        </Button>
-                      </div>
-                    )
-                  })}
-                </div>
-              ) : !courseContentLoading && (
-                <p className="text-muted-foreground text-center py-8">No PDF or note content has been added to this course yet.</p>
-              )}
-            </CardContent>
-        </>
+        <CardContent>
+          {courseContentError && <p className="text-destructive">Could not load course content: {courseContentError.message}</p>}
+          {courseContentLoading && <Skeleton className="w-full h-24" />}
+          {sortedContent && sortedContent.length > 0 ? (
+            <div className="space-y-4">
+              {sortedContent.map(doc => {
+                const content = doc.data();
+                return (
+                  <div key={doc.id} onClick={() => handleContentClick(content)} className="flex items-center justify-between p-3 rounded-lg border bg-muted/50 cursor-pointer hover:bg-muted transition-colors">
+                    <div className="flex items-center gap-3">
+                       <ContentIcon type={content.type} />
+                       <p className="font-semibold">{content.title}</p>
+                    </div>
+                     <Button variant="ghost" size="icon">
+                        <PlayCircle className="h-6 w-6" />
+                    </Button>
+                  </div>
+                )
+              })}
+            </div>
+          ) : !courseContentLoading && (
+            <p className="text-muted-foreground text-center py-8">No PDF or note content has been added to this course yet.</p>
+          )}
+        </CardContent>
     )
 }
 

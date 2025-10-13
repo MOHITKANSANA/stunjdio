@@ -1,4 +1,3 @@
-
 'use client';
 
 import { BookOpenCheck, Library, Trash2, Eye, Book as EbookIcon, CheckCircle } from "lucide-react";
@@ -64,7 +63,6 @@ export default function MyLearningPage() {
         ) : null;
     const [myCourses, myCoursesLoading, myCoursesError] = useCollection(coursesQuery);
     
-
     const handleUnenroll = async (enrollmentId: string, courseTitle: string) => {
         if (window.confirm(`Are you sure you want to un-enroll from "${courseTitle}"?`)) {
             try {

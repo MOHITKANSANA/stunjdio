@@ -1,28 +1,302 @@
 
 'use client';
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Rss } from 'lucide-react';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Rss, PlusCircle, Image as ImageIcon, MessageSquare, Send, Heart } from 'lucide-react';
+import { useAuth } from '@/hooks/use-auth';
+import { useCollection } from 'react-firebase-hooks/firestore';
+import { collection, query, orderBy, addDoc, serverTimestamp, doc, updateDoc, increment, arrayUnion, arrayRemove } from 'firebase/firestore';
+import { firestore } from '@/lib/firebase';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Textarea } from '@/components/ui/textarea';
+import { useState, useRef, ChangeEvent } from 'react';
+import { useToast } from '@/hooks/use-toast';
+import { Loader2 } from 'lucide-react';
+import Image from 'next/image';
+import { formatDistanceToNow } from 'date-fns';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
+import { Input } from '@/components/ui/input';
+import { AnimatePresence, motion } from 'framer-motion';
 
-export default function FeedPage() {
+const CreatePost = ({ onPostCreated }: { onPostCreated: () => void }) => {
+    const { user } = useAuth();
+    const { toast } = useToast();
+    const [content, setContent] = useState('');
+    const [imageFile, setImageFile] = useState<File | null>(null);
+    const [imagePreview, setImagePreview] = useState<string | null>(null);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
+    const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files[0]) {
+            const file = e.target.files[0];
+            setImageFile(file);
+            setImagePreview(URL.createObjectURL(file));
+        }
+    };
+    
+    const fileToDataUrl = (file: File): Promise<string> => {
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+    }
+
+    const handleSubmit = async () => {
+        if (!user || (!content.trim() && !imageFile)) {
+            toast({ variant: 'destructive', description: "Please write something or upload an image." });
+            return;
+        }
+        setIsSubmitting(true);
+        try {
+            let imageUrl: string | null = null;
+            if (imageFile) {
+                imageUrl = await fileToDataUrl(imageFile);
+            }
+            
+            await addDoc(collection(firestore, 'feedPosts'), {
+                authorId: user.uid,
+                authorName: user.displayName,
+                authorAvatar: user.photoURL,
+                content: content.trim(),
+                imageUrl: imageUrl,
+                likes: [],
+                commentsCount: 0,
+                createdAt: serverTimestamp()
+            });
+
+            setContent('');
+            setImageFile(null);
+            setImagePreview(null);
+            toast({ description: "Your post has been published!" });
+            onPostCreated();
+
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Error', description: e.message });
+        } finally {
+            setIsSubmitting(false);
+        }
+    }
 
     return (
-        <div className="p-4 md:p-8">
-             <div className="text-center">
-                <Rss className="mx-auto h-12 w-12 text-primary" />
-                <h1 className="text-3xl font-bold mt-4">Feed</h1>
-                <p className="text-muted-foreground mt-2">See what's new in the community.</p>
+        <Card className="shadow-lg">
+            <CardContent className="p-4">
+                <div className="flex gap-4">
+                    <Avatar>
+                        <AvatarImage src={user?.photoURL || undefined} />
+                        <AvatarFallback>{user?.displayName?.charAt(0) || 'U'}</AvatarFallback>
+                    </Avatar>
+                    <div className="w-full space-y-2">
+                        <Textarea 
+                            placeholder="What's on your mind?"
+                            value={content}
+                            onChange={(e) => setContent(e.target.value)}
+                            className="bg-muted border-none focus-visible:ring-1 focus-visible:ring-primary"
+                        />
+                        {imagePreview && (
+                            <div className="relative w-full aspect-video rounded-lg overflow-hidden">
+                                <Image src={imagePreview} alt="Preview" fill style={{ objectFit: 'cover' }} />
+                            </div>
+                        )}
+                        <div className="flex justify-between items-center">
+                            <Button variant="ghost" size="icon" onClick={() => fileInputRef.current?.click()}>
+                                <ImageIcon className="text-muted-foreground" />
+                            </Button>
+                            <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileChange} />
+                            <Button onClick={handleSubmit} disabled={isSubmitting}>
+                                {isSubmitting ? <Loader2 className="animate-spin" /> : 'Post'}
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            </CardContent>
+        </Card>
+    );
+};
+
+
+const PostCard = ({ post }: { post: any }) => {
+    const { user } = useAuth();
+    const [showComments, setShowComments] = useState(false);
+    const [comment, setComment] = useState('');
+    const [isCommenting, setIsCommenting] = useState(false);
+    const [comments, commentsLoading] = useCollection(
+        query(collection(firestore, 'feedPosts', post.id, 'comments'), orderBy('createdAt', 'desc'))
+    );
+
+    const isLiked = user && post.data.likes?.includes(user.uid);
+
+    const handleLike = async () => {
+        if (!user) return;
+        const postRef = doc(firestore, 'feedPosts', post.id);
+        await updateDoc(postRef, {
+            likes: isLiked ? arrayRemove(user.uid) : arrayUnion(user.uid)
+        });
+    };
+
+    const handleCommentSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!user || !comment.trim()) return;
+        setIsCommenting(true);
+        try {
+            await addDoc(collection(firestore, 'feedPosts', post.id, 'comments'), {
+                authorId: user.uid,
+                authorName: user.displayName,
+                authorAvatar: user.photoURL,
+                content: comment.trim(),
+                createdAt: serverTimestamp()
+            });
+            await updateDoc(doc(firestore, 'feedPosts', post.id), {
+                commentsCount: increment(1)
+            });
+            setComment('');
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setIsCommenting(false);
+        }
+    };
+    
+    return (
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
+        <Card className="overflow-hidden shadow-lg">
+            <CardHeader className="p-4">
+                 <div className="flex items-center gap-3">
+                    <Avatar>
+                        <AvatarImage src={post.data.authorAvatar} />
+                        <AvatarFallback>{post.data.authorName.charAt(0)}</AvatarFallback>
+                    </Avatar>
+                    <div>
+                        <p className="font-bold">{post.data.authorName}</p>
+                        <p className="text-xs text-muted-foreground">
+                            {post.data.createdAt ? formatDistanceToNow(post.data.createdAt.toDate(), { addSuffix: true }) : 'Just now'}
+                        </p>
+                    </div>
+                </div>
+            </CardHeader>
+            <CardContent className="px-4 pb-2 space-y-4">
+                {post.data.content && <p className="whitespace-pre-wrap">{post.data.content}</p>}
+                {post.data.imageUrl && (
+                    <div className="relative aspect-video rounded-lg overflow-hidden border">
+                        <Image src={post.data.imageUrl} alt="Post content" fill style={{ objectFit: 'cover' }} />
+                    </div>
+                )}
+            </CardContent>
+             <CardFooter className="p-4 flex justify-around items-center border-t">
+                <Button variant="ghost" size="sm" className="flex items-center gap-2" onClick={handleLike}>
+                    <Heart className={`h-5 w-5 ${isLiked ? 'text-red-500 fill-red-500' : 'text-muted-foreground'}`} />
+                    <span>{post.data.likes?.length || 0}</span>
+                </Button>
+                 <Button variant="ghost" size="sm" className="flex items-center gap-2" onClick={() => setShowComments(!showComments)}>
+                    <MessageSquare className="h-5 w-5 text-muted-foreground" />
+                    <span>{post.data.commentsCount || 0}</span>
+                </Button>
+            </CardFooter>
+            <AnimatePresence>
+                {showComments && (
+                    <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }}>
+                         <div className="p-4 border-t bg-muted/50">
+                             {user && (
+                                <form onSubmit={handleCommentSubmit} className="flex gap-2 mb-4">
+                                    <Input value={comment} onChange={e => setComment(e.target.value)} placeholder="Add a comment..." />
+                                    <Button type="submit" size="icon" disabled={isCommenting}>
+                                        {isCommenting ? <Loader2 className="animate-spin" /> : <Send />}
+                                    </Button>
+                                </form>
+                             )}
+                             <div className="space-y-3 max-h-60 overflow-y-auto">
+                                {commentsLoading && <Skeleton className="h-12 w-full" />}
+                                {comments?.docs.map(c => {
+                                    const commentData = c.data();
+                                    return (
+                                        <div key={c.id} className="flex gap-2 text-sm">
+                                             <Avatar className="h-8 w-8">
+                                                <AvatarImage src={commentData.authorAvatar} />
+                                                <AvatarFallback>{commentData.authorName.charAt(0)}</AvatarFallback>
+                                            </Avatar>
+                                            <div className="bg-background rounded-lg p-2 flex-1">
+                                                <p className="font-semibold">{commentData.authorName}</p>
+                                                <p>{commentData.content}</p>
+                                            </div>
+                                        </div>
+                                    )
+                                })}
+                             </div>
+                         </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+        </Card>
+        </motion.div>
+    );
+}
+
+export default function FeedPage() {
+    const { user } = useAuth();
+    const [openCreatePost, setOpenCreatePost] = useState(false);
+    const [posts, loading, error] = useCollection(
+        query(collection(firestore, 'feedPosts'), orderBy('createdAt', 'desc'))
+    );
+    
+
+    return (
+        <div className="p-4 md:p-8 max-w-2xl mx-auto space-y-6">
+             <div className="text-center pb-4">
+                <Rss className="mx-auto h-12 w-12 text-primary mb-4" />
+                <h1 className="text-3xl font-bold font-headline">Community Feed</h1>
+                <p className="text-muted-foreground mt-2">Connect, share, and learn with the community.</p>
             </div>
 
-            <div className="max-w-2xl mx-auto mt-8">
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Coming Soon!</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <p className="text-muted-foreground">The community feed is under construction. Stay tuned for updates where you can share posts, polls, and more!</p>
-                    </CardContent>
-                </Card>
+            {user && (
+                 <Dialog open={openCreatePost} onOpenChange={setOpenCreatePost}>
+                    <DialogTrigger asChild>
+                         <Card className="cursor-pointer hover:bg-muted transition-colors">
+                            <CardContent className="p-4 flex items-center gap-4">
+                                <Avatar>
+                                    <AvatarImage src={user?.photoURL || undefined} />
+                                    <AvatarFallback>{user?.displayName?.charAt(0) || 'U'}</AvatarFallback>
+                                </Avatar>
+                                <div className="w-full justify-start text-muted-foreground">
+                                    What's on your mind, {user.displayName}?
+                                </div>
+                                <Button size="icon" variant="ghost">
+                                    <PlusCircle />
+                                </Button>
+                            </CardContent>
+                        </Card>
+                    </DialogTrigger>
+                    <DialogContent>
+                        <DialogHeader><DialogTitle>Create a new post</DialogTitle></DialogHeader>
+                        <CreatePost onPostCreated={() => setOpenCreatePost(false)} />
+                    </DialogContent>
+                </Dialog>
+            )}
+
+            <div className="space-y-4">
+                {loading && [...Array(3)].map((_, i) => <Skeleton key={i} className="h-48 w-full" />)}
+                {error && <p className="text-destructive">Error loading posts: {error.message}</p>}
+                
+                <AnimatePresence>
+                    {posts?.docs.map(post => (
+                        <PostCard key={post.id} post={{ id: post.id, data: post.data() }} />
+                    ))}
+                </AnimatePresence>
+
+                {!loading && posts?.empty && (
+                    <div className="text-center py-12 text-muted-foreground">
+                        <p>The feed is empty. Be the first to post!</p>
+                    </div>
+                )}
             </div>
         </div>
     )

@@ -35,7 +35,7 @@ import {
   Rss,
 } from 'lucide-react';
 
-import { useAuth } from '@/hooks/use-auth';
+import { useAuth, updateUserInFirestore } from '@/hooks/use-auth';
 import { useRouter } from 'next/navigation';
 import {
   Sidebar,
@@ -57,10 +57,10 @@ import { cn } from '@/lib/utils';
 import { useLanguage } from '@/hooks/use-language';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
-import { doc, getDoc, onSnapshot, collection, query, orderBy, where } from 'firebase/firestore';
+import { doc, getDoc, onSnapshot, collection, query, orderBy, where, updateDoc, arrayUnion } from 'firebase/firestore';
 import { firestore, messaging } from '@/lib/firebase';
 import { AppBottomNav } from './bottom-nav';
-import { onMessage } from 'firebase/messaging';
+import { onMessage, getToken } from 'firebase/messaging';
 import { useToast } from '@/hooks/use-toast';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
@@ -232,11 +232,11 @@ const AppSidebar = ({ isKidsMode, isMindSphereMode, appLogoUrl }: { isKidsMode: 
                         )}
                     </SidebarMenu>
 
-                    <div className="p-3 bg-yellow-400/10 m-2 rounded-lg group-data-[collapsible=icon]:p-0 group-data-[collapsible=icon]:bg-transparent">
+                    <div className="p-3 bg-yellow-400/10 m-2 rounded-lg group-data-[collapsible=icon]:hidden">
                         <Link href="/refer">
                              <div className="flex items-center gap-3 justify-center">
                                 <Gift className="text-yellow-400 h-8 w-8" />
-                                <div className="group-data-[collapsible=icon]:hidden">
+                                <div>
                                     <p className="font-bold text-yellow-300">Refer &amp; Earn</p>
                                     <p className="text-xs text-yellow-300/70">Invite friends &amp; get rewards</p>
                                 </div>
@@ -327,16 +327,14 @@ export default function DashboardLayout({
   // Handle foreground messages
   useEffect(() => {
     let unsubscribe: () => void;
-    if (typeof window !== 'undefined' && 'serviceWorker' in navigator && window.Worker) {
-        if (messaging) {
-            unsubscribe = onMessage(messaging, (payload: any) => {
-                console.log('Foreground message received.', payload);
-                toast({
-                  title: payload.notification?.title,
-                  description: payload.notification?.body,
-                });
+    if (typeof window !== 'undefined' && 'serviceWorker' in navigator && window.Worker && messaging) {
+        unsubscribe = onMessage(messaging, (payload: any) => {
+            console.log('Foreground message received.', payload);
+            toast({
+              title: payload.notification?.title,
+              description: payload.notification?.body,
             });
-        }
+        });
     }
     return () => {
         if (unsubscribe) {
@@ -347,6 +345,38 @@ export default function DashboardLayout({
 
   // Request permission and register service worker
   useEffect(() => {
+    const requestNotificationPermission = async () => {
+      if (!user || !messaging) return;
+      
+      try {
+        const permission = await Notification.requestPermission();
+        if (permission === 'granted') {
+          const currentToken = await getToken(messaging, { vapidKey: process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY });
+          if (currentToken) {
+            console.log('FCM Token generated:', currentToken);
+            const userDocRef = doc(firestore, 'users', user.uid);
+            const userDoc = await getDoc(userDocRef);
+            if (userDoc.exists() && (!userDoc.data().fcmTokens || !userDoc.data().fcmTokens.includes(currentToken))) {
+                await updateDoc(userDocRef, {
+                    fcmTokens: arrayUnion(currentToken)
+                });
+                console.log('FCM Token saved to Firestore.');
+            }
+          } else {
+            console.log('No registration token available. Request permission to generate one.');
+          }
+        } else {
+          console.log('Unable to get permission to notify.');
+        }
+      } catch (err) {
+        console.error('An error occurred while retrieving token. ', err);
+      }
+    };
+
+    if (user && 'Notification' in window) {
+      setTimeout(requestNotificationPermission, 5000); // Delay to avoid immediate prompt
+    }
+    
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('/firebase-messaging-sw.js')
         .then((registration) => {
@@ -355,7 +385,7 @@ export default function DashboardLayout({
           console.error('Service Worker registration failed:', err);
         });
     }
-  }, []);
+  }, [user]);
   
   useEffect(() => {
     let timer: NodeJS.Timeout;
@@ -415,6 +445,8 @@ export default function DashboardLayout({
                     router.replace('/dashboard/complete-profile');
                 }
             } else {
+                // If doc doesn't exist, create it before redirecting
+                await updateUserInFirestore(user);
                 router.replace('/dashboard/complete-profile');
             }
         } catch (error) {
