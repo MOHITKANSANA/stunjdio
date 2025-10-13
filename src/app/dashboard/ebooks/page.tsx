@@ -9,7 +9,6 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import Image from 'next/image';
 import { BookCopy, FileText } from 'lucide-react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 const EBookCard = ({ ebook, onClick }: { ebook: any, onClick: () => void }) => {
     return (

@@ -1,16 +1,16 @@
+
 'use client';
 
-import { BookOpenCheck, Library, Trash2, Eye, Book as EbookIcon, CheckCircle } from "lucide-react";
+import { BookOpenCheck, Library, Trash2, Eye } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from '@/hooks/use-auth';
-import { useCollection, useDocumentData } from 'react-firebase-hooks/firestore';
-import { collection, query, where, orderBy, updateDoc, doc, getDocs, deleteDoc, addDoc, serverTimestamp } from 'firebase/firestore';
+import { useCollection } from 'react-firebase-hooks/firestore';
+import { collection, query, where, orderBy, deleteDoc, doc } from 'firebase/firestore';
 import { firestore } from '@/lib/firebase';
 import { Skeleton } from "@/components/ui/skeleton";
 import Image from 'next/image';
 import Link from 'next/link';
-import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 

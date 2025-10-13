@@ -41,6 +41,7 @@ type ProfileFormValues = z.infer<typeof profileSchema>;
 
 const classOptions = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "SSC", "NDA", "CDS", "Army", "UPSC", "NTPC", "PCS"];
 const boardOptions = ["State Board", "CBSE", "ICSE", "Other"];
+const ageGroupOptions = ["1-9", "9-18"];
 
 // Function to get cropped image data URL
 function getCroppedImg(image: HTMLImageElement, crop: Crop, fileName: string): Promise<string> {
@@ -221,8 +222,7 @@ export default function CompleteProfilePage() {
                     <Select onValueChange={(value) => form.setValue("ageGroup", value, { shouldValidate: true })}>
                         <SelectTrigger><SelectValue placeholder="Select Age Group" /></SelectTrigger>
                         <SelectContent>
-                            <SelectItem value="1-9">1 to 9 years</SelectItem>
-                            <SelectItem value="9-18">9 to 18 years</SelectItem>
+                            {ageGroupOptions.map(opt => (<SelectItem key={opt} value={opt}>{opt} years</SelectItem>))}
                         </SelectContent>
                     </Select>
                     {form.formState.errors.ageGroup && <p className="text-xs text-destructive">{form.formState.errors.ageGroup.message}</p>}

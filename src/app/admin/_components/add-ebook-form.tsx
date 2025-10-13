@@ -14,7 +14,6 @@ import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import { firestore } from '@/lib/firebase';
 import { Loader2, Upload } from 'lucide-react';
 import Image from 'next/image';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const ebookSchema = z.object({
   title: z.string().min(1, 'Title is required.'),

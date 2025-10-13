@@ -6,7 +6,6 @@ import { doc, updateDoc, arrayUnion, onSnapshot, getDoc } from 'firebase/firesto
 import { firestore, messaging } from '@/lib/firebase';
 import { getToken } from "firebase/messaging";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/hooks/use-auth";
@@ -154,9 +153,9 @@ export default function ProfilePage() {
                 <CardDescription>Manage your push notification settings.</CardDescription>
             </CardHeader>
             <CardContent>
-                <Button onClick={handleNotificationPermission} disabled={!!fcmToken}>
+                <Button onClick={handleNotificationPermission}>
                     <Bell className="mr-2"/>
-                    {fcmToken ? 'Notifications Enabled' : 'Enable Notifications'}
+                    Enable Notifications
                 </Button>
                 {fcmToken && (
                     <div className="mt-4 p-3 border rounded-lg bg-muted flex items-center justify-between gap-4">
