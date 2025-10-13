@@ -346,12 +346,16 @@ export default function DashboardLayout({
   // Request permission and register service worker
   useEffect(() => {
     const requestNotificationPermission = async () => {
-      if (!user || !messaging) return;
-      
+      if (!user || !messaging || !('serviceWorker' in navigator)) return;
+
       try {
+        const swRegistration = await navigator.serviceWorker.ready;
         const permission = await Notification.requestPermission();
         if (permission === 'granted') {
-          const currentToken = await getToken(messaging, { vapidKey: process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY });
+          const currentToken = await getToken(messaging, { 
+              vapidKey: process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY,
+              serviceWorkerRegistration: swRegistration 
+          });
           if (currentToken) {
             console.log('FCM Token generated:', currentToken);
             const userDocRef = doc(firestore, 'users', user.uid);
@@ -368,23 +372,28 @@ export default function DashboardLayout({
         } else {
           console.log('Unable to get permission to notify.');
         }
-      } catch (err) {
+      } catch (err: any) {
         console.error('An error occurred while retrieving token. ', err);
       }
     };
 
-    if (user && 'Notification' in window) {
-      setTimeout(requestNotificationPermission, 5000); // Delay to avoid immediate prompt
-    }
-    
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/firebase-messaging-sw.js')
-        .then((registration) => {
-          console.log('Service Worker registered with scope:', registration.scope);
-        }).catch((err) => {
-          console.error('Service Worker registration failed:', err);
-        });
-    }
+    const registerServiceWorker = async () => {
+        if ('serviceWorker' in navigator) {
+            try {
+                const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+                console.log('Service Worker registered with scope:', registration.scope);
+                // After successful registration, request permission
+                if(user) {
+                    setTimeout(requestNotificationPermission, 2000); // Add a small delay
+                }
+            } catch (err) {
+                console.error('Service Worker registration failed:', err);
+            }
+        }
+    };
+
+    registerServiceWorker();
+
   }, [user]);
   
   useEffect(() => {
