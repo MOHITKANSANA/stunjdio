@@ -15,7 +15,7 @@ import {
   Info,
 } from 'lucide-react';
 import Link from 'next/link';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/hooks/use-auth';
 import { cn } from '@/lib/utils';
 import { LiveClassTimer, TopStudentsSection, InstallPwaPrompt, SocialMediaLinks, StudentReviews, DashboardMarquee } from './_components/dashboard-widgets';
@@ -25,6 +25,9 @@ import { Button } from '@/components/ui/button';
 import { Loader2 } from 'lucide-react';
 import { useCollection } from 'react-firebase-hooks/firestore';
 import Image from 'next/image';
+import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel"
+import Autoplay from "embla-carousel-autoplay"
+
 
 const quickAccessItems = [
   { label: "Courses", icon: Book, href: "/dashboard/courses", color: "from-blue-500 to-sky-500" },
@@ -40,6 +43,9 @@ const quickAccessItems = [
 
 const OurEducators = () => {
     const [educators, loading] = useCollection(query(collection(firestore, 'educators'), orderBy('createdAt', 'desc')));
+    const plugin = React.useRef(
+        Autoplay({ delay: 3000, stopOnInteraction: true })
+    )
 
     if (loading) return null;
     if (!educators || educators.empty) return null;
@@ -47,22 +53,36 @@ const OurEducators = () => {
     return (
         <div className="space-y-4">
             <h2 className="text-lg font-semibold text-foreground/80 px-4">Our Educators</h2>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 px-4">
-                {educators.docs.map(doc => {
-                    const educator = doc.data();
-                    return (
-                        <Card key={doc.id} className="text-center overflow-hidden">
-                            <CardContent className="p-4">
-                                <div className="relative h-24 w-24 mx-auto rounded-full overflow-hidden mb-3">
-                                    <Image src={educator.photoUrl} alt={educator.name} fill style={{objectFit:"cover"}} />
+            <Carousel
+                opts={{ align: "start", loop: true, }}
+                plugins={[plugin.current]}
+                onMouseEnter={plugin.current.stop}
+                onMouseLeave={plugin.current.reset}
+                className="w-full"
+            >
+                <CarouselContent className="-ml-2">
+                    {educators.docs.map(doc => {
+                        const educator = doc.data();
+                        return (
+                             <CarouselItem key={doc.id} className="basis-1/2 md:basis-1/3 lg:basis-1/4 pl-2">
+                                <div className="p-1">
+                                    <Card className="text-center overflow-hidden">
+                                        <CardContent className="p-4 flex flex-col items-center">
+                                            <div className="relative h-24 w-24 mx-auto rounded-full overflow-hidden mb-3">
+                                                <Image src={educator.photoUrl} alt={educator.name} fill style={{objectFit:"cover"}} />
+                                            </div>
+                                            <h3 className="font-semibold text-sm">{educator.name}</h3>
+                                            <p className="text-xs text-muted-foreground">{educator.expertise}</p>
+                                        </CardContent>
+                                    </Card>
                                 </div>
-                                <h3 className="font-semibold">{educator.name}</h3>
-                                <p className="text-xs text-muted-foreground">{educator.expertise}</p>
-                            </CardContent>
-                        </Card>
-                    )
-                })}
-            </div>
+                            </CarouselItem>
+                        )
+                    })}
+                </CarouselContent>
+                <CarouselPrevious className="hidden sm:flex" />
+                <CarouselNext className="hidden sm:flex" />
+            </Carousel>
         </div>
     )
 }

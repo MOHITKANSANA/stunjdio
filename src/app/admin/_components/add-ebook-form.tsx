@@ -5,7 +5,7 @@ import { useState, useRef, ChangeEvent } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
@@ -96,6 +96,7 @@ export function AddEbookForm() {
           render={({ field }) => (
             <FormItem>
               <FormLabel>Thumbnail Image</FormLabel>
+               <FormDescription>Recommended size: 600x800 pixels (portrait).</FormDescription>
               <FormControl>
                 <div>
                   <Button type="button" variant="outline" className="w-full" onClick={() => fileInputRef.current?.click()}>
