@@ -1,14 +1,10 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card"
-import { ApplyForm } from "./_components/apply-form";
-import { OnlineTest } from "./_components/online-test";
-import { ViewResult } from "./_components/view-result";
-import { ScrutinyForm } from "./_components/scrutiny-form";
+import { useState, useEffect, useCallback, Suspense } from 'react';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card"
 import { Award, FileText, PenSquare, Eye, Search, AlertTriangle, FileSignature, Ticket, Loader2 } from "lucide-react";
 import { cn } from '@/lib/utils';
-import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
+import { doc, getDoc, collection, query, where, getDocs, addDoc, serverTimestamp, updateDoc } from 'firebase/firestore';
 import { firestore } from '@/lib/firebase';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -16,6 +12,12 @@ import { useAuth } from '@/hooks/use-auth';
 import { useCollection } from 'react-firebase-hooks/firestore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { ApplyForm } from './_components/apply-form';
+import { OnlineTest } from './_components/online-test';
+import { ViewResult } from './_components/view-result';
+import { ScrutinyForm } from './_components/scrutiny-form';
+
 
 type ActiveTab = 'apply' | 'test' | 'result' | 'review' | 'history' | 'admit-card';
 
@@ -158,7 +160,7 @@ const AdmitCardDownloader = () => {
                     <div className="mt-6">
                         <div id="admit-card" className="p-4 sm:p-6 border rounded-lg bg-white text-black text-xs sm:text-sm">
                             <div className="text-center pb-4 border-b">
-                                <h2 className="text-lg sm:text-2xl font-bold">Go Swami National Scholarship Test (GSNST)</h2>
+                                <h2 className="text-lg sm:text-2xl font-bold">Learn with Munedra Scholarship Test</h2>
                                 <h3 className="text-md sm:text-xl font-semibold">Admit Card</h3>
                             </div>
                             <div className="flex flex-col sm:flex-row gap-4 mt-4">
@@ -191,7 +193,9 @@ const AdmitCardDownloader = () => {
 };
 
 
-export default function ScholarshipPage() {
+function ScholarshipPageContent() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState<ActiveTab>('apply');
   const [settings, setSettings] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -200,6 +204,18 @@ export default function ScholarshipPage() {
   const [testStatus, setTestStatus] = useState<'closed' | 'open' | 'upcoming'>('closed');
   
   const [historyKey, setHistoryKey] = useState(0);
+
+  useEffect(() => {
+    const tab = searchParams.get('tab') as ActiveTab;
+    if (tab) {
+        setActiveTab(tab);
+    }
+  }, [searchParams]);
+
+  const handleTabChange = (tab: ActiveTab) => {
+      setActiveTab(tab);
+      router.push(`/dashboard/scholarship?tab=${tab}`);
+  }
 
   const fetchSettings = useCallback(async () => {
     setLoading(true);
@@ -323,10 +339,10 @@ export default function ScholarshipPage() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8">
+    <div className="max-w-4xl mx-auto space-y-8 p-4 md:p-6">
       <div className="text-center">
         <Award className="mx-auto h-12 w-12 text-yellow-500 mb-4" />
-        <h1 className="text-3xl md:text-4xl font-bold font-headline">Go Swami National Scholarship Test (GSNST)</h1>
+        <h1 className="text-3xl md:text-4xl font-bold font-headline">Learn with Munedra Scholarship Test</h1>
         <p className="text-muted-foreground mt-2">Apply for scholarships, take tests, and view your results.</p>
       </div>
       
@@ -335,7 +351,7 @@ export default function ScholarshipPage() {
             <Button
                 key={item.id}
                 variant={activeTab === item.id ? 'default' : 'outline'}
-                onClick={() => setActiveTab(item.id)}
+                onClick={() => handleTabChange(item.id)}
                 className={cn(
                     "flex flex-col items-center justify-center h-24 text-center p-2 rounded-lg shadow-md transition-all transform hover:-translate-y-1"
                 )}
@@ -351,4 +367,12 @@ export default function ScholarshipPage() {
       </div>
     </div>
   )
+}
+
+export default function ScholarshipPage() {
+    return (
+        <Suspense fallback={<div className="p-8"><Skeleton className="h-96 w-full" /></div>}>
+            <ScholarshipPageContent />
+        </Suspense>
+    )
 }

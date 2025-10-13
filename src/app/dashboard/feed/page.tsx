@@ -15,115 +15,10 @@ import { useState, useRef, ChangeEvent } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 import Image from 'next/image';
+import Link from 'next/link';
 import { formatDistanceToNow } from 'date-fns';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog"
 import { Input } from '@/components/ui/input';
 import { AnimatePresence, motion } from 'framer-motion';
-
-const CreatePost = ({ onPostCreated }: { onPostCreated: () => void }) => {
-    const { user } = useAuth();
-    const { toast } = useToast();
-    const [content, setContent] = useState('');
-    const [imageFile, setImageFile] = useState<File | null>(null);
-    const [imagePreview, setImagePreview] = useState<string | null>(null);
-    const [isSubmitting, setIsSubmitting] = useState(false);
-    const fileInputRef = useRef<HTMLInputElement>(null);
-
-    const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
-        if (e.target.files && e.target.files[0]) {
-            const file = e.target.files[0];
-            setImageFile(file);
-            setImagePreview(URL.createObjectURL(file));
-        }
-    };
-    
-    const fileToDataUrl = (file: File): Promise<string> => {
-        return new Promise((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = () => resolve(reader.result as string);
-          reader.onerror = reject;
-          reader.readAsDataURL(file);
-        });
-    }
-
-    const handleSubmit = async () => {
-        if (!user || (!content.trim() && !imageFile)) {
-            toast({ variant: 'destructive', description: "Please write something or upload an image." });
-            return;
-        }
-        setIsSubmitting(true);
-        try {
-            let imageUrl: string | null = null;
-            if (imageFile) {
-                imageUrl = await fileToDataUrl(imageFile);
-            }
-            
-            await addDoc(collection(firestore, 'feedPosts'), {
-                authorId: user.uid,
-                authorName: user.displayName,
-                authorAvatar: user.photoURL,
-                content: content.trim(),
-                imageUrl: imageUrl,
-                likes: [],
-                commentsCount: 0,
-                createdAt: serverTimestamp()
-            });
-
-            setContent('');
-            setImageFile(null);
-            setImagePreview(null);
-            toast({ description: "Your post has been published!" });
-            onPostCreated();
-
-        } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Error', description: e.message });
-        } finally {
-            setIsSubmitting(false);
-        }
-    }
-
-    return (
-        <Card className="shadow-lg">
-            <CardContent className="p-4">
-                <div className="flex gap-4">
-                    <Avatar>
-                        <AvatarImage src={user?.photoURL || undefined} />
-                        <AvatarFallback>{user?.displayName?.charAt(0) || 'U'}</AvatarFallback>
-                    </Avatar>
-                    <div className="w-full space-y-2">
-                        <Textarea 
-                            placeholder="What's on your mind?"
-                            value={content}
-                            onChange={(e) => setContent(e.target.value)}
-                            className="bg-muted border-none focus-visible:ring-1 focus-visible:ring-primary"
-                        />
-                        {imagePreview && (
-                            <div className="relative w-full aspect-video rounded-lg overflow-hidden">
-                                <Image src={imagePreview} alt="Preview" fill style={{ objectFit: 'cover' }} />
-                            </div>
-                        )}
-                        <div className="flex justify-between items-center">
-                            <Button variant="ghost" size="icon" onClick={() => fileInputRef.current?.click()}>
-                                <ImageIcon className="text-muted-foreground" />
-                            </Button>
-                            <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileChange} />
-                            <Button onClick={handleSubmit} disabled={isSubmitting}>
-                                {isSubmitting ? <Loader2 className="animate-spin" /> : 'Post'}
-                            </Button>
-                        </div>
-                    </div>
-                </div>
-            </CardContent>
-        </Card>
-    );
-};
-
 
 const PostCard = ({ post }: { post: any }) => {
     const { user } = useAuth();
@@ -187,8 +82,14 @@ const PostCard = ({ post }: { post: any }) => {
             <CardContent className="px-4 pb-2 space-y-4">
                 {post.data.content && <p className="whitespace-pre-wrap">{post.data.content}</p>}
                 {post.data.imageUrl && (
-                    <div className="relative aspect-video rounded-lg overflow-hidden border">
-                        <Image src={post.data.imageUrl} alt="Post content" fill style={{ objectFit: 'cover' }} />
+                    <div className="relative max-h-[60vh] w-full rounded-lg overflow-hidden border flex justify-center bg-black/50">
+                        <Image 
+                            src={post.data.imageUrl} 
+                            alt="Post content" 
+                            width={800} 
+                            height={800}
+                            className="object-contain w-auto h-auto max-w-full max-h-[60vh]"
+                         />
                     </div>
                 )}
             </CardContent>
@@ -243,7 +144,6 @@ const PostCard = ({ post }: { post: any }) => {
 
 export default function FeedPage() {
     const { user } = useAuth();
-    const [openCreatePost, setOpenCreatePost] = useState(false);
     const [posts, loading, error] = useCollection(
         query(collection(firestore, 'feedPosts'), orderBy('createdAt', 'desc'))
     );
@@ -258,28 +158,22 @@ export default function FeedPage() {
             </div>
 
             {user && (
-                 <Dialog open={openCreatePost} onOpenChange={setOpenCreatePost}>
-                    <DialogTrigger asChild>
-                         <Card className="cursor-pointer hover:bg-muted transition-colors">
-                            <CardContent className="p-4 flex items-center gap-4">
-                                <Avatar>
-                                    <AvatarImage src={user?.photoURL || undefined} />
-                                    <AvatarFallback>{user?.displayName?.charAt(0) || 'U'}</AvatarFallback>
-                                </Avatar>
-                                <div className="w-full justify-start text-muted-foreground">
-                                    What's on your mind, {user.displayName}?
-                                </div>
-                                <Button size="icon" variant="ghost">
-                                    <PlusCircle />
-                                </Button>
-                            </CardContent>
-                        </Card>
-                    </DialogTrigger>
-                    <DialogContent>
-                        <DialogHeader><DialogTitle>Create a new post</DialogTitle></DialogHeader>
-                        <CreatePost onPostCreated={() => setOpenCreatePost(false)} />
-                    </DialogContent>
-                </Dialog>
+                <Link href="/dashboard/feed/create">
+                    <Card className="cursor-pointer hover:bg-muted transition-colors">
+                        <CardContent className="p-4 flex items-center gap-4">
+                            <Avatar>
+                                <AvatarImage src={user?.photoURL || undefined} />
+                                <AvatarFallback>{user?.displayName?.charAt(0) || 'U'}</AvatarFallback>
+                            </Avatar>
+                            <div className="w-full justify-start text-muted-foreground">
+                                What's on your mind, {user.displayName}?
+                            </div>
+                            <Button size="icon" variant="ghost">
+                                <PlusCircle />
+                            </Button>
+                        </CardContent>
+                    </Card>
+                </Link>
             )}
 
             <div className="space-y-4">
