@@ -9,7 +9,7 @@ import { firestore } from '@/lib/firebase';
 import { useRouter } from 'next/navigation';
 import { useFieldArray, useForm, Controller } from 'react-hook-form';
 
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
@@ -140,76 +140,75 @@ function CreatePostForm() {
                     </div>
                 </div>
             </CardHeader>
+            <form onSubmit={handleSubmit(onSubmit)}>
             <CardContent className="p-4">
-                <form onSubmit={handleSubmit(onSubmit)}>
-                    <div className="flex gap-4">
-                        <Avatar>
-                            <AvatarImage src={user?.photoURL || undefined} />
-                            <AvatarFallback>{user?.displayName?.charAt(0) || 'U'}</AvatarFallback>
-                        </Avatar>
-                        <div className="w-full space-y-4">
-                             <Tabs defaultValue="text" onValueChange={(value) => setValue('postType', value as PostType)} className="w-full">
-                                <TabsList className="grid w-full grid-cols-2">
-                                    <TabsTrigger value="text">Text & Image</TabsTrigger>
-                                    <TabsTrigger value="poll">Poll</TabsTrigger>
-                                </TabsList>
-                                <TabsContent value="text" className="mt-4">
-                                     <Textarea 
-                                        placeholder="What's on your mind?"
-                                        className="bg-muted border-none focus-visible:ring-1 focus-visible:ring-primary min-h-[150px]"
-                                        {...register('content')}
-                                    />
-                                    {imagePreview && (
-                                        <div className="relative mt-4 w-full aspect-video rounded-lg overflow-hidden border">
-                                            <Image src={imagePreview} alt="Preview" fill style={{ objectFit: 'contain' }} />
-                                        </div>
-                                    )}
-                                </TabsContent>
-                                <TabsContent value="poll" className="mt-4 space-y-4">
-                                     <Textarea 
-                                        placeholder="What's your poll question?"
-                                        className="bg-muted border-none focus-visible:ring-1 focus-visible:ring-primary"
-                                        {...register('content')}
-                                    />
-                                    <div className="space-y-2">
-                                        <p className="text-sm font-medium">Poll Options</p>
-                                        {fields.map((item, index) => (
-                                            <div key={item.id} className="flex items-center gap-2">
-                                                <Input
-                                                    {...register(`pollOptions.${index}.text`)}
-                                                    placeholder={`Option ${index + 1}`}
-                                                />
-                                                <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)} disabled={fields.length <= 2}>
-                                                    <Trash2 className="h-4 w-4" />
-                                                </Button>
-                                            </div>
-                                        ))}
-                                         <Button type="button" variant="outline" size="sm" onClick={() => append({ text: '' })}>
-                                            <PlusCircle className="mr-2 h-4 w-4" />
-                                            Add Option
-                                        </Button>
+                <div className="flex gap-4">
+                    <Avatar>
+                        <AvatarImage src={user?.photoURL || undefined} />
+                        <AvatarFallback>{user?.displayName?.charAt(0) || 'U'}</AvatarFallback>
+                    </Avatar>
+                    <div className="w-full space-y-4">
+                        <Tabs defaultValue="text" onValueChange={(value) => setValue('postType', value as PostType)} className="w-full">
+                            <TabsList className="grid w-full grid-cols-2">
+                                <TabsTrigger value="text">Text & Image</TabsTrigger>
+                                <TabsTrigger value="poll">Poll</TabsTrigger>
+                            </TabsList>
+                            <TabsContent value="text" className="mt-4">
+                                <Textarea 
+                                    placeholder="What's on your mind?"
+                                    className="bg-muted border-none focus-visible:ring-1 focus-visible:ring-primary min-h-[150px]"
+                                    {...register('content')}
+                                />
+                                {imagePreview && (
+                                    <div className="relative mt-4 w-full aspect-video rounded-lg overflow-hidden border">
+                                        <Image src={imagePreview} alt="Preview" fill style={{ objectFit: 'contain' }} />
                                     </div>
-                                </TabsContent>
-                            </Tabs>
-                           
-                            <div className="flex justify-between items-center mt-4">
-                               {postType === 'text' && (
-                                 <Button type="button" variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
-                                    <ImageIcon className="mr-2" />
-                                    Add Image
-                                 </Button>
-                               )}
-                                <div className="flex-grow"></div>
-                                <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileChange} />
-                                <Button type="submit" disabled={isSubmitting} size="lg">
-                                    {isSubmitting ? <Loader2 className="animate-spin mr-2" /> : null}
-                                    Publish Post
-                                </Button>
-                            </div>
-                        </div>
+                                )}
+                            </TabsContent>
+                            <TabsContent value="poll" className="mt-4 space-y-4">
+                                <Textarea 
+                                    placeholder="What's your poll question?"
+                                    className="bg-muted border-none focus-visible:ring-1 focus-visible:ring-primary"
+                                    {...register('content')}
+                                />
+                                <div className="space-y-2">
+                                    <p className="text-sm font-medium">Poll Options</p>
+                                    {fields.map((item, index) => (
+                                        <div key={item.id} className="flex items-center gap-2">
+                                            <Input
+                                                {...register(`pollOptions.${index}.text`)}
+                                                placeholder={`Option ${index + 1}`}
+                                            />
+                                            <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)} disabled={fields.length <= 2}>
+                                                <Trash2 className="h-4 w-4" />
+                                            </Button>
+                                        </div>
+                                    ))}
+                                    <Button type="button" variant="outline" size="sm" onClick={() => append({ text: '' })}>
+                                        <PlusCircle className="mr-2 h-4 w-4" />
+                                        Add Option
+                                    </Button>
+                                </div>
+                            </TabsContent>
+                        </Tabs>
                     </div>
-                </form>
+                </div>
             </CardContent>
+            <CardFooter className="flex justify-between items-center p-4 border-t">
+                 {postType === 'text' && (
+                    <Button type="button" variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
+                    <ImageIcon className="mr-2" />
+                    Add Image
+                    </Button>
+                )}
+                 <div className={postType !== 'text' ? 'w-full' : ''}></div>
+                <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileChange} />
+                <Button type="submit" disabled={isSubmitting} size="lg">
+                    {isSubmitting ? <Loader2 className="animate-spin mr-2" /> : null}
+                    Publish Post
+                </Button>
+            </CardFooter>
+            </form>
         </Card>
     );
 };
