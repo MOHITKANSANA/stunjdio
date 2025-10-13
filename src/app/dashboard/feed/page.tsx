@@ -4,7 +4,7 @@
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Rss, PlusCircle, Image as ImageIcon, MessageSquare, Send, Heart, Check } from 'lucide-react';
+import { Rss, PlusCircle, MessageSquare, Send, Heart, Check } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { useCollection } from 'react-firebase-hooks/firestore';
 import { collection, query, orderBy, addDoc, serverTimestamp, doc, updateDoc, increment, arrayUnion, arrayRemove } from 'firebase/firestore';
@@ -16,6 +16,7 @@ import { Loader2 } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { formatDistanceToNow } from 'date-fns';
+import { Dialog, DialogContent } from "@/components/ui/dialog"
 import { Input } from '@/components/ui/input';
 import { AnimatePresence, motion } from 'framer-motion';
 
