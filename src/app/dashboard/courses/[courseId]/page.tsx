@@ -10,7 +10,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
-import { IndianRupee, BookOpen, Clock, Users, Video, PlayCircle, FileText, StickyNote, ShieldQuestion, Bot, ThumbsUp, ThumbsDown, MessageSquare, CalendarDays, Send, HelpCircle, Download } from 'lucide-react';
+import { IndianRupee, BookOpen, Clock, Users, Video, PlayCircle, FileText, StickyNote, ShieldQuestion, Bot, ThumbsUp, ThumbsDown, MessageSquare, CalendarDays, Send, HelpCircle, Download, CheckCircle } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/use-auth';
 import { collection, query, where, orderBy, getDocs, limit, onSnapshot, addDoc, serverTimestamp, arrayUnion, updateDoc, arrayRemove, deleteDoc } from 'firebase/firestore';
@@ -329,14 +329,16 @@ function CourseDetailPageContent() {
     ? query(
         collection(firestore, 'enrollments'), 
         where('userId', '==', user.uid), 
-        where('courseId', '==', courseId), 
-        where('status', '==', 'approved')
+        where('courseId', '==', courseId),
+        orderBy('createdAt', 'desc'),
+        limit(1)
       )
     : null;
     
   const [enrollmentDocs, enrollmentLoading] = useCollection(enrollmentsQuery);
 
-  const isEnrolled = !!enrollmentDocs && !enrollmentDocs.empty;
+  const isEnrolled = !!enrollmentDocs && !enrollmentDocs.empty && enrollmentDocs.docs[0].data().status === 'approved';
+  const enrollmentStatus = enrollmentDocs?.docs[0]?.data().status;
   
   if (courseLoading || authLoading || enrollmentLoading) {
     return (
@@ -412,11 +414,17 @@ function CourseDetailPageContent() {
               <CardDescription>One-time payment</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-                <Button asChild size="lg" className="w-full text-lg">
-                   <Link href={`/dashboard/payment-verification?courseId=${courseId}`}>
-                        Enroll Now
-                   </Link>
-                </Button>
+                 { enrollmentStatus === 'pending' ? (
+                     <Button size="lg" className="w-full text-lg" disabled>
+                        Approval Pending
+                    </Button>
+                 ) : (
+                    <Button asChild size="lg" className="w-full text-lg bg-green-600 hover:bg-green-700">
+                       <Link href={`/dashboard/payment-verification?courseId=${courseId}`}>
+                            Enroll Now
+                       </Link>
+                    </Button>
+                 )}
               <div className="space-y-3 pt-4 text-sm text-muted-foreground">
                 <div className="flex items-center gap-3"><BookOpen className="h-5 w-5 text-primary" /><span>Full course access</span></div>
                 <div className="flex items-center gap-3"><Clock className="h-5 w-5 text-primary" /><span>Lifetime access</span></div>
