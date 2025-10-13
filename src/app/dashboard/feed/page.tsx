@@ -4,14 +4,13 @@
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Rss, PlusCircle, Image as ImageIcon, MessageSquare, Send, Heart } from 'lucide-react';
+import { Rss, PlusCircle, Image as ImageIcon, MessageSquare, Send, Heart, Check } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { useCollection } from 'react-firebase-hooks/firestore';
 import { collection, query, orderBy, addDoc, serverTimestamp, doc, updateDoc, increment, arrayUnion, arrayRemove } from 'firebase/firestore';
 import { firestore } from '@/lib/firebase';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Textarea } from '@/components/ui/textarea';
-import { useState, useRef, ChangeEvent } from 'react';
+import { useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 import Image from 'next/image';
@@ -19,6 +18,64 @@ import Link from 'next/link';
 import { formatDistanceToNow } from 'date-fns';
 import { Input } from '@/components/ui/input';
 import { AnimatePresence, motion } from 'framer-motion';
+
+const PollComponent = ({ post }: { post: any }) => {
+    const { user } = useAuth();
+    const [votedOption, setVotedOption] = useState<string | null>(null);
+
+    // Check if user has already voted
+    useState(() => {
+        if (user) {
+            post.data.pollOptions.forEach((opt: any, index: number) => {
+                if (opt.votes.includes(user.uid)) {
+                    setVotedOption(opt.text);
+                }
+            });
+        }
+    });
+
+    const handleVote = async (optionText: string) => {
+        if (!user || votedOption) return;
+
+        const postRef = doc(firestore, 'feedPosts', post.id);
+        const updatedOptions = post.data.pollOptions.map((opt: any) => {
+            if (opt.text === optionText) {
+                return { ...opt, votes: [...opt.votes, user.uid] };
+            }
+            return opt;
+        });
+
+        await updateDoc(postRef, { pollOptions: updatedOptions });
+        setVotedOption(optionText);
+    };
+
+    const totalVotes = post.data.pollOptions.reduce((acc: number, opt: any) => acc + opt.votes.length, 0);
+
+    return (
+        <div className="space-y-2">
+            {post.data.pollOptions.map((option: any, index: number) => {
+                const percentage = totalVotes > 0 ? (option.votes.length / totalVotes) * 100 : 0;
+                const isVotedFor = votedOption === option.text;
+
+                return (
+                    <div key={index} onClick={() => handleVote(option.text)} className="relative border rounded-md p-2 cursor-pointer hover:bg-muted">
+                        {votedOption && (
+                            <div
+                                className="absolute top-0 left-0 h-full bg-primary/20 rounded-md transition-all duration-500"
+                                style={{ width: `${percentage}%` }}
+                            />
+                        )}
+                        <div className="relative z-10 flex justify-between items-center">
+                            <span className="font-medium">{option.text} {isVotedFor && <Check className="inline h-4 w-4 text-primary"/>}</span>
+                            {votedOption && <span className="text-sm font-semibold">{percentage.toFixed(0)}%</span>}
+                        </div>
+                    </div>
+                );
+            })}
+        </div>
+    );
+};
+
 
 const PostCard = ({ post }: { post: any }) => {
     const { user } = useAuth();
@@ -81,7 +138,12 @@ const PostCard = ({ post }: { post: any }) => {
             </CardHeader>
             <CardContent className="px-4 pb-2 space-y-4">
                 {post.data.content && <p className="whitespace-pre-wrap">{post.data.content}</p>}
-                {post.data.imageUrl && (
+                
+                {post.data.type === 'poll' && (
+                    <PollComponent post={post} />
+                )}
+
+                {post.data.type === 'text' && post.data.imageUrl && (
                     <div className="relative max-h-[60vh] w-full rounded-lg overflow-hidden border flex justify-center bg-black/50">
                         <Image 
                             src={post.data.imageUrl} 
@@ -166,7 +228,7 @@ export default function FeedPage() {
                                 <AvatarFallback>{user?.displayName?.charAt(0) || 'U'}</AvatarFallback>
                             </Avatar>
                             <div className="w-full justify-start text-muted-foreground">
-                                What's on your mind, {user.displayName}?
+                                What's on your mind, {user.displayName?.split(' ')[0]}?
                             </div>
                             <Button size="icon" variant="ghost">
                                 <PlusCircle />

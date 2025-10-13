@@ -29,6 +29,7 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { AddBattleQuizForm } from "./_components/add-battle-quiz-form";
 
 
 const PwaInstallations = () => {
@@ -167,6 +168,7 @@ export default function AdminPage() {
                     <TabsTrigger value="course_enrollments">Course Enrollments</TabsTrigger>
                     <TabsTrigger value="test_enrollments">Test Enrollments</TabsTrigger>
                     <TabsTrigger value="scholarships">Scholarships</TabsTrigger>
+                    <TabsTrigger value="battle_quiz">Battle Quiz</TabsTrigger>
                     <TabsTrigger value="kids_tube">Kids Tube</TabsTrigger>
                     <TabsTrigger value="promotions">Promotions</TabsTrigger>
                     <TabsTrigger value="pwa">PWA Installations</TabsTrigger>
@@ -199,6 +201,10 @@ export default function AdminPage() {
                             </Card>
                         </div>
                         <div className="space-y-8">
+                             <Card>
+                                <CardHeader><CardTitle>Add Battle Quiz</CardTitle></CardHeader>
+                                <CardContent><AddBattleQuizForm /></CardContent>
+                            </Card>
                             <Card>
                                 <CardHeader><CardTitle>Add New Live Class</CardTitle></CardHeader>
                                 <CardContent><ManageLiveClass /></CardContent>
@@ -257,6 +263,18 @@ export default function AdminPage() {
 
                 <TabsContent value="scholarships" className="mt-6 md:mt-0">
                     <ManageScholarships />
+                </TabsContent>
+
+                 <TabsContent value="battle_quiz" className="mt-6 md:mt-0">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Manage Battle Quizzes</CardTitle>
+                            <CardDescription>Create and manage battle quizzes.</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                           <AddBattleQuizForm />
+                        </CardContent>
+                    </Card>
                 </TabsContent>
 
                 <TabsContent value="kids_tube" className="mt-6 md:mt-0">

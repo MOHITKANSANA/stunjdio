@@ -1,165 +1,103 @@
+
 'use client';
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { AddCourseForm } from "./_components/add-course-form";
-import { ManageLiveClass } from "./_components/manage-live-class";
-import { AddEbookForm } from "./_components/add-ebook-form";
-import { AddPaperForm } from "./_components/add-paper-form";
-import { AddTestSeriesForm } from "./_components/add-test-series-form";
-import { ManageEnrollments } from "./_components/manage-enrollments";
-import { ManageScholarships } from "./_components/manage-scholarships";
-import { ManagePointRequests } from "./_components/manage-point-requests";
-import { AddKidsVideoForm } from "./_components/add-kids-video-form";
-import { AddContentToCourseForm } from "./_components/add-content-to-course-form";
-import { HtmlEditor } from "./_components/html-editor";
-import { AddEducatorForm } from "./_components/add-educator-form";
-import { ManageTestSeriesEnrollments } from "./_components/manage-test-series-enrollment";
-import { AppSettingsForm } from "./_components/app-settings-form";
-import { ManageUsers } from "./_components/manage-users";
-import { ManagePromotions } from "./_components/manage-promotions";
-import { SendNotificationsForm } from "./_components/send-notifications-form";
+import { useState } from 'react';
+import { useForm, useFieldArray } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { useToast } from '@/hooks/use-toast';
+import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
+import { firestore } from '@/lib/firebase';
+import { Loader2, PlusCircle, Trash2 } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
 
+const questionSchema = z.object({
+  text: z.string().min(1, 'Question text is required.'),
+  options: z.array(z.string().min(1, 'Option cannot be empty.')).length(4, 'There must be exactly 4 options.'),
+  correctAnswer: z.string().min(1, 'Please specify the correct answer.'),
+  points: z.coerce.number().min(1, 'Points must be at least 1').default(10),
+});
 
-export default function AdminPage() {
-    return (
-        <div className="space-y-8 p-4 md:p-8">
-            <div>
-                <h1 className="text-3xl md:text-4xl font-bold font-headline">Admin Dashboard</h1>
-                <p className="text-muted-foreground mt-2">Manage your application content and users.</p>
-            </div>
-            
-             <Tabs defaultValue="content" className="w-full" orientation="vertical">
-                <TabsList className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-1 md:w-48 lg:w-56 shrink-0 h-max">
-                    <TabsTrigger value="content">Content</TabsTrigger>
-                    <TabsTrigger value="users">Manage Users</TabsTrigger>
-                    <TabsTrigger value="notifications">Notifications</TabsTrigger>
-                    <TabsTrigger value="course_enrollments">Course Enrollments</TabsTrigger>
-                    <TabsTrigger value="test_enrollments">Test Enrollments</TabsTrigger>
-                    <TabsTrigger value="scholarships">Scholarships</TabsTrigger>
-                    <TabsTrigger value="kids_tube">Kids Tube</TabsTrigger>
-                    <TabsTrigger value="promotions">Promotions</TabsTrigger>
-                    <TabsTrigger value="html_editor">HTML Editor</TabsTrigger>
-                    <TabsTrigger value="settings">App Settings</TabsTrigger>
-                </TabsList>
-                
-                <TabsContent value="content" className="mt-6 md:mt-0">
-                    <div className="grid gap-8 lg:grid-cols-2">
-                        <div className="space-y-8">
-                            <Card>
-                                <CardHeader><CardTitle>Add New Course</CardTitle></CardHeader>
-                                <CardContent><AddCourseForm /></CardContent>
-                            </Card>
-                            <Card>
-                                <CardHeader><CardTitle>Add Content to Existing Course</CardTitle></CardHeader>
-                                <CardContent><AddContentToCourseForm /></CardContent>
-                            </Card>
-                             <Card>
-                                <CardHeader><CardTitle>Add New E-Book</CardTitle></CardHeader>
-                                <CardContent><AddEbookForm /></CardContent>
-                            </Card>
-                             <Card>
-                                <CardHeader><CardTitle>Add New Test Series</CardTitle></CardHeader>
-                                <CardContent><AddTestSeriesForm /></CardContent>
-                            </Card>
-                             <Card>
-                                <CardHeader><CardTitle>Add New Educator</CardTitle></CardHeader>
-                                <CardContent><AddEducatorForm /></CardContent>
-                            </Card>
-                        </div>
-                        <div className="space-y-8">
-                            <Card>
-                                <CardHeader><CardTitle>Add New Live Class</CardTitle></CardHeader>
-                                <CardContent><ManageLiveClass /></CardContent>
-                            </Card>
-                            <Card>
-                                <CardHeader><CardTitle>Add Previous Paper</CardTitle></CardHeader>
-                                <CardContent><AddPaperForm /></CardContent>
-                            </Card>
-                        </div>
-                    </div>
-                </TabsContent>
+const battleQuizSchema = z.object({
+  title: z.string().min(1, 'Title is required.'),
+  questions: z.array(questionSchema).min(1, 'Add at least one question.'),
+});
 
-                <TabsContent value="users" className="mt-6 md:mt-0">
-                    <ManageUsers />
-                </TabsContent>
+type BattleQuizFormValues = z.infer<typeof battleQuizSchema>;
 
-                 <TabsContent value="notifications" className="mt-6 md:mt-0">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Send Push Notifications</CardTitle>
-                            <CardDescription>Send a notification to all subscribed users.</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <SendNotificationsForm />
-                        </CardContent>
-                    </Card>
-                </TabsContent>
+export function AddBattleQuizForm() {
+  const { toast } = useToast();
+  const [isLoading, setIsLoading] = useState(false);
 
-                <TabsContent value="course_enrollments" className="mt-6 md:mt-0">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Manage Course Enrollments</CardTitle>
-                            <CardDescription>Approve or reject student course enrollment requests.</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <ManageEnrollments />
-                        </CardContent>
-                    </Card>
-                </TabsContent>
+  const form = useForm<BattleQuizFormValues>({
+    resolver: zodResolver(battleQuizSchema),
+    defaultValues: {
+      title: '',
+      questions: [],
+    },
+  });
 
-                <TabsContent value="test_enrollments" className="mt-6 md:mt-0">
-                     <Card>
-                        <CardHeader>
-                            <CardTitle>Manage Test Series Enrollments</CardTitle>
-                            <CardDescription>Approve or reject student test series enrollment requests.</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <ManageTestSeriesEnrollments />
-                        </CardContent>
-                    </Card>
-                </TabsContent>
+  const { fields, append, remove } = useFieldArray({
+    control: form.control,
+    name: 'questions',
+  });
 
-                <TabsContent value="scholarships" className="mt-6 md:mt-0">
-                    <ManageScholarships />
-                </TabsContent>
+  const onSubmit = async (data: BattleQuizFormValues) => {
+    setIsLoading(true);
+    try {
+      await addDoc(collection(firestore, 'battleQuizzes'), {
+        ...data,
+        createdAt: serverTimestamp(),
+      });
+      toast({ title: 'Success', description: 'Battle Quiz added successfully.' });
+      form.reset();
+    } catch (error) {
+      console.error('Error adding battle quiz:', error);
+      toast({ variant: 'destructive', title: 'Error', description: 'Could not add battle quiz.' });
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-                <TabsContent value="kids_tube" className="mt-6 md:mt-0">
-                     <div className="grid gap-8 lg:grid-cols-2">
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>Add New Kids Tube Video</CardTitle>
-                                <CardDescription>Add a new video to the Kids Tube section.</CardDescription>
-                            </CardHeader>
-                            <CardContent>
-                                <AddKidsVideoForm />
-                            </CardContent>
-                        </Card>
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>Kids Tube Point Requests</CardTitle>
-                                <CardDescription>Award extra points to kids.</CardDescription>
-                            </CardHeader>
-                            <CardContent>
-                                <ManagePointRequests />
-                            </CardContent>
-                        </Card>
-                    </div>
-                </TabsContent>
-
-                 <TabsContent value="promotions" className="mt-6 md:mt-0">
-                    <ManagePromotions />
-                </TabsContent>
-
-                <TabsContent value="html_editor" className="mt-6 md:mt-0">
-                    <HtmlEditor />
-                </TabsContent>
-
-                <TabsContent value="settings" className="mt-6 md:mt-0">
-                    <AppSettingsForm />
-                </TabsContent>
-
-            </Tabs>
+  return (
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        <FormField control={form.control} name="title" render={({ field }) => (
+          <FormItem><FormLabel>Quiz Title</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+        )} />
+        
+        <div className="space-y-4">
+            <h3 className="text-lg font-semibold">Questions</h3>
+            {fields.map((field, index) => (
+                <div key={field.id} className="p-4 border rounded-lg space-y-3 relative">
+                    <FormField control={form.control} name={`questions.${index}.text`} render={({ field }) => (
+                        <FormItem><FormLabel>Question {index + 1}</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>
+                    )} />
+                    {...Array(4).fill(0).map((_, optionIndex) => (
+                        <FormField key={optionIndex} control={form.control} name={`questions.${index}.options.${optionIndex}`} render={({ field }) => (
+                            <FormItem><FormLabel>Option {optionIndex + 1}</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+                        )} />
+                    ))}
+                    <FormField control={form.control} name={`questions.${index}.correctAnswer`} render={({ field }) => (
+                        <FormItem><FormLabel>Correct Answer</FormLabel><FormControl><Input placeholder="Copy one of the options above" {...field} /></FormControl><FormMessage /></FormItem>
+                    )} />
+                    <FormField control={form.control} name={`questions.${index}.points`} render={({ field }) => (
+                        <FormItem><FormLabel>Points</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>
+                    )} />
+                    <Button type="button" variant="destructive" size="icon" onClick={() => remove(index)} className="absolute top-2 right-2 h-7 w-7"><Trash2 className="h-4 w-4" /></Button>
+                </div>
+            ))}
+            <Button type="button" variant="outline" onClick={() => append({ text: '', options: ['', '', '', ''], correctAnswer: '', points: 10 })}><PlusCircle className="mr-2"/>Add Question</Button>
         </div>
-    );
+
+        <Button type="submit" disabled={isLoading}>
+        {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+        Add Battle Quiz
+        </Button>
+      </form>
+    </Form>
+  );
 }
