@@ -144,7 +144,7 @@ const PostCard = ({ post }: { post: any }) => {
                     <PollComponent post={post} />
                 )}
 
-                {post.data.type === 'text' && post.data.imageUrl && (
+                {post.data.imageUrl && (
                     <div className="relative max-h-[60vh] w-full rounded-lg overflow-hidden border flex justify-center bg-black/50">
                         <Image 
                             src={post.data.imageUrl} 
