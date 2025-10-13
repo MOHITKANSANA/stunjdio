@@ -201,11 +201,11 @@ function CreatePostForm() {
                     Add Image
                     </Button>
                 )}
-                 <div className={postType !== 'text' ? 'w-full' : ''}></div>
+                 <div className={postType !== 'text' ? 'flex-grow' : ''}></div>
                 <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileChange} />
-                <Button type="submit" disabled={isSubmitting} size="lg">
+                <Button type="submit" disabled={isSubmitting}>
                     {isSubmitting ? <Loader2 className="animate-spin mr-2" /> : null}
-                    Publish Post
+                    Publish
                 </Button>
             </CardFooter>
             </form>
