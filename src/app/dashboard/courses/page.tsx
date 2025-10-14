@@ -1,8 +1,7 @@
-
 'use client';
 
 import { useCollection } from 'react-firebase-hooks/firestore';
-import { collection, query, orderBy, where, doc, getDoc } from 'firebase/firestore';
+import { collection, query, orderBy, where, doc, getDoc, addDoc, serverTimestamp } from 'firebase/firestore';
 import { firestore } from '@/lib/firebase';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,14 +12,22 @@ import Image from 'next/image';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/hooks/use-auth';
 import type { DocumentData, QueryDocumentSnapshot } from 'firebase/firestore';
-import { useState } from 'react';
+import { useToast } from '@/hooks/use-toast';
+import { useRouter } from 'next/navigation';
 
 
-const CourseCard = ({ course, courseId, isEnrolled }: { course: any, courseId: string, isEnrolled: boolean }) => {
+const CourseCard = ({ course, courseId, isEnrolled, onFreeEnroll }: { course: any, courseId: string, isEnrolled: boolean, onFreeEnroll: (courseId: string, courseTitle: string) => Promise<void> }) => {
     return (
         <Card className="flex flex-col overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300">
             <div className="relative h-48 w-full">
                 <Image src={course.imageUrl || `https://picsum.photos/seed/${courseId}/600/400`} alt={course.title} fill style={{objectFit: "cover"}} data-ai-hint="online course" />
+                {course.demoUrl && (
+                     <Button asChild variant="secondary" size="sm" className="absolute bottom-2 right-2">
+                        <a href={course.demoUrl} target="_blank" rel="noopener noreferrer">
+                            Watch Demo
+                        </a>
+                    </Button>
+                )}
             </div>
             <CardHeader>
                 <CardTitle className="text-xl">{course.title}</CardTitle>
@@ -38,17 +45,57 @@ const CourseCard = ({ course, courseId, isEnrolled }: { course: any, courseId: s
                 </div>
             </CardContent>
             <CardFooter>
-                 <Button asChild className="w-full active:scale-95 transition-transform">
-                    <Link href={`/dashboard/courses/${courseId}`}>
-                        {isEnrolled ? 'View Course' : 'View Details'}
-                    </Link>
-                 </Button>
+                {isEnrolled ? (
+                     <Button asChild className="w-full active:scale-95 transition-transform" variant="secondary">
+                        <Link href={`/dashboard/courses/${courseId}`}>
+                            View Course
+                        </Link>
+                     </Button>
+                ) : course.isFree ? (
+                    <Button className="w-full active:scale-95 transition-transform" onClick={() => onFreeEnroll(courseId, course.title)}>
+                        Enroll for Free
+                    </Button>
+                ) : (
+                     <Button asChild className="w-full active:scale-95 transition-transform">
+                        <Link href={`/dashboard/payment-verification?courseId=${courseId}`}>
+                            Buy Now
+                        </Link>
+                     </Button>
+                )}
             </CardFooter>
         </Card>
     );
 };
 
 const CourseGrid = ({ courses, enrollments }: { courses: QueryDocumentSnapshot<DocumentData>[] | undefined, enrollments: any }) => {
+    const { user } = useAuth();
+    const { toast } = useToast();
+    const router = useRouter();
+
+    const handleFreeEnroll = async (courseId: string, courseTitle: string) => {
+        if (!user) {
+            toast({ variant: 'destructive', title: 'Not Logged In', description: 'You must be logged in to enroll.' });
+            return;
+        }
+        try {
+            await addDoc(collection(firestore, 'enrollments'), {
+                enrollmentType: 'Course',
+                courseId: courseId,
+                courseTitle: courseTitle,
+                screenshotDataUrl: 'FREE_COURSE',
+                userId: user.uid,
+                userEmail: user.email,
+                userDisplayName: user.displayName,
+                status: 'approved', // Auto-approved for free courses
+                createdAt: serverTimestamp(),
+            });
+            toast({ title: 'Enrolled Successfully!', description: `You can now access ${courseTitle}.` });
+            router.push(`/dashboard/courses/${courseId}`);
+        } catch (error) {
+            toast({ variant: 'destructive', title: 'Enrollment Failed', description: 'Could not enroll in the course.' });
+        }
+    };
+
 
     if (!courses) {
         return (
@@ -68,25 +115,24 @@ const CourseGrid = ({ courses, enrollments }: { courses: QueryDocumentSnapshot<D
         )
     }
 
-    const enrolledCourseIds = new Set(enrollments?.docs.map(doc => doc.data().courseId));
+    const enrolledCourseIds = new Set(enrollments?.docs.map((doc: any) => doc.data().courseId));
 
     return (
-        <>
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                {courses.map((doc) => {
-                    const course = doc.data();
-                    const isEnrolled = enrolledCourseIds.has(doc.id);
-                    return (
-                        <CourseCard 
-                            key={doc.id} 
-                            course={course} 
-                            courseId={doc.id} 
-                            isEnrolled={isEnrolled}
-                        />
-                    )
-                })}
-            </div>
-        </>
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {courses.map((doc) => {
+                const course = doc.data();
+                const isEnrolled = enrolledCourseIds.has(doc.id);
+                return (
+                    <CourseCard 
+                        key={doc.id} 
+                        course={course} 
+                        courseId={doc.id} 
+                        isEnrolled={isEnrolled}
+                        onFreeEnroll={handleFreeEnroll}
+                    />
+                )
+            })}
+        </div>
     );
 };
 
@@ -95,7 +141,7 @@ export default function CoursesPage() {
   const { user } = useAuth();
   
   const [coursesCollection, loading, error] = useCollection(
-    query(collection(firestore, 'courses'), orderBy('title', 'asc'))
+    query(collection(firestore, 'courses'), orderBy('createdAt', 'desc'))
   );
 
   const enrollmentsQuery = user 
@@ -107,11 +153,6 @@ export default function CoursesPage() {
     : null;
   const [enrollments] = useCollection(enrollmentsQuery);
   
-  const enrolledCourseIds = new Set(enrollments?.docs.map(doc => doc.data().courseId) || []);
-
-  const allPaidCourses = coursesCollection?.docs.filter(doc => !doc.data().isFree);
-  const myCourses = coursesCollection?.docs.filter(doc => enrolledCourseIds.has(doc.id));
-
 
   return (
     <div className="space-y-8 p-4 md:p-8">
@@ -132,7 +173,7 @@ export default function CoursesPage() {
                     {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-96 w-full" />)}
                 </div>
             ) : (
-                <CourseGrid courses={allPaidCourses} enrollments={enrollments} />
+                <CourseGrid courses={coursesCollection?.docs} enrollments={enrollments} />
             )}
         </TabsContent>
          <TabsContent value="my-courses" className="mt-6">
@@ -141,7 +182,7 @@ export default function CoursesPage() {
                     {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-96 w-full" />)}
                 </div>
             ) : (
-                <CourseGrid courses={myCourses} enrollments={enrollments} />
+                <CourseGrid courses={coursesCollection?.docs.filter(doc => enrollments?.docs.some(e => e.data().courseId === doc.id))} enrollments={enrollments} />
             )}
         </TabsContent>
       </Tabs>

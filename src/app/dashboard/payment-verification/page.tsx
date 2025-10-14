@@ -43,7 +43,7 @@ import { submitEnrollmentAction } from '@/app/actions/enrollment';
 
 const verificationFormSchema = z.object({
   enrollmentType: z.string().min(1, 'Please select an enrollment type.'),
-  itemId: z.string().min(1, 'Please select an item.'), // Generic ID for course, test series, or e-book
+  itemId: z.string().min(1, 'Please select an item.'),
   couponCode: z.string().optional(),
   referralCode: z.string().optional(),
   screenshotFile: z.instanceof(File, { message: 'A screenshot is required.' }),
@@ -59,6 +59,8 @@ function PaymentVerificationPageContent() {
   const preselectedCourseId = searchParams.get('courseId');
   const preselectedTestSeriesId = searchParams.get('testSeriesId');
   const preselectedEbookId = searchParams.get('ebookId');
+  const preselectedPaperId = searchParams.get('paperId');
+
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
@@ -76,6 +78,9 @@ function PaymentVerificationPageContent() {
   const [ebooksCollection, ebooksLoading] = useCollection(
     query(collection(firestore, 'ebooks'), where('price', '>', 0), orderBy('title', 'asc'))
   );
+  const [papersCollection, papersLoading] = useCollection(
+    query(collection(firestore, 'previousPapers'), where('price', '>', 0), orderBy('title', 'asc'))
+  );
 
   const [settingsDoc] = useDocumentData(doc(firestore, 'settings', 'appConfig'));
   const qrCodeUrl = settingsDoc?.paymentQrCodeUrl;
@@ -84,8 +89,8 @@ function PaymentVerificationPageContent() {
   const form = useForm<VerificationFormValues>({
     resolver: zodResolver(verificationFormSchema),
     defaultValues: {
-      enrollmentType: preselectedCourseId ? 'Course' : (preselectedTestSeriesId ? 'Test Series' : (preselectedEbookId ? 'E-Book' : '')),
-      itemId: preselectedCourseId || preselectedTestSeriesId || preselectedEbookId || '',
+      enrollmentType: '',
+      itemId: '',
       couponCode: '',
       referralCode: '',
     },
@@ -101,6 +106,7 @@ function PaymentVerificationPageContent() {
           case 'Course': return 'courses';
           case 'Test Series': return 'testSeries';
           case 'E-Book': return 'ebooks';
+          case 'Previous Year Paper': return 'previousPapers';
           default: return '';
       }
   }
@@ -120,19 +126,16 @@ function PaymentVerificationPageContent() {
   useEffect(() => {
     let type = '';
     let id = '';
-    if (preselectedCourseId) {
-        type = 'Course';
-        id = preselectedCourseId;
-    } else if (preselectedTestSeriesId) {
-        type = 'Test Series';
-        id = preselectedTestSeriesId;
-    } else if (preselectedEbookId) {
-        type = 'E-Book';
-        id = preselectedEbookId;
+    if (preselectedCourseId) { type = 'Course'; id = preselectedCourseId; } 
+    else if (preselectedTestSeriesId) { type = 'Test Series'; id = preselectedTestSeriesId; }
+    else if (preselectedEbookId) { type = 'E-Book'; id = preselectedEbookId; }
+    else if (preselectedPaperId) { type = 'Previous Year Paper'; id = preselectedPaperId; }
+    
+    if (type && id) {
+        form.setValue('enrollmentType', type);
+        form.setValue('itemId', id);
     }
-    form.setValue('enrollmentType', type);
-    form.setValue('itemId', id);
-  }, [preselectedCourseId, preselectedTestSeriesId, preselectedEbookId, form]);
+  }, [preselectedCourseId, preselectedTestSeriesId, preselectedEbookId, preselectedPaperId, form]);
 
   const handleApplyCoupon = async () => {
     if (!enteredCouponCode || !selectedItemId || !itemData) return;
@@ -205,7 +208,7 @@ function PaymentVerificationPageContent() {
     toast({ title: 'Referral Applied!', description: `You got a 10% discount!` });
   }
 
-  if (authLoading || coursesLoading || testSeriesLoading || ebooksLoading) {
+  if (authLoading || coursesLoading || testSeriesLoading || ebooksLoading || papersLoading) {
     return (
       <div className="max-w-xl mx-auto p-4 md:p-8">
         <Skeleton className="h-96 w-full" />
@@ -273,6 +276,7 @@ function PaymentVerificationPageContent() {
         case 'Course': items = coursesCollection?.docs; break;
         case 'Test Series': items = testSeriesCollection?.docs; break;
         case 'E-Book': items = ebooksCollection?.docs; break;
+        case 'Previous Year Paper': items = papersCollection?.docs; break;
         default: items = [];
     }
 
@@ -335,6 +339,7 @@ function PaymentVerificationPageContent() {
                           <SelectItem value="Course">Course</SelectItem>
                           <SelectItem value="Test Series">Test Series</SelectItem>
                           <SelectItem value="E-Book">E-Book</SelectItem>
+                          <SelectItem value="Previous Year Paper">Previous Year Paper</SelectItem>
                         </SelectContent>
                       </Select>
                       <FormMessage />

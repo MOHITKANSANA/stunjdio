@@ -1,37 +1,63 @@
-
 'use client';
 
 import { useState } from 'react';
 import { useCollection } from 'react-firebase-hooks/firestore';
-import { collection, query, orderBy } from 'firebase/firestore';
+import { collection, query, orderBy, where } from 'firebase/firestore';
 import { firestore } from '@/lib/firebase';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import Image from 'next/image';
-import { BookCopy, FileText } from 'lucide-react';
+import { BookCopy, FileText, IndianRupee } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import Link from 'next/link';
+import { useAuth } from '@/hooks/use-auth';
 
-const EBookCard = ({ ebook, onClick }: { ebook: any, onClick: () => void }) => {
+const EBookCard = ({ ebook, ebookId, isEnrolled }: { ebook: any, ebookId: string, isEnrolled: boolean }) => {
     return (
-        <Card className="flex flex-col overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300 cursor-pointer" onClick={onClick}>
+        <Card className="flex flex-col overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300">
             <div className="relative h-56 w-full bg-muted">
                 <Image src={ebook.thumbnailUrl || `https://picsum.photos/seed/${ebook.id}/600/800`} alt={ebook.title} fill style={{objectFit: "cover"}} data-ai-hint="book cover" />
             </div>
             <CardHeader>
                 <CardTitle className="text-xl line-clamp-2">{ebook.title}</CardTitle>
-                <CardDescription className="line-clamp-3">{ebook.description}</CardDescription>
             </CardHeader>
+            <CardContent className="flex-grow">
+                 <div className="flex items-center font-bold text-lg mt-4">
+                    {ebook.isFree ? 'Free' : (
+                        <>
+                            <IndianRupee className="h-5 w-5 mr-1" />
+                            {ebook.price ? ebook.price.toLocaleString() : 'N/A'}
+                        </>
+                    )}
+                </div>
+            </CardContent>
+            <CardFooter>
+                 <Button asChild className="w-full">
+                    <Link href={isEnrolled || ebook.isFree ? ebook.fileUrl : `/dashboard/payment-verification?ebookId=${ebookId}`}>
+                        {isEnrolled || ebook.isFree ? 'Read Now' : 'Buy Now'}
+                    </Link>
+                </Button>
+            </CardFooter>
         </Card>
     );
 }
 
 export default function EbooksPage() {
+    const { user } = useAuth();
     const [ebooks, ebooksLoading, ebooksError] = useCollection(
         query(collection(firestore, 'ebooks'), orderBy('createdAt', 'desc'))
     );
     
-    const handleEbookClick = (ebookData: any) => {
-        window.open(ebookData.fileUrl, '_blank');
-    };
+    const enrollmentsQuery = user 
+        ? query(
+            collection(firestore, 'enrollments'), 
+            where('userId', '==', user.uid),
+            where('status', '==', 'approved'),
+            where('enrollmentType', '==', 'E-Book')
+        )
+        : null;
+    const [enrollments] = useCollection(enrollmentsQuery);
+    const enrolledEbookIds = new Set(enrollments?.docs.map(doc => doc.data().courseId));
     
     return (
         <div className="space-y-8 p-4 md:p-8">
@@ -58,9 +84,11 @@ export default function EbooksPage() {
             )}
             
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                {ebooks?.docs.map(doc => (
-                    <EBookCard key={doc.id} ebook={{id: doc.id, ...doc.data()}} onClick={() => handleEbookClick(doc.data())} />
-                ))}
+                {ebooks?.docs.map(doc => {
+                    const ebook = doc.data();
+                    const isEnrolled = enrolledEbookIds.has(doc.id);
+                    return <EBookCard key={doc.id} ebook={ebook} ebookId={doc.id} isEnrolled={isEnrolled} />
+                })}
             </div>
         </div>
     )

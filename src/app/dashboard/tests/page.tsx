@@ -1,12 +1,12 @@
-
 'use client';
 
 import { Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useCollection, useDocumentData } from 'react-firebase-hooks/firestore';
-import { collection, query, orderBy, where, doc } from 'firebase/firestore';
+import { collection, query, orderBy, where, doc, addDoc, serverTimestamp } from 'firebase/firestore';
 import { firestore } from '@/lib/firebase';
 import Link from 'next/link';
+import { useToast } from '@/hooks/use-toast';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -15,6 +15,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  CardFooter
 } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Loader2, FileText, AlertTriangle, ShieldQuestion, PencilRuler, History, IndianRupee } from 'lucide-react';
@@ -22,7 +23,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 
-const TestCard = ({ test, testId, isEnrolled }: { test: any, testId: string, isEnrolled: boolean }) => {
+const TestCard = ({ test, testId, isEnrolled, onFreeEnroll }: { test: any, testId: string, isEnrolled: boolean, onFreeEnroll: (id: string, title: string) => void }) => {
     return (
         <Card className="flex flex-col overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300">
             <CardHeader>
@@ -39,13 +40,19 @@ const TestCard = ({ test, testId, isEnrolled }: { test: any, testId: string, isE
                     )}
                 </div>
             </CardContent>
-            <CardContent>
-                <Button asChild className="w-full">
-                    <Link href={isEnrolled || test.isFree ? `/dashboard/test-series/${testId}` : `/dashboard/payment-verification?testSeriesId=${testId}`}>
-                        {isEnrolled || test.isFree ? 'Start Test' : 'Enroll Now'}
-                    </Link>
-                </Button>
-            </CardContent>
+            <CardFooter>
+                {isEnrolled ? (
+                     <Button asChild className="w-full" variant="secondary">
+                        <Link href={`/dashboard/test-series/${testId}`}>Start Test</Link>
+                    </Button>
+                ) : test.isFree ? (
+                     <Button className="w-full" onClick={() => onFreeEnroll(testId, test.title)}>Enroll for Free</Button>
+                ) : (
+                    <Button asChild className="w-full">
+                        <Link href={`/dashboard/payment-verification?testSeriesId=${testId}`}>Buy Now</Link>
+                    </Button>
+                )}
+            </CardFooter>
         </Card>
     );
 };
@@ -56,6 +63,7 @@ function TestHubContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const initialTab = searchParams.get('tab') || 'ai';
+  const { toast } = useToast();
 
   const [testSeriesCollection, testSeriesLoading] = useCollection(
       query(collection(firestore, 'testSeries'), orderBy('createdAt', 'desc'))
@@ -70,12 +78,36 @@ function TestHubContent() {
     : null;
   const [enrollments] = useCollection(enrollmentsQuery);
 
-  const enrolledTestIds = new Set(enrollments?.docs.map(doc => doc.data().courseId));
+  const enrolledTestIds = new Set(enrollments?.docs.filter(doc => doc.data().enrollmentType === 'Test Series').map(doc => doc.data().courseId));
 
 
   const onTabChange = (value: string) => {
     router.push(`/dashboard/tests?tab=${value}`);
   };
+  
+  const handleFreeEnroll = async (testId: string, testTitle: string) => {
+    if (!user) {
+        toast({ variant: 'destructive', title: 'Not Logged In', description: 'You must be logged in to enroll.' });
+        return;
+    }
+    try {
+        await addDoc(collection(firestore, 'enrollments'), {
+            enrollmentType: 'Test Series',
+            courseId: testId,
+            courseTitle: testTitle,
+            screenshotDataUrl: 'FREE_TEST',
+            userId: user.uid,
+            userEmail: user.email,
+            userDisplayName: user.displayName,
+            status: 'approved',
+            createdAt: serverTimestamp(),
+        });
+        toast({ title: 'Enrolled Successfully!', description: `You can now access ${testTitle}.` });
+        router.push(`/dashboard/test-series/${testId}`);
+    } catch (error) {
+        toast({ variant: 'destructive', title: 'Enrollment Failed', description: 'Could not enroll in the test series.' });
+    }
+};
 
   return (
     <div className="max-w-6xl mx-auto space-y-6 p-4">
@@ -112,7 +144,7 @@ function TestHubContent() {
                     {testSeriesCollection.docs.map(doc => {
                         const isEnrolled = enrolledTestIds.has(doc.id);
                         return (
-                            <TestCard key={doc.id} test={doc.data()} testId={doc.id} isEnrolled={isEnrolled} />
+                            <TestCard key={doc.id} test={doc.data()} testId={doc.id} isEnrolled={isEnrolled} onFreeEnroll={handleFreeEnroll} />
                         )
                     })}
                 </div>

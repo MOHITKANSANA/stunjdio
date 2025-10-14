@@ -17,23 +17,10 @@ import { useCollection } from 'react-firebase-hooks/firestore';
 
 const contentSchema = z.object({
   courseId: z.string().min(1, 'Please select a course.'),
-  type: z.enum(['video', 'pdf', 'note', 'test_series']),
+  type: z.enum(['video', 'pdf', 'note']),
   title: z.string().min(1, 'Title is required.'),
-  url: z.string().optional(),
-  testSeriesId: z.string().optional(),
+  url: z.string().url('A valid URL is required.'),
   introduction: z.string().optional(),
-}).refine(data => {
-    if (data.type === 'test_series' && !data.testSeriesId) {
-        return false;
-    }
-    // URL is optional for test series, required for others
-    if (data.type !== 'test_series' && !data.url) {
-        return false;
-    }
-    return true;
-}, {
-    message: 'URL or Test Series ID is required based on type.',
-    path: ['url'], // You can point to one of the fields
 });
 
 type ContentFormValues = z.infer<typeof contentSchema>;
@@ -43,7 +30,6 @@ export function AddContentToCourseForm() {
   const [isLoading, setIsLoading] = useState(false);
   
   const [coursesCollection, coursesLoading] = useCollection(collection(firestore, 'courses'));
-  const [testSeriesCollection, testSeriesLoading] = useCollection(collection(firestore, 'testSeries'));
 
   const form = useForm<ContentFormValues>({
     resolver: zodResolver(contentSchema),
@@ -52,12 +38,9 @@ export function AddContentToCourseForm() {
       type: 'video',
       title: '',
       url: '',
-      testSeriesId: '',
       introduction: '',
     },
   });
-
-  const contentType = form.watch('type');
 
   const onSubmit = async (data: ContentFormValues) => {
     setIsLoading(true);
@@ -66,7 +49,6 @@ export function AddContentToCourseForm() {
         type: data.type,
         title: data.title,
         url: data.url,
-        testSeriesId: data.testSeriesId,
         introduction: data.introduction,
         createdAt: serverTimestamp()
       });
@@ -126,7 +108,6 @@ export function AddContentToCourseForm() {
                   <SelectItem value="video">Video</SelectItem>
                   <SelectItem value="pdf">PDF</SelectItem>
                   <SelectItem value="note">Note</SelectItem>
-                  <SelectItem value="test_series">Test Series</SelectItem>
                 </SelectContent>
               </Select>
               <FormMessage />
@@ -146,46 +127,18 @@ export function AddContentToCourseForm() {
           )}
         />
 
-        {contentType === 'test_series' ? (
-           <FormField
-            control={form.control}
-            name="testSeriesId"
-            render={({ field }) => (
-                <FormItem>
-                <FormLabel>Select Test Series</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                    <FormControl>
-                    <SelectTrigger>
-                        <SelectValue placeholder="Select a test series" />
-                    </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                        {testSeriesLoading && <p className="p-2">Loading tests...</p>}
-                        {testSeriesCollection?.docs.map(doc => (
-                            <SelectItem key={doc.id} value={doc.id}>
-                                {doc.data().title}
-                            </SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
-                <FormMessage />
-                </FormItem>
-            )}
-            />
-        ) : (
-          <FormField
+        <FormField
             control={form.control}
             name="url"
             render={({ field }) => (
-              <FormItem>
+                <FormItem>
                 <FormLabel>Content URL</FormLabel>
                 <FormControl><Input {...field} placeholder="https://..." /></FormControl>
                 <FormMessage />
-              </FormItem>
+                </FormItem>
             )}
-          />
-        )}
-
+        />
+       
         <FormField
           control={form.control}
           name="introduction"

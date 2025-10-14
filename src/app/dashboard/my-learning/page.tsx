@@ -1,7 +1,6 @@
-
 'use client';
 
-import { BookOpenCheck, Library, Trash2, Eye } from "lucide-react";
+import { BookOpenCheck, Library, Trash2, Eye, FileText, Newspaper } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from '@/hooks/use-auth';
@@ -13,7 +12,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-
+import type { DocumentData } from 'firebase/firestore';
 
 const CourseCard = ({ course, courseId, enrollmentId, onUnenroll }: { course: any, courseId: string, enrollmentId: string, onUnenroll: (id: string, title: string) => void }) => {
     return (
@@ -40,7 +39,6 @@ const CourseCard = ({ course, courseId, enrollmentId, onUnenroll }: { course: an
     );
 };
 
-
 export default function MyLearningPage() {
     const { user, loading: authLoading } = useAuth();
     const { toast } = useToast();
@@ -54,63 +52,70 @@ export default function MyLearningPage() {
         : null;
     const [enrollments, enrollmentsLoading, enrollmentsError] = useCollection(enrollmentsQuery);
 
-    const enrolledCourseIds = enrollments?.docs.map(doc => doc.data().courseId).filter(Boolean) || [];
-
+    const enrolledCourseIds = enrollments?.docs.filter(doc => doc.data().enrollmentType === 'Course').map(doc => doc.data().courseId).filter(Boolean) || [];
     const coursesQuery = user && enrolledCourseIds.length > 0
-        ? query(
-            collection(firestore, 'courses'),
-            where('__name__', 'in', enrolledCourseIds)
-        ) : null;
+        ? query(collection(firestore, 'courses'), where('__name__', 'in', enrolledCourseIds)) : null;
     const [myCourses, myCoursesLoading, myCoursesError] = useCollection(coursesQuery);
     
-    const handleUnenroll = async (enrollmentId: string, courseTitle: string) => {
-        if (window.confirm(`Are you sure you want to un-enroll from "${courseTitle}"?`)) {
+    const enrolledEbookIds = enrollments?.docs.filter(doc => doc.data().enrollmentType === 'E-Book').map(doc => doc.data().courseId).filter(Boolean) || [];
+    const ebooksQuery = user && enrolledEbookIds.length > 0
+        ? query(collection(firestore, 'ebooks'), where('__name__', 'in', enrolledEbookIds)) : null;
+    const [myEbooks, myEbooksLoading, myEbooksError] = useCollection(ebooksQuery);
+
+    const enrolledTestIds = enrollments?.docs.filter(doc => doc.data().enrollmentType === 'Test Series').map(doc => doc.data().courseId).filter(Boolean) || [];
+    const testsQuery = user && enrolledTestIds.length > 0
+        ? query(collection(firestore, 'testSeries'), where('__name__', 'in', enrolledTestIds)) : null;
+    const [myTests, myTestsLoading, myTestsError] = useCollection(testsQuery);
+    
+    const handleUnenroll = async (enrollmentId: string, title: string) => {
+        if (window.confirm(`Are you sure you want to un-enroll from "${title}"?`)) {
             try {
                 await deleteDoc(doc(firestore, 'enrollments', enrollmentId));
                 toast({
                     title: "Un-enrolled successfully",
-                    description: `You have been removed from ${courseTitle}.`,
+                    description: `You have been removed from ${title}.`,
                 });
             } catch (error) {
                  toast({
                     variant: "destructive",
                     title: "Un-enrollment failed",
-                    description: "Could not remove you from the course. Please try again.",
+                    description: "Could not remove you from the item. Please try again.",
                 });
             }
         }
     };
 
-    const courseIdToEnrollmentIdMap = enrollments?.docs.reduce((acc, doc) => {
-        const data = doc.data();
-        if (data.courseId) {
-            acc[data.courseId] = doc.id;
-        }
-        return acc;
-    }, {} as Record<string, string>);
-    
-    const paidCourses = myCourses?.docs.filter(doc => !doc.data().isFree);
-    const freeCourses = myCourses?.docs.filter(doc => doc.data().isFree);
+    const createIdMap = (enrollments: DocumentData | undefined) => {
+        return enrollments?.docs.reduce((acc: Record<string, string>, doc: DocumentData) => {
+            const data = doc.data();
+            if (data.courseId) {
+                acc[data.courseId] = doc.id;
+            }
+            return acc;
+        }, {} as Record<string, string>);
+    }
 
-    const renderCourseGrid = (courses: any[] | undefined) => {
-        if (authLoading || enrollmentsLoading || myCoursesLoading) {
+    const courseIdToEnrollmentIdMap = createIdMap(enrollments);
+    
+    const renderCourseGrid = (courses: any[] | undefined, isLoading: boolean, error: any) => {
+        if (isLoading) {
              return (
                  <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                    {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-80 w-full" />)}
+                    {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-96 w-full" />)}
                 </div>
              );
         }
 
-        if (enrollmentsError || myCoursesError) {
-            return <p className="text-destructive text-center">Could not load your courses.</p>;
+        if (error) {
+            return <p className="text-destructive text-center">Could not load your items.</p>;
         }
 
         if (!courses || courses.length === 0) {
             return (
                 <div className="text-center py-12">
                     <BookOpenCheck className="mx-auto h-12 w-12 text-muted-foreground" />
-                    <h3 className="mt-4 text-lg font-semibold">No Courses Here</h3>
-                    <p className="mt-1 text-sm text-muted-foreground">You haven't enrolled in any courses in this category yet.</p>
+                    <h3 className="mt-4 text-lg font-semibold">No Items Here</h3>
+                    <p className="mt-1 text-sm text-muted-foreground">You haven't enrolled in any items in this category yet.</p>
                 </div>
             );
         }
@@ -127,6 +132,56 @@ export default function MyLearningPage() {
             </div>
         );
     };
+    
+    const renderEbookGrid = () => {
+        if (myEbooksLoading) return <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">{[...Array(4)].map((_,i) => <Skeleton key={i} className="h-96" />)}</div>
+        if (myEbooksError) return <p className="text-destructive">Error loading E-Books.</p>
+        if (!myEbooks || myEbooks.empty) return <div className="text-center py-12"><BookOpenCheck className="mx-auto h-12 w-12 text-muted-foreground" /><h3 className="mt-4 text-lg font-semibold">No E-Books Found</h3></div>
+        
+        return (
+             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                {myEbooks.docs.map(doc => (
+                    <Card key={doc.id} className="flex flex-col overflow-hidden shadow-lg hover:shadow-xl transition-shadow">
+                        <Link href={doc.data().fileUrl} target="_blank" className="block">
+                            <div className="relative h-56 w-full bg-muted">
+                                <Image src={doc.data().thumbnailUrl} alt={doc.data().title} fill style={{objectFit: 'cover'}}/>
+                            </div>
+                            <CardHeader>
+                                <CardTitle>{doc.data().title}</CardTitle>
+                            </CardHeader>
+                        </Link>
+                         <CardFooter>
+                              <Button variant="destructive" className="w-full" onClick={() => handleUnenroll(courseIdToEnrollmentIdMap?.[doc.id] || '', doc.data().title)}>
+                                <Trash2 className="mr-2 h-4 w-4"/> Remove
+                            </Button>
+                         </CardFooter>
+                    </Card>
+                ))}
+            </div>
+        );
+    };
+
+    const renderTestGrid = () => {
+        if(myTestsLoading) return <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">{[...Array(3)].map((_,i) => <Skeleton key={i} className="h-48" />)}</div>
+        if(myTestsError) return <p className="text-destructive">Error loading tests.</p>
+        if(!myTests || myTests.empty) return <div className="text-center py-12"><FileText className="mx-auto h-12 w-12 text-muted-foreground" /><h3 className="mt-4 text-lg font-semibold">No Tests Found</h3></div>
+
+        return (
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                {myTests.docs.map(doc => (
+                     <Card key={doc.id} className="flex flex-col overflow-hidden shadow-lg hover:shadow-xl">
+                        <CardHeader>
+                            <CardTitle>{doc.data().title}</CardTitle>
+                            <CardDescription>{doc.data().subject}</CardDescription>
+                        </CardHeader>
+                        <CardFooter className="mt-auto">
+                            <Button asChild className="w-full"><Link href={`/dashboard/test-series/${doc.id}`}>Start Test</Link></Button>
+                        </CardFooter>
+                     </Card>
+                ))}
+            </div>
+        );
+    };
 
     
     return (
@@ -138,18 +193,22 @@ export default function MyLearningPage() {
                         My Library
                     </h1>
                  </div>
-                <p className="text-muted-foreground mt-2">All your enrolled courses in one place.</p>
+                <p className="text-muted-foreground mt-2">All your enrolled materials in one place.</p>
             </div>
-             <Tabs defaultValue="paid" className="w-full">
-                <TabsList className="grid w-full grid-cols-2 max-w-sm">
-                    <TabsTrigger value="paid">Paid Courses</TabsTrigger>
-                    <TabsTrigger value="free">Free Courses</TabsTrigger>
+             <Tabs defaultValue="courses" className="w-full">
+                <TabsList className="grid w-full grid-cols-3 max-w-lg">
+                    <TabsTrigger value="courses">Courses</TabsTrigger>
+                    <TabsTrigger value="ebooks">E-Books</TabsTrigger>
+                    <TabsTrigger value="tests">Tests</TabsTrigger>
                 </TabsList>
-                <TabsContent value="paid" className="mt-6">
-                    {renderCourseGrid(paidCourses)}
+                <TabsContent value="courses" className="mt-6">
+                    {renderCourseGrid(myCourses?.docs, myCoursesLoading || enrollmentsLoading || authLoading, myCoursesError || enrollmentsError)}
                 </TabsContent>
-                <TabsContent value="free" className="mt-6">
-                    {renderCourseGrid(freeCourses)}
+                <TabsContent value="ebooks" className="mt-6">
+                    {renderEbookGrid()}
+                </TabsContent>
+                <TabsContent value="tests" className="mt-6">
+                    {renderTestGrid()}
                 </TabsContent>
             </Tabs>
         </div>
