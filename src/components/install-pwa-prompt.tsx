@@ -2,9 +2,8 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { trackPwaInstallAction } from '@/app/actions/pwa';
 import { Button } from '@/components/ui/button';
-import { Download, Smartphone } from 'lucide-react';
+import { Download } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 let deferredPrompt: any = null;
@@ -22,7 +21,7 @@ export const InstallPwaPrompt = () => {
         };
 
         const checkInstalled = () => {
-            if (window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone === true) {
+            if (typeof window !== 'undefined' && window.matchMedia('(display-mode: standalone)').matches) {
                 setIsAppInstalled(true);
             }
         };
@@ -31,6 +30,8 @@ export const InstallPwaPrompt = () => {
         window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
         window.addEventListener('appinstalled', () => {
             setIsAppInstalled(true);
+            setIsInstallable(false);
+            deferredPrompt = null;
         });
 
         return () => {
@@ -40,15 +41,15 @@ export const InstallPwaPrompt = () => {
 
     const handleInstallClick = useCallback(async () => {
         if (!deferredPrompt) {
-            if (isAppInstalled) {
+             if (isAppInstalled) {
                  toast({
                     title: 'App Already Installed',
                     description: 'You can open the app from your home screen.',
                 });
             } else {
-                toast({
+                 toast({
                     title: 'Installation Not Available',
-                    description: 'Your browser may not support PWA installation. Please try using Chrome on Android or Safari on iOS.',
+                    description: 'Your browser may not support PWA installation, or the prompt is not ready. Please try again or use a supported browser like Chrome on Android or Safari on iOS.',
                     variant: 'destructive',
                 });
             }
@@ -60,7 +61,6 @@ export const InstallPwaPrompt = () => {
 
         if (outcome === 'accepted') {
             toast({ title: 'Installation Successful!', description: 'The app has been added to your home screen.' });
-            // Tracking can be done without a user ID if needed, or passed as a prop if available
         } else {
             toast({ title: 'Installation Cancelled' });
         }

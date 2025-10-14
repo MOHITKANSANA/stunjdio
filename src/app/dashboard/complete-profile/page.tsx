@@ -41,7 +41,7 @@ type ProfileFormValues = z.infer<typeof profileSchema>;
 
 const classOptions = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "SSC", "NDA", "CDS", "Army", "UPSC", "NTPC", "PCS"];
 const boardOptions = ["State Board", "CBSE", "ICSE", "Other"];
-const ageGroupOptions = ["Age 1-9", "Age 10+"];
+const ageGroupOptions = ["Age 1-5", "5+"];
 
 // Function to get cropped image data URL
 function getCroppedImg(image: HTMLImageElement, crop: Crop, fileName: string): Promise<string> {
@@ -265,7 +265,7 @@ export default function CompleteProfilePage() {
             <div className="space-y-2">
                 <Label htmlFor="district">District</Label>
                 <Select onValueChange={(value) => form.setValue("district", value, { shouldValidate: true })} disabled={!selectedState}>
-                    <SelectTrigger><SelectValue placeholder="Select District" /></SelectValue>
+                    <SelectTrigger><SelectValue placeholder="Select District" /></SelectTrigger>
                     <SelectContent>
                         {selectedState && statesAndDistricts[selectedState]?.map(district => (<SelectItem key={district} value={district}>{district}</SelectItem>))}
                     </SelectContent>
