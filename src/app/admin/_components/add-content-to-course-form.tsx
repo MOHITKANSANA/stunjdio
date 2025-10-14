@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState } from 'react';
@@ -27,6 +26,7 @@ const contentSchema = z.object({
     if (data.type === 'test_series' && !data.testSeriesId) {
         return false;
     }
+    // URL is optional for test series, required for others
     if (data.type !== 'test_series' && !data.url) {
         return false;
     }
@@ -43,6 +43,7 @@ export function AddContentToCourseForm() {
   const [isLoading, setIsLoading] = useState(false);
   
   const [coursesCollection, coursesLoading] = useCollection(collection(firestore, 'courses'));
+  const [testSeriesCollection, testSeriesLoading] = useCollection(collection(firestore, 'testSeries'));
 
   const form = useForm<ContentFormValues>({
     resolver: zodResolver(contentSchema),
@@ -146,17 +147,31 @@ export function AddContentToCourseForm() {
         />
 
         {contentType === 'test_series' ? (
-          <FormField
+           <FormField
             control={form.control}
             name="testSeriesId"
             render={({ field }) => (
-              <FormItem>
-                <FormLabel>Test Series ID</FormLabel>
-                <FormControl><Input {...field} placeholder="Enter Firestore Test Series ID" /></FormControl>
+                <FormItem>
+                <FormLabel>Select Test Series</FormLabel>
+                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                    <SelectTrigger>
+                        <SelectValue placeholder="Select a test series" />
+                    </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                        {testSeriesLoading && <p className="p-2">Loading tests...</p>}
+                        {testSeriesCollection?.docs.map(doc => (
+                            <SelectItem key={doc.id} value={doc.id}>
+                                {doc.data().title}
+                            </SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
                 <FormMessage />
-              </FormItem>
+                </FormItem>
             )}
-          />
+            />
         ) : (
           <FormField
             control={form.control}

@@ -166,7 +166,7 @@ const ManageAllContent = () => {
                         <DialogHeader>
                             <DialogTitle>Edit Content</DialogTitle>
                             <DialogDescription>
-                                Modify the details of the selected item.
+                                Modify the price and availability of the selected item.
                             </DialogDescription>
                         </DialogHeader>
                         <EditContentForm 

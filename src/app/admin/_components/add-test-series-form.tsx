@@ -14,6 +14,9 @@ import { Loader2, PlusCircle, Trash2 } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Checkbox } from '@/components/ui/checkbox';
+import { useCollection } from 'react-firebase-hooks/firestore';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+
 
 const questionSchema = z.object({
   text: z.string().min(1, 'Question text is required.'),
@@ -21,19 +24,24 @@ const questionSchema = z.object({
   correctAnswer: z.string().min(1, 'Please specify the correct answer.'),
 });
 
-const testSeriesSchema = z.object({
+const baseTestSchema = {
   title: z.string().min(1, 'Title is required.'),
   subject: z.string().min(1, 'Subject is required.'),
-  questions: z.array(questionSchema).min(1, 'Add at least one question.'),
   price: z.coerce.number().min(0).default(0),
   isFree: z.boolean().default(false),
+  duration: z.coerce.number().min(1, 'Duration must be at least 1 minute.').optional(),
+  courseId: z.string().optional(), // To link test series to a course
+};
+
+const testSeriesSchema = z.object({
+  ...baseTestSchema,
+  questions: z.array(questionSchema).min(1, 'Add at least one question.'),
 });
 
 type TestSeriesFormValues = z.infer<typeof testSeriesSchema>;
 
 const jsonTestSchema = z.object({
-    title: z.string().min(1, 'Title is required.'),
-    subject: z.string().min(1, 'Subject is required.'),
+    ...baseTestSchema,
     jsonContent: z.string().refine(val => {
         try {
             const parsed = JSON.parse(val);
@@ -42,8 +50,6 @@ const jsonTestSchema = z.object({
             return false;
         }
     }, { message: "Invalid JSON format or doesn't match question schema." }),
-    price: z.coerce.number().min(0).default(0),
-    isFree: z.boolean().default(false),
 });
 type JsonTestFormValues = z.infer<typeof jsonTestSchema>;
 
@@ -51,6 +57,7 @@ type JsonTestFormValues = z.infer<typeof jsonTestSchema>;
 export function AddTestSeriesForm() {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
+  const [coursesCollection, coursesLoading] = useCollection(collection(firestore, 'courses'));
 
   const manualForm = useForm<TestSeriesFormValues>({
     resolver: zodResolver(testSeriesSchema),
@@ -60,6 +67,7 @@ export function AddTestSeriesForm() {
       questions: [],
       price: 0,
       isFree: true,
+      duration: 60,
     },
   });
 
@@ -71,6 +79,7 @@ export function AddTestSeriesForm() {
         jsonContent: '',
         price: 0,
         isFree: true,
+        duration: 60,
     }
   });
 
@@ -78,45 +87,91 @@ export function AddTestSeriesForm() {
     control: manualForm.control,
     name: 'questions',
   });
-
-  const onManualSubmit = async (data: TestSeriesFormValues) => {
-    setIsLoading(true);
-    try {
-      await addDoc(collection(firestore, 'testSeries'), {
-        ...data,
-        createdAt: serverTimestamp(),
-      });
-      toast({ title: 'Success', description: 'Test Series added successfully.' });
-      manualForm.reset();
-    } catch (error) {
-      console.error('Error adding test series:', error);
-      toast({ variant: 'destructive', title: 'Error', description: 'Could not add test series.' });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const onJsonSubmit = async (data: JsonTestFormValues) => {
+  
+  const handleFormSubmit = async (data: TestSeriesFormValues | JsonTestFormValues, questions: z.infer<typeof questionSchema>[]) => {
       setIsLoading(true);
       try {
-        const questions = JSON.parse(data.jsonContent);
         await addDoc(collection(firestore, 'testSeries'), {
             title: data.title,
             subject: data.subject,
             questions: questions,
-            price: data.price,
+            price: data.isFree ? 0 : data.price,
             isFree: data.isFree,
+            duration: data.duration,
+            courseId: data.courseId,
             createdAt: serverTimestamp(),
         });
-        toast({ title: 'Success', description: 'Test Series added from JSON successfully.' });
-        jsonForm.reset();
       } catch (error) {
-          console.error('Error adding test series from JSON:', error);
-          toast({ variant: 'destructive', title: 'Error', description: 'Could not add test series from JSON.' });
+          console.error('Error adding test series:', error);
+          throw new Error('Could not add test series.');
       } finally {
           setIsLoading(false);
       }
   }
+
+  const onManualSubmit = async (data: TestSeriesFormValues) => {
+    try {
+        await handleFormSubmit(data, data.questions);
+        toast({ title: 'Success', description: 'Test Series added successfully.' });
+        manualForm.reset();
+    } catch(e: any) {
+        toast({ variant: 'destructive', title: 'Error', description: e.message });
+    }
+  };
+
+  const onJsonSubmit = async (data: JsonTestFormValues) => {
+      try {
+        const questions = JSON.parse(data.jsonContent);
+        await handleFormSubmit(data, questions);
+        toast({ title: 'Success', description: 'Test Series added from JSON successfully.' });
+        jsonForm.reset();
+      } catch (e: any) {
+          toast({ variant: 'destructive', title: 'Error', description: e.message });
+      }
+  }
+
+  const renderCommonFields = (form: any) => (
+      <>
+          <FormField control={form.control} name="title" render={({ field }) => (
+            <FormItem><FormLabel>Test Series Title</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+        )} />
+        <FormField control={form.control} name="subject" render={({ field }) => (
+            <FormItem><FormLabel>Subject</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+        )} />
+        <FormField control={form.control} name="duration" render={({ field }) => (
+            <FormItem><FormLabel>Duration (minutes)</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>
+        )} />
+        <FormField control={form.control} name="courseId" render={({ field }) => (
+          <FormItem>
+            <FormLabel>Link to Course (Optional)</FormLabel>
+            <Select onValueChange={field.onChange} defaultValue={field.value}>
+              <FormControl>
+                <SelectTrigger><SelectValue placeholder="Select a course" /></SelectTrigger>
+              </FormControl>
+              <SelectContent>
+                {coursesLoading && <p className="p-2">Loading...</p>}
+                <SelectItem value="">None</SelectItem>
+                {coursesCollection?.docs.map(doc => (
+                  <SelectItem key={doc.id} value={doc.id}>{doc.data().title}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <FormMessage />
+          </FormItem>
+        )} />
+        <FormField control={form.control} name="price" render={({ field }) => (
+          <FormItem><FormLabel>Price</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>
+        )} />
+        <FormField control={form.control} name="isFree" render={({ field }) => (
+            <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                <FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl>
+                <div className="space-y-1 leading-none">
+                    <FormLabel>Is this a free test series?</FormLabel>
+                </div>
+            </FormItem>
+        )} />
+      </>
+  )
 
   return (
     <Tabs defaultValue="manual" className="w-full">
@@ -127,23 +182,7 @@ export function AddTestSeriesForm() {
         <TabsContent value="manual">
             <Form {...manualForm}>
             <form onSubmit={manualForm.handleSubmit(onManualSubmit)} className="space-y-4 mt-4">
-                <FormField control={manualForm.control} name="title" render={({ field }) => (
-                <FormItem><FormLabel>Test Series Title</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
-                )} />
-                <FormField control={manualForm.control} name="subject" render={({ field }) => (
-                <FormItem><FormLabel>Subject</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
-                )} />
-                 <FormField control={manualForm.control} name="price" render={({ field }) => (
-                  <FormItem><FormLabel>Price</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>
-                )} />
-                <FormField control={manualForm.control} name="isFree" render={({ field }) => (
-                    <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
-                        <FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl>
-                        <div className="space-y-1 leading-none">
-                            <FormLabel>Is this a free test series?</FormLabel>
-                        </div>
-                    </FormItem>
-                )} />
+                {renderCommonFields(manualForm)}
                 
                 <div className="space-y-4">
                     <h3 className="text-lg font-semibold">Questions</h3>
@@ -176,23 +215,7 @@ export function AddTestSeriesForm() {
         <TabsContent value="json">
             <Form {...jsonForm}>
                 <form onSubmit={jsonForm.handleSubmit(onJsonSubmit)} className="space-y-4 mt-4">
-                     <FormField control={jsonForm.control} name="title" render={({ field }) => (
-                        <FormItem><FormLabel>Test Series Title</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
-                    )} />
-                    <FormField control={jsonForm.control} name="subject" render={({ field }) => (
-                        <FormItem><FormLabel>Subject</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
-                    )} />
-                     <FormField control={jsonForm.control} name="price" render={({ field }) => (
-                        <FormItem><FormLabel>Price</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>
-                    )} />
-                    <FormField control={jsonForm.control} name="isFree" render={({ field }) => (
-                        <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
-                            <FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl>
-                            <div className="space-y-1 leading-none">
-                                <FormLabel>Is this a free test series?</FormLabel>
-                            </div>
-                        </FormItem>
-                    )} />
+                     {renderCommonFields(jsonForm)}
                      <FormField control={jsonForm.control} name="jsonContent" render={({ field }) => (
                         <FormItem><FormLabel>Questions (JSON format)</FormLabel><FormControl><Textarea className="min-h-[200px]" {...field} /></FormControl><FormMessage /></FormItem>
                     )} />
