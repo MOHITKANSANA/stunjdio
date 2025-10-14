@@ -105,12 +105,12 @@ export default function ReferPage() {
                     <div className="mt-4">
                         <Progress value={(points / 200) * 100} />
                         <p className="text-center text-sm text-muted-foreground mt-2">
-                           {points &lt; 200 ? `${200 - points} points needed to redeem a free course.` : "You can redeem a free course!"}
+                           {points < 200 ? `${200 - points} points needed to redeem a free course.` : "You can redeem a free course!"}
                         </p>
                     </div>
                 </CardContent>
                 <CardFooter>
-                    <Button disabled={points &lt; 200} className="w-full">Redeem Free Course</Button>
+                    <Button disabled={points < 200} className="w-full">Redeem Free Course</Button>
                 </CardFooter>
             </Card>
 

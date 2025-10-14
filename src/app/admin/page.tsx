@@ -26,11 +26,14 @@ import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Trash2 } from "lucide-react";
+import { Trash2, Edit } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { AddBattleQuizForm } from "./_components/add-battle-quiz-form";
 import { ManageCoupons } from "./_components/manage-coupons";
 import { ManageEbookEnrollments } from "./_components/manage-ebook-enrollments";
+import { useState } from "react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { EditContentForm } from "./_components/edit-content-form";
 
 
 const PwaInstallations = () => {
@@ -100,6 +103,8 @@ const ManageAllContent = () => {
     const [ebooks, ebooksLoading] = useCollection(collection(firestore, 'ebooks'));
     const [testSeries, testSeriesLoading] = useCollection(collection(firestore, 'testSeries'));
 
+    const [editItem, setEditItem] = useState<{ id: string; collection: string; } | null>(null);
+
     const handleDelete = async (collectionName: string, docId: string, title: string) => {
         if (window.confirm(`Are you sure you want to delete "${title}"? This cannot be undone.`)) {
             try {
@@ -110,6 +115,13 @@ const ManageAllContent = () => {
             }
         }
     };
+    
+    const handleEditClose = (wasUpdated: boolean) => {
+        if (wasUpdated) {
+            // Potentially re-fetch data here if needed, though Firestore real-time updates should handle it.
+        }
+        setEditItem(null);
+    }
 
     const renderTable = (title: string, data: any, loading: boolean, collectionName: string) => (
         <Card>
@@ -119,7 +131,7 @@ const ManageAllContent = () => {
                 {!loading && (
                     <Table>
                         <TableHeader>
-                            <TableRow><TableHead>Title</TableHead><TableHead className="text-right">Action</TableHead></TableRow>
+                            <TableRow><TableHead>Title</TableHead><TableHead className="text-right">Actions</TableHead></TableRow>
                         </TableHeader>
                         <TableBody>
                             {data?.docs.length === 0 ? (
@@ -127,7 +139,12 @@ const ManageAllContent = () => {
                             ) : data?.docs.map((d: any) => (
                                 <TableRow key={d.id}>
                                     <TableCell>{d.data().title}</TableCell>
-                                    <TableCell className="text-right">
+                                    <TableCell className="text-right space-x-2">
+                                        {['courses', 'ebooks', 'testSeries'].includes(collectionName) && (
+                                            <Button variant="outline" size="icon" onClick={() => setEditItem({ id: d.id, collection: collectionName })}>
+                                                <Edit className="h-4 w-4" />
+                                            </Button>
+                                        )}
                                         <Button variant="destructive" size="icon" onClick={() => handleDelete(collectionName, d.id, d.data().title)}>
                                             <Trash2 className="h-4 w-4" />
                                         </Button>
@@ -143,6 +160,23 @@ const ManageAllContent = () => {
 
     return (
         <div className="space-y-6">
+            {editItem && (
+                 <Dialog open={!!editItem} onOpenChange={(isOpen) => !isOpen && setEditItem(null)}>
+                    <DialogContent>
+                        <DialogHeader>
+                            <DialogTitle>Edit Content</DialogTitle>
+                            <DialogDescription>
+                                Modify the details of the selected item.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <EditContentForm 
+                            collectionName={editItem.collection}
+                            docId={editItem.id}
+                            onClose={handleEditClose}
+                        />
+                    </DialogContent>
+                </Dialog>
+            )}
             {renderTable("Manage Courses", courses, coursesLoading, 'courses')}
             {renderTable("Manage Live Classes", liveClasses, liveClassesLoading, 'live_classes')}
             {renderTable("Manage E-Books", ebooks, ebooksLoading, 'ebooks')}
