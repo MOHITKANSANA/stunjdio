@@ -74,8 +74,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           if (docSnap.exists()) {
               const userData = docSnap.data();
               const enhancedUser = { ...currentUser, referralCode: userData.referralCode };
-              setUser(enhancedUser);
+              setUser(enhancedUser as User & { referralCode?: string });
           } else {
+              // This case might happen for a very brief moment before the user doc is created.
+              // We'll set the basic user and rely on handleAuthSuccess to set the full user.
               setUser(currentUser);
           }
       } else {
@@ -91,7 +93,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const userDocRef = doc(firestore, 'users', userCredential.user.uid);
       const docSnap = await getDoc(userDocRef);
       const enhancedUser = { ...userCredential.user, referralCode: docSnap.data()?.referralCode };
-      setUser(enhancedUser);
+      setUser(enhancedUser as User & { referralCode?: string });
       return userCredential;
   };
 

@@ -383,9 +383,10 @@ export default function DashboardLayout({
         }
     };
 
-    registerServiceWorker();
-
-  }, [user]);
+    if (!loading) {
+        registerServiceWorker();
+    }
+  }, [user, loading]);
   
   useEffect(() => {
     let timer: NodeJS.Timeout;
@@ -428,35 +429,24 @@ export default function DashboardLayout({
         return;
     }
     
-    const checkUserProfile = async () => {
-        if (!user || pathname === '/dashboard/complete-profile') {
-            return;
-        }
-
-        try {
-            const userDocRef = doc(firestore, 'users', user.uid);
-            const userDoc = await getDoc(userDocRef);
-
-            if (userDoc.exists()) {
-                const userData = userDoc.data();
-                if (userData.ageGroup) {
-                    setIsKidsMode(userData.ageGroup === '1-9');
-                } else {
-                    router.replace('/dashboard/complete-profile');
-                }
-            } else {
-                await updateUserInFirestore(user);
+    // This check is now only for Kids Mode, the profile completion is handled on the login page.
+    const checkUserAgeGroup = async () => {
+        if (!user) return;
+        const userDocRef = doc(firestore, 'users', user.uid);
+        const userDoc = await getDoc(userDocRef);
+        if (userDoc.exists()) {
+            const userData = userDoc.data();
+            if (userData.ageGroup) {
+                setIsKidsMode(userData.ageGroup === '1-9');
+            } else if (pathname !== '/dashboard/complete-profile') {
                 router.replace('/dashboard/complete-profile');
             }
-        } catch (error) {
-            console.error("Error checking user profile:", error);
-            if (pathname !== '/dashboard/complete-profile') {
-                router.replace('/dashboard/complete-profile');
-            }
+        } else if (pathname !== '/dashboard/complete-profile') {
+             router.replace('/dashboard/complete-profile');
         }
     };
     
-    checkUserProfile();
+    checkUserAgeGroup();
 
     const appConfigUnsub = onSnapshot(doc(firestore, 'settings', 'appConfig'), (doc) => {
         if (doc.exists()) {
@@ -466,7 +456,7 @@ export default function DashboardLayout({
 
     return () => appConfigUnsub();
 
-  }, [user, loading, router]);
+  }, [user, loading, router, pathname]);
   
   if (loading) {
     return <LoadingScreen />;

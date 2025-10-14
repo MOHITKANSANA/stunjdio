@@ -33,6 +33,7 @@ const courseSchema = z.object({
   validity: z.coerce.number().min(1, 'Validity must be at least 1 day.'),
   imageFile: z.any().refine(file => file, 'An uploaded image is required.'),
   isFree: z.boolean().default(false),
+  demoUrl: z.string().url('Must be a valid video URL.').optional(),
   content: z.array(contentSchema).optional(),
 });
 
@@ -63,6 +64,7 @@ export function AddCourseForm() {
       price: 0,
       validity: 365,
       isFree: false,
+      demoUrl: '',
       content: [],
     },
   });
@@ -91,10 +93,11 @@ export function AddCourseForm() {
         title: data.title,
         category: data.category,
         description: data.description,
-        price: data.price,
+        price: data.isFree ? 0 : data.price,
         validity: data.validity,
         imageUrl: imageUrl,
         isFree: data.isFree,
+        demoUrl: data.demoUrl,
         createdAt: serverTimestamp(),
       });
 
@@ -117,6 +120,8 @@ export function AddCourseForm() {
       setIsLoading(false);
     }
   };
+  
+  const isFree = form.watch('isFree');
 
   return (
     <Form {...form}>
@@ -131,13 +136,29 @@ export function AddCourseForm() {
         <FormField control={form.control} name="description" render={({ field }) => (
           <FormItem><FormLabel>Description</FormLabel><FormControl><Textarea placeholder="Detailed course description..." {...field} /></FormControl><FormMessage /></FormItem>
         )} />
+        
+        <FormField
+          control={form.control}
+          name="isFree"
+          render={({ field }) => (
+            <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+              <FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl>
+              <div className="space-y-1 leading-none">
+                <FormLabel>Is this a free course?</FormLabel>
+              </div>
+            </FormItem>
+          )}
+        />
+        
         <div className="grid grid-cols-2 gap-4">
-          <FormField control={form.control} name="price" render={({ field }) => (
-            <FormItem><FormLabel>Price</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>
-          )} />
-          <FormField control={form.control} name="validity" render={({ field }) => (
-            <FormItem><FormLabel>Validity (days)</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>
-          )} />
+            {!isFree && (
+              <FormField control={form.control} name="price" render={({ field }) => (
+                <FormItem><FormLabel>Price</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>
+              )} />
+            )}
+            <FormField control={form.control} name="validity" render={({ field }) => (
+                <FormItem><FormLabel>Validity (days)</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>
+            )} />
         </div>
         
         <FormField
@@ -167,14 +188,9 @@ export function AddCourseForm() {
             </FormItem>
           )}
         />
-
-        <FormField control={form.control} name="isFree" render={({ field }) => (
-            <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
-                <FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl>
-                <div className="space-y-1 leading-none">
-                    <FormLabel>Is this a free course?</FormLabel>
-                </div>
-            </FormItem>
+        
+        <FormField control={form.control} name="demoUrl" render={({ field }) => (
+          <FormItem><FormLabel>Demo URL (Optional)</FormLabel><FormControl><Input placeholder="e.g., https://youtube.com/..." {...field} /></FormControl><FormMessage /></FormItem>
         )} />
 
 
