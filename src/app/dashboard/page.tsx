@@ -1,4 +1,3 @@
-
 'use client';
 import React, { useState, useEffect } from 'react';
 import {
@@ -65,14 +64,16 @@ const OurEducators = () => {
                         const educator = doc.data();
                         return (
                              <CarouselItem key={doc.id} className="basis-1/2 md:basis-1/3 lg:basis-1/4 pl-2">
-                                <div className="p-1">
-                                    <Card className="text-center overflow-hidden">
-                                        <CardContent className="p-4 flex flex-col items-center">
+                                <div className="p-1 h-full">
+                                    <Card className="text-center overflow-hidden h-full flex flex-col">
+                                        <CardContent className="p-4 flex flex-col items-center flex-grow">
                                             <div className="relative h-24 w-24 mx-auto rounded-full overflow-hidden mb-3">
                                                 <Image src={educator.photoUrl} alt={educator.name} fill style={{objectFit:"cover"}} />
                                             </div>
-                                            <h3 className="font-semibold text-sm">{educator.name}</h3>
-                                            <p className="text-xs text-muted-foreground">{educator.expertise}</p>
+                                            <div className="flex-grow flex flex-col justify-center">
+                                                <h3 className="font-semibold text-sm leading-tight">{educator.name}</h3>
+                                                <p className="text-xs text-muted-foreground mt-1">{educator.expertise}</p>
+                                            </div>
                                         </CardContent>
                                     </Card>
                                 </div>
@@ -114,7 +115,7 @@ const MainDashboard = () => {
                     {quickAccessItems.map(item => (
                         <Link href={item.href} key={item.label} onClick={() => handlePress(item.label)}>
                             <Card className={cn(
-                                "h-full transition-all duration-200 ease-in-out transform hover:-translate-y-1",
+                                "h-full transition-all duration-200 ease-in-out transform hover:-translate-y-1 active:scale-95",
                                 "bg-gradient-to-br text-white shadow-lg",
                                 activeButton === item.label ? 'ring-2 ring-offset-2 ring-white' : '',
                                 item.color
@@ -141,7 +142,7 @@ const MainDashboard = () => {
 
 export default function DashboardPage() {
     const { user, loading: authLoading } = useAuth();
-    const [isKidsMode, setIsKidsMode] = React.useState<boolean | null>(null);
+    const [isKidsMode, setIsKidsMode] = React.useState&lt;boolean | null&gt;(null);
 
     React.useEffect(() => {
         const checkUserProfile = async () => {
@@ -170,5 +171,5 @@ export default function DashboardPage() {
         )
     }
 
-    return <MainDashboard />;
+    return &lt;MainDashboard /&gt;;
 }

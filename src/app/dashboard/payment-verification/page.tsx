@@ -1,5 +1,3 @@
-
-
 'use client';
 
 import { useState, useRef, type ChangeEvent, useEffect, Suspense } from 'react';
@@ -41,23 +39,14 @@ import { useCollection, useDocumentData } from 'react-firebase-hooks/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { submitEnrollmentAction } from '@/app/actions/enrollment';
 
 const verificationFormSchema = z.object({
   enrollmentType: z.string().min(1, 'Please select an enrollment type.'),
-  courseId: z.string().optional(), // Can be for a course or a test series
+  itemId: z.string().min(1, 'Please select an item.'), // Generic ID for course, test series, or e-book
   couponCode: z.string().optional(),
+  referralCode: z.string().optional(),
   screenshotFile: z.instanceof(File, { message: 'A screenshot is required.' }),
-}).refine(data => {
-    if (data.enrollmentType === 'Course Enrollment' && !data.courseId) {
-        return false;
-    }
-    if (data.enrollmentType === 'Test Series' && !data.courseId) {
-        return false;
-    }
-    return true;
-}, {
-    message: 'Please select an item.',
-    path: ['courseId'],
 });
 
 type VerificationFormValues = z.infer<typeof verificationFormSchema>;
@@ -69,12 +58,14 @@ function PaymentVerificationPageContent() {
   const searchParams = useSearchParams();
   const preselectedCourseId = searchParams.get('courseId');
   const preselectedTestSeriesId = searchParams.get('testSeriesId');
+  const preselectedEbookId = searchParams.get('ebookId');
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [couponStatus, setCouponStatus] = useState<'idle' | 'loading' | 'valid' | 'invalid'>('idle');
-  const [discountInfo, setDiscountInfo] = useState<{ originalPrice: number, discount: number, newPrice: number } | null>(null);
+  const [finalPrice, setFinalPrice] = useState<number | null>(null);
+
   
   const [coursesCollection, coursesLoading] = useCollection(
     query(collection(firestore, 'courses'), where('isFree', '==', false), orderBy('title', 'asc'))
@@ -82,58 +73,83 @@ function PaymentVerificationPageContent() {
   const [testSeriesCollection, testSeriesLoading] = useCollection(
     query(collection(firestore, 'testSeries'), where('isFree', '==', false), orderBy('title', 'asc'))
   );
+  const [ebooksCollection, ebooksLoading] = useCollection(
+    query(collection(firestore, 'ebooks'), where('price', '>', 0), orderBy('title', 'asc'))
+  );
 
-  const [qrCodeDoc] = useCollection(collection(firestore, 'settings'));
-  const qrCodeUrl = qrCodeDoc?.docs.find(d => d.id === 'paymentQrCode')?.data().url;
+  const [settingsDoc] = useDocumentData(doc(firestore, 'settings', 'appConfig'));
+  const qrCodeUrl = settingsDoc?.paymentQrCodeUrl;
 
 
   const form = useForm<VerificationFormValues>({
     resolver: zodResolver(verificationFormSchema),
     defaultValues: {
-      enrollmentType: preselectedCourseId ? 'Course Enrollment' : (preselectedTestSeriesId ? 'Test Series' : ''),
-      courseId: preselectedCourseId || preselectedTestSeriesId || '',
+      enrollmentType: preselectedCourseId ? 'Course' : (preselectedTestSeriesId ? 'Test Series' : (preselectedEbookId ? 'E-Book' : '')),
+      itemId: preselectedCourseId || preselectedTestSeriesId || preselectedEbookId || '',
       couponCode: '',
-      screenshotFile: undefined,
+      referralCode: '',
     },
   });
 
   const enrollmentType = form.watch('enrollmentType');
-  const selectedItemId = form.watch('courseId');
+  const selectedItemId = form.watch('itemId');
   const enteredCouponCode = form.watch('couponCode');
+  const enteredReferralCode = form.watch('referralCode');
+
+  const getCollectionName = (type: string) => {
+      switch (type) {
+          case 'Course': return 'courses';
+          case 'Test Series': return 'testSeries';
+          case 'E-Book': return 'ebooks';
+          default: return '';
+      }
+  }
   
   const itemDocRef = selectedItemId && enrollmentType
-    ? doc(firestore, enrollmentType === 'Course Enrollment' ? 'courses' : 'testSeries', selectedItemId) 
+    ? doc(firestore, getCollectionName(enrollmentType), selectedItemId) 
     : null;
 
   const [itemData, itemDataLoading] = useDocumentData(itemDocRef);
 
+  useEffect(() => {
+    if (itemData) {
+        setFinalPrice(itemData.price);
+    }
+  }, [itemData]);
 
   useEffect(() => {
+    let type = '';
+    let id = '';
     if (preselectedCourseId) {
-      form.setValue('enrollmentType', 'Course Enrollment');
-      form.setValue('courseId', preselectedCourseId);
+        type = 'Course';
+        id = preselectedCourseId;
+    } else if (preselectedTestSeriesId) {
+        type = 'Test Series';
+        id = preselectedTestSeriesId;
+    } else if (preselectedEbookId) {
+        type = 'E-Book';
+        id = preselectedEbookId;
     }
-     if (preselectedTestSeriesId) {
-      form.setValue('enrollmentType', 'Test Series');
-      form.setValue('courseId', preselectedTestSeriesId);
-    }
-  }, [preselectedCourseId, preselectedTestSeriesId, form]);
+    form.setValue('enrollmentType', type);
+    form.setValue('itemId', id);
+  }, [preselectedCourseId, preselectedTestSeriesId, preselectedEbookId, form]);
 
   const handleApplyCoupon = async () => {
     if (!enteredCouponCode || !selectedItemId || !itemData) return;
     setCouponStatus('loading');
-    setDiscountInfo(null);
+    
     try {
         const q = query(
             collection(firestore, 'coupons'),
             where('code', '==', enteredCouponCode.toUpperCase()),
-            where('courseId', '==', selectedItemId), // Assuming coupons are tied to courses/tests by ID
+            where('courseId', '==', selectedItemId),
             where('isActive', '==', true)
         );
         const couponSnapshot = await getDocs(q);
         if (couponSnapshot.empty) {
             toast({ variant: 'destructive', title: 'Invalid Coupon' });
             setCouponStatus('invalid');
+            setFinalPrice(itemData.price); // Reset price
             return;
         }
 
@@ -141,6 +157,7 @@ function PaymentVerificationPageContent() {
         if (new Date(coupon.expiryDate.toDate()) < new Date()) {
             toast({ variant: 'destructive', title: 'Coupon Expired' });
             setCouponStatus('invalid');
+            setFinalPrice(itemData.price);
             return;
         }
         
@@ -154,7 +171,7 @@ function PaymentVerificationPageContent() {
         }
 
         const newPrice = Math.max(0, originalPrice - discount);
-        setDiscountInfo({ originalPrice, discount, newPrice });
+        setFinalPrice(newPrice);
         setCouponStatus('valid');
         toast({ title: 'Coupon Applied!', description: `You saved ₹${discount.toFixed(2)}` });
 
@@ -164,7 +181,31 @@ function PaymentVerificationPageContent() {
     }
   };
 
-  if (authLoading || coursesLoading || testSeriesLoading) {
+  const handleApplyReferral = async () => {
+    if (!enteredReferralCode || !itemData || !user) return;
+
+    const referralUserQuery = query(collection(firestore, 'users'), where('referralCode', '==', enteredReferralCode.toUpperCase()));
+    const referralUserSnapshot = await getDocs(referralUserQuery);
+
+    if (referralUserSnapshot.empty) {
+        toast({ variant: 'destructive', title: 'Invalid Referral Code' });
+        return;
+    }
+    
+    if (referralUserSnapshot.docs[0].id === user.uid) {
+        toast({ variant: 'destructive', title: 'Cannot use your own referral code.' });
+        return;
+    }
+
+    // Apply 10% discount
+    const originalPrice = finalPrice ?? itemData.price;
+    const discount = originalPrice * 0.10;
+    const newPrice = Math.max(0, originalPrice - discount);
+    setFinalPrice(newPrice);
+    toast({ title: 'Referral Applied!', description: `You got a 10% discount!` });
+  }
+
+  if (authLoading || coursesLoading || testSeriesLoading || ebooksLoading) {
     return (
       <div className="max-w-xl mx-auto p-4 md:p-8">
         <Skeleton className="h-96 w-full" />
@@ -193,15 +234,8 @@ function PaymentVerificationPageContent() {
     });
   };
 
-  const getEnrollmentTitle = (data: VerificationFormValues) => {
-    let collection;
-    if (data.enrollmentType === 'Course Enrollment') {
-        collection = coursesCollection;
-    } else if (data.enrollmentType === 'Test Series') {
-        collection = testSeriesCollection;
-    }
-    const selectedItem = collection?.docs.find(doc => doc.id === data.courseId);
-    return selectedItem?.data().title || 'Unknown Item';
+  const getEnrollmentTitle = () => {
+    return itemData?.title || 'Unknown Item';
   }
 
   const onSubmit = async (data: VerificationFormValues) => {
@@ -214,18 +248,15 @@ function PaymentVerificationPageContent() {
     try {
       const screenshotDataUrl = await fileToDataUrl(data.screenshotFile);
       
-      await addDoc(collection(firestore, 'enrollments'), {
+      await submitEnrollmentAction({
           enrollmentType: data.enrollmentType,
-          courseId: data.courseId || null,
-          courseTitle: getEnrollmentTitle(data),
-          couponCode: data.couponCode || null,
+          courseId: data.itemId,
+          courseTitle: getEnrollmentTitle(),
           screenshotDataUrl,
-          userId: user.uid,
-          userEmail: user.email,
-          userDisplayName: user.displayName,
-          status: 'pending',
-          createdAt: serverTimestamp(),
-        });
+          couponCode: data.couponCode || null,
+          referralCode: data.referralCode || null,
+          finalPrice: finalPrice ?? itemData?.price ?? 0,
+      }, user);
 
       toast({ title: 'Submitted!', description: 'Your request is pending approval. We will notify you soon.' });
       router.push('/dashboard');
@@ -235,6 +266,41 @@ function PaymentVerificationPageContent() {
       setIsSubmitting(false);
     }
   };
+  
+  const renderItemSelect = () => {
+    let items;
+    switch(enrollmentType) {
+        case 'Course': items = coursesCollection?.docs; break;
+        case 'Test Series': items = testSeriesCollection?.docs; break;
+        case 'E-Book': items = ebooksCollection?.docs; break;
+        default: items = [];
+    }
+
+    return (
+         <FormField
+            control={form.control}
+            name="itemId"
+            render={({ field }) => (
+            <FormItem>
+                <FormLabel>Select {enrollmentType}</FormLabel>
+                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <FormControl>
+                    <SelectTrigger>
+                    <SelectValue placeholder={`Select a ${enrollmentType}`} />
+                    </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                    {items?.map(doc => (
+                        <SelectItem key={doc.id} value={doc.id}>{doc.data().title}</SelectItem>
+                    ))}
+                </SelectContent>
+                </Select>
+                <FormMessage />
+            </FormItem>
+            )}
+        />
+    )
+  }
 
   return (
     <div className="bg-muted/20 min-h-screen p-4 md:p-8">
@@ -266,8 +332,9 @@ function PaymentVerificationPageContent() {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="Course Enrollment">Course Enrollment</SelectItem>
+                          <SelectItem value="Course">Course</SelectItem>
                           <SelectItem value="Test Series">Test Series</SelectItem>
+                          <SelectItem value="E-Book">E-Book</SelectItem>
                         </SelectContent>
                       </Select>
                       <FormMessage />
@@ -275,98 +342,65 @@ function PaymentVerificationPageContent() {
                   )}
                 />
 
-                {enrollmentType === 'Course Enrollment' && (
-                    <FormField
-                      control={form.control}
-                      name="courseId"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Select Course</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select a course" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {coursesCollection?.docs.map(doc => (
-                                  <SelectItem key={doc.id} value={doc.id}>{doc.data().title}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                )}
-                 {enrollmentType === 'Test Series' && (
-                    <FormField
-                      control={form.control}
-                      name="courseId"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Select Test Series</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select a test series" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {testSeriesCollection?.docs.map(doc => (
-                                  <SelectItem key={doc.id} value={doc.id}>{doc.data().title}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                )}
+                {enrollmentType && renderItemSelect()}
 
                 {itemData && (
                     <Card className='bg-muted/50'>
-                        <CardContent className='p-4 space-y-3'>
+                        <CardContent className='p-4 space-y-4'>
                             <div className="flex justify-between items-center">
                                 <h4 className="font-semibold">Price Details</h4>
-                                <p className="font-bold text-xl">₹{discountInfo ? discountInfo.newPrice.toFixed(2) : (itemData.price || 0).toFixed(2)}</p>
+                                <p className="font-bold text-xl">₹{finalPrice !== null ? finalPrice.toFixed(2) : (itemData.price || 0).toFixed(2)}</p>
                             </div>
-                            {discountInfo && (
-                                <>
-                                    <div className="flex justify-between items-center text-sm text-muted-foreground">
-                                        <span>Original Price</span>
-                                        <span className='line-through'>₹{discountInfo.originalPrice.toFixed(2)}</span>
-                                    </div>
-                                     <div className="flex justify-between items-center text-sm text-green-600 font-medium">
-                                        <span>Discount</span>
-                                        <span>- ₹{discountInfo.discount.toFixed(2)}</span>
-                                    </div>
-                                </>
-                            )}
-                             <div className="flex gap-2">
-                                <FormField
-                                    control={form.control}
-                                    name="couponCode"
-                                    render={({ field }) => (
-                                        <FormItem className='flex-grow'>
-                                            <FormControl>
-                                                <div className="relative">
-                                                    <Ticket className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                                    <Input placeholder="Enter coupon code" className="pl-10" {...field} />
-                                                </div>
-                                            </FormControl>
-                                        </FormItem>
-                                    )}
-                                />
-                                <Button type="button" onClick={handleApplyCoupon} disabled={!enteredCouponCode || couponStatus === 'loading'}>
-                                    {couponStatus === 'loading' ? <Loader2 className="h-4 w-4 animate-spin"/> : 'Apply'}
-                                </Button>
+                            
+                            <div className="space-y-2">
+                                <Label>Coupon Code</Label>
+                                <div className="flex gap-2">
+                                    <FormField
+                                        control={form.control}
+                                        name="couponCode"
+                                        render={({ field }) => (
+                                            <FormItem className='flex-grow'>
+                                                <FormControl>
+                                                    <div className="relative">
+                                                        <Ticket className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                                        <Input placeholder="Enter coupon code" className="pl-10" {...field} />
+                                                    </div>
+                                                </FormControl>
+                                            </FormItem>
+                                        )}
+                                    />
+                                    <Button type="button" onClick={handleApplyCoupon} disabled={!enteredCouponCode || couponStatus === 'loading'}>
+                                        {couponStatus === 'loading' ? <Loader2 className="h-4 w-4 animate-spin"/> : 'Apply'}
+                                    </Button>
+                                </div>
                             </div>
+                             <div className="space-y-2">
+                                <Label>Referral Code (Optional)</Label>
+                                <div className="flex gap-2">
+                                    <FormField
+                                        control={form.control}
+                                        name="referralCode"
+                                        render={({ field }) => (
+                                            <FormItem className='flex-grow'>
+                                                <FormControl>
+                                                    <div className="relative">
+                                                        <Tag className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                                        <Input placeholder="Enter referral code" className="pl-10" {...field} />
+                                                    </div>
+                                                </FormControl>
+                                            </FormItem>
+                                        )}
+                                    />
+                                     <Button type="button" onClick={handleApplyReferral} disabled={!enteredReferralCode}>
+                                        Apply
+                                    </Button>
+                                </div>
+                            </div>
+
                             {couponStatus === 'valid' && (
-                                <Alert variant="default" className="border-green-500 text-green-700 [&>svg]:text-green-700">
+                                <Alert variant="default" className="border-green-500 text-green-700 [&gt;svg]:text-green-700">
                                     <CheckCircle className="h-4 w-4" />
                                     <AlertTitle>Coupon Applied!</AlertTitle>
-                                    <AlertDescription>Your discount has been applied to the total price.</AlertDescription>
                                 </Alert>
                             )}
                         </CardContent>
@@ -421,7 +455,7 @@ function PaymentVerificationPageContent() {
                 </Button>
                 <div className="flex items-center gap-3 pt-2 text-green-600 text-sm">
                   <ShieldCheck className="h-5 w-5" />
-                  <span className="font-semibold">Secure Payment & Verification</span>
+                  <span className="font-semibold">Secure Payment &amp; Verification</span>
                 </div>
               </CardFooter>
             </form>
@@ -439,5 +473,3 @@ export default function PaymentVerificationPage() {
         </Suspense>
     )
 }
-
-    

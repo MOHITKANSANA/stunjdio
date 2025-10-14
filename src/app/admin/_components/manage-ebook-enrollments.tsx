@@ -12,15 +12,12 @@ import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
-export function ManageEnrollments() {
+export function ManageEbookEnrollments() {
     const { toast } = useToast();
 
-    // The composite index error comes from using where() with orderBy() on different fields.
-    // To fix this without creating an index, we can do client-side filtering and sorting.
     const [enrollments, loading, error] = useCollection(
-        query(collection(firestore, 'enrollments'), where('enrollmentType', '==', 'Course'))
+        query(collection(firestore, 'enrollments'), where('enrollmentType', '==', 'E-Book'))
     );
-
 
     const handleUpdateStatus = async (id: string, status: 'approved' | 'rejected') => {
         try {
@@ -46,7 +43,7 @@ export function ManageEnrollments() {
 
         if (loading) return <Skeleton className="h-48 w-full" />;
         if (!filteredEnrollments || filteredEnrollments.length === 0) {
-            return <p className="text-center text-muted-foreground p-8">No {status} enrollments found.</p>;
+            return <p className="text-center text-muted-foreground p-8">No {status} E-Book enrollments found.</p>;
         }
 
         return (
@@ -54,7 +51,7 @@ export function ManageEnrollments() {
                 <TableHeader>
                     <TableRow>
                         <TableHead>User</TableHead>
-                        <TableHead>Course</TableHead>
+                        <TableHead>E-Book</TableHead>
                         <TableHead>Screenshot</TableHead>
                         <TableHead>{status === 'pending' ? 'Actions' : 'Status'}</TableHead>
                     </TableRow>

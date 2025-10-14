@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useRef, ChangeEvent } from 'react';
@@ -14,12 +13,15 @@ import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import { firestore } from '@/lib/firebase';
 import { Loader2, Upload } from 'lucide-react';
 import Image from 'next/image';
+import { Checkbox } from '@/components/ui/checkbox';
 
 const ebookSchema = z.object({
   title: z.string().min(1, 'Title is required.'),
   description: z.string().optional(),
   fileUrl: z.string().url('Must be a valid PDF URL.'),
   thumbnailFile: z.any().refine(file => file, 'Thumbnail is required.'),
+  price: z.coerce.number().min(0).default(0),
+  isFree: z.boolean().default(false),
 });
 
 type EbookFormValues = z.infer<typeof ebookSchema>;
@@ -45,8 +47,12 @@ export function AddEbookForm() {
       title: '',
       description: '',
       fileUrl: '',
+      price: 0,
+      isFree: true,
     },
   });
+
+  const isFree = form.watch('isFree');
 
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -66,6 +72,8 @@ export function AddEbookForm() {
         description: data.description,
         fileUrl: data.fileUrl,
         thumbnailUrl: thumbnailUrl,
+        price: data.isFree ? 0 : data.price,
+        isFree: data.isFree,
         createdAt: serverTimestamp(),
       });
 
@@ -121,6 +129,21 @@ export function AddEbookForm() {
         <FormField control={form.control} name="fileUrl" render={({ field }) => (
           <FormItem><FormLabel>PDF File URL</FormLabel><FormControl><Input placeholder="https://example.com/ebook.pdf" {...field} /></FormControl><FormMessage /></FormItem>
         )} />
+
+        <FormField control={form.control} name="isFree" render={({ field }) => (
+            <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                <FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl>
+                <div className="space-y-1 leading-none">
+                    <FormLabel>Is this a free e-book?</FormLabel>
+                </div>
+            </FormItem>
+        )} />
+
+        {!isFree && (
+            <FormField control={form.control} name="price" render={({ field }) => (
+              <FormItem><FormLabel>Price (₹)</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>
+            )} />
+        )}
         
         <Button type="submit" disabled={isLoading}>
           {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

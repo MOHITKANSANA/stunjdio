@@ -1,13 +1,12 @@
-
 'use client';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
-import { Gift, Copy, Check } from 'lucide-react';
+import { Gift, Copy, Check, Share2 } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { useState, useEffect } from 'react';
-import { doc, onSnapshot } from 'firebase/firestore';
+import { doc, onSnapshot, updateDoc, increment } from 'firebase/firestore';
 import { firestore } from '@/lib/firebase';
 import { Progress } from '@/components/ui/progress';
 
@@ -49,11 +48,17 @@ export default function ReferPage() {
         setTimeout(() => setIsCopied(false), 3000);
     };
 
-    const shareOnWhatsApp = () => {
+    const shareOnWhatsApp = async () => {
         if (!user) {
             toast({ variant: 'destructive', title: 'Please log in to share your referral code.' });
             return;
         }
+
+        // Award 10 points for sharing
+        const userRef = doc(firestore, 'users', user.uid);
+        await updateDoc(userRef, { rewardPoints: increment(10) });
+        toast({ title: "+10 Points!", description: "You earned 10 points for sharing." });
+
         const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(referralMessage)}`;
         window.open(whatsappUrl, '_blank');
     };
@@ -78,8 +83,13 @@ export default function ReferPage() {
                         </Button>
                     </div>
                 </CardContent>
-                 <CardFooter>
-                    <Button onClick={shareOnWhatsApp} className="w-full text-lg">Share on WhatsApp</Button>
+                 <CardFooter className="grid grid-cols-2 gap-4">
+                    <Button onClick={shareOnWhatsApp} className="w-full text-lg">
+                        <Share2 className="mr-2" /> Share
+                    </Button>
+                     <Button onClick={copyToClipboard} className="w-full text-lg" variant="outline">
+                        <Copy className="mr-2" /> Copy Code
+                    </Button>
                  </CardFooter>
             </Card>
 
@@ -94,11 +104,13 @@ export default function ReferPage() {
                     </div>
                     <div className="mt-4">
                         <Progress value={(points / 200) * 100} />
-                        <p className="text-center text-sm text-muted-foreground mt-2">{200 - points} points needed to redeem a free course.</p>
+                        <p className="text-center text-sm text-muted-foreground mt-2">
+                           {points &lt; 200 ? `${200 - points} points needed to redeem a free course.` : "You can redeem a free course!"}
+                        </p>
                     </div>
                 </CardContent>
                 <CardFooter>
-                    <Button disabled={points < 200} className="w-full">Redeem Free Course</Button>
+                    <Button disabled={points &lt; 200} className="w-full">Redeem Free Course</Button>
                 </CardFooter>
             </Card>
 

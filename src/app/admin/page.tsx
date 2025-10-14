@@ -1,4 +1,3 @@
-
 'use client';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -31,6 +30,7 @@ import { Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { AddBattleQuizForm } from "./_components/add-battle-quiz-form";
 import { ManageCoupons } from "./_components/manage-coupons";
+import { ManageEbookEnrollments } from "./_components/manage-ebook-enrollments";
 
 
 const PwaInstallations = () => {
@@ -168,6 +168,7 @@ export default function AdminPage() {
                     <TabsTrigger value="notifications">Notifications</TabsTrigger>
                     <TabsTrigger value="course_enrollments">Course Enrollments</TabsTrigger>
                     <TabsTrigger value="test_enrollments">Test Enrollments</TabsTrigger>
+                    <TabsTrigger value="ebook_enrollments">E-Book Enrollments</TabsTrigger>
                     <TabsTrigger value="scholarships">Scholarships</TabsTrigger>
                     <TabsTrigger value="battle_quiz">Battle Quiz</TabsTrigger>
                     <TabsTrigger value="kids_tube">Kids Tube</TabsTrigger>
@@ -255,6 +256,18 @@ export default function AdminPage() {
                         </CardHeader>
                         <CardContent>
                             <ManageTestSeriesEnrollments />
+                        </CardContent>
+                    </Card>
+                </TabsContent>
+
+                <TabsContent value="ebook_enrollments" className="mt-6 md:mt-0">
+                     <Card>
+                        <CardHeader>
+                            <CardTitle>Manage E-Book Enrollments</CardTitle>
+                            <CardDescription>Approve or reject student E-Book purchase requests.</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <ManageEbookEnrollments />
                         </CardContent>
                     </Card>
                 </TabsContent>
