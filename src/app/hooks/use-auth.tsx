@@ -92,7 +92,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       await updateUserInFirestore(userCredential.user, additionalData);
       const userDocRef = doc(firestore, 'users', userCredential.user.uid);
       const docSnap = await getDoc(userDocRef);
-      const enhancedUser = { ...userCredential.user, referralCode: docSnap.data()?.referralCode };
+      const referralCode = docSnap.exists() ? docSnap.data().referralCode : generateReferralCode();
+      const enhancedUser = { ...userCredential.user, referralCode: referralCode };
       setUser(enhancedUser as User & { referralCode?: string });
       return userCredential;
   };

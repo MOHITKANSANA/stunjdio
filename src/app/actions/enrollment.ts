@@ -115,6 +115,7 @@ export async function submitEnrollmentAction(input: EnrollmentInput): Promise<{ 
 
     revalidatePath('/admin');
     revalidatePath('/dashboard/courses');
+    revalidatePath('/dashboard/my-learning');
 
     return { success: true };
   } catch (error: any) {
