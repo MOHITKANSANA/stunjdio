@@ -39,15 +39,6 @@ export default function InstallPage() {
         // Check if the app is already installed
         if (window.matchMedia('(display-mode: standalone)').matches) {
             setIsVisible(false);
-        } else {
-             // If the event has already fired, it might be stored on the window
-            // This is a common pattern for handling the deferred prompt
-            if ((window as any).deferredPrompt) {
-                 setInstallPrompt((window as any).deferredPrompt);
-                 setIsVisible(true);
-            } else {
-                 setIsVisible(true); // Assume installable until event listener says otherwise
-            }
         }
 
         return () => {
@@ -71,7 +62,7 @@ export default function InstallPage() {
                 }
             });
         } else {
-            toast({ title: 'Already Installed or Not Supported', description: 'Your browser may not support PWA installation, or the app is already installed.', variant: 'destructive' });
+            toast({ title: 'Installation Not Available', description: 'The installation prompt is not available at the moment. It might be because the app is already installed or your browser doesn\'t support it.', variant: 'destructive' });
         }
     };
     
