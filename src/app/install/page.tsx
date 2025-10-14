@@ -37,29 +37,27 @@ export default function InstallPage() {
 
     return (
         <div className="min-h-screen bg-gray-100 dark:bg-gray-900 flex flex-col items-center justify-center p-4">
-            <div className="w-full max-w-sm mx-auto">
-                <div className="flex items-center gap-4 mb-8">
+            <div className="w-full max-w-sm mx-auto text-center">
+                 <div className="relative inline-block mb-6">
                     {appLogoUrl ? (
-                         <Image src={appLogoUrl} alt="App Logo" width={80} height={80} className="rounded-2xl shadow-md" />
+                         <Image src={appLogoUrl} alt="App Logo" width={128} height={128} className="rounded-3xl shadow-lg" priority />
                     ) : (
-                        <div className="h-20 w-20 rounded-2xl bg-primary/20 flex items-center justify-center shadow-md">
-                            <span className="text-4xl font-bold text-primary">L</span>
-                        </div>
+                         <div className="h-32 w-32 rounded-3xl bg-primary/20 flex items-center justify-center shadow-lg">
+                            <span className="text-6xl font-bold text-primary">L</span>
+                         </div>
                     )}
-                    <div>
-                        <h1 className="text-2xl font-bold">Learn with Munedra</h1>
-                        <p className="text-muted-foreground text-sm">Go Swami Coaching Classes</p>
-                        <div className="flex items-center gap-2 mt-1">
-                             <Image src="https://i.postimg.cc/RVT2b2HL/google-play-logo.png" alt="Google Play" width={100} height={25} />
-                        </div>
-                    </div>
                 </div>
 
-                <InstallPwaPrompt />
+                <h1 className="text-3xl font-bold">Learn with Munedra</h1>
+                <p className="text-muted-foreground text-md mt-1">Your learning companion</p>
                 
-                 <div className="mt-8 text-center">
+                <div className="mt-10">
+                   <InstallPwaPrompt />
+                </div>
+                
+                 <div className="mt-8">
                     <Link href="/dashboard" className="text-sm text-muted-foreground hover:underline">
-                        Continue to website
+                        Continue to website without installing
                     </Link>
                 </div>
             </div>
