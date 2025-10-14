@@ -7,6 +7,16 @@ import { doc, setDoc, serverTimestamp, getDoc } from 'firebase/firestore';
 import { auth, firestore } from '@/lib/firebase';
 import { useRouter } from 'next/navigation';
 
+function generateReferralCode() {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    let result = '';
+    for (let i = 0; i < 6; i++) {
+        result += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return result;
+}
+
+
 export const updateUserInFirestore = async (user: User, additionalData: Record<string, any> = {}) => {
     const userRef = doc(firestore, 'users', user.uid);
     const docSnap = await getDoc(userRef);
@@ -28,6 +38,8 @@ export const updateUserInFirestore = async (user: User, additionalData: Record<s
             ...dataToWrite,
             fcmTokens: [], // Initialize fcmTokens field for new users
             createdAt: serverTimestamp(),
+            referralCode: generateReferralCode(),
+            rewardPoints: 0,
         });
     } else {
         await setDoc(userRef, dataToWrite, { merge: true });
@@ -35,7 +47,7 @@ export const updateUserInFirestore = async (user: User, additionalData: Record<s
 };
 
 interface AuthContextType {
-  user: User | null;
+  user: (User & { referralCode?: string }) | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<UserCredential>;
   signup: (email: string, password: string) => Promise<UserCredential>;
@@ -50,15 +62,26 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<(User & { referralCode?: string }) | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
-      setUser(currentUser);
       if (currentUser) {
-        // We will update the user doc on login/signup instead of every auth change
+          const userDocRef = doc(firestore, 'users', currentUser.uid);
+          const docSnap = await getDoc(userDocRef);
+          if (docSnap.exists()) {
+              const userData = docSnap.data();
+              const enhancedUser = { ...currentUser, referralCode: userData.referralCode };
+              setUser(enhancedUser as User & { referralCode?: string });
+          } else {
+              // This case might happen for a very brief moment before the user doc is created.
+              // We'll set the basic user and rely on handleAuthSuccess to set the full user.
+              setUser(currentUser);
+          }
+      } else {
+        setUser(null);
       }
       setLoading(false);
     });
@@ -67,7 +90,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   
   const handleAuthSuccess = async (userCredential: UserCredential, additionalData: Record<string, any> = {}) => {
       await updateUserInFirestore(userCredential.user, additionalData);
-      setUser(userCredential.user);
+      const userDocRef = doc(firestore, 'users', userCredential.user.uid);
+      const docSnap = await getDoc(userDocRef);
+      const referralCode = docSnap.exists() ? docSnap.data().referralCode : generateReferralCode();
+      const enhancedUser = { ...userCredential.user, referralCode: referralCode };
+      setUser(enhancedUser as User & { referralCode?: string });
       return userCredential;
   };
 
@@ -76,13 +103,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const signup = (email: string, password: string) => {
-    return createUserWithEmailAndPassword(auth, email, password).then((cred) => handleAuthSuccess(cred));
+    return createUserWithEmailAndPassword(auth, email, password).then((cred) => handleAuthSuccess(cred, { password }));
   };
 
   const signupWithDetails = async (email: string, password: string, name: string, photoURL: string | null, details: Record<string, any>) => {
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     await updateProfile(userCredential.user, { displayName: name, photoURL: photoURL || undefined });
-    return handleAuthSuccess(userCredential, { ...details, displayName: name, photoURL: photoURL });
+    return handleAuthSuccess(userCredential, { ...details, displayName: name, photoURL: photoURL, password });
   };
 
 

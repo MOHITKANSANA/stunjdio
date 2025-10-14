@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useRef, type ChangeEvent, useEffect, Suspense } from 'react';
@@ -158,10 +159,18 @@ function PaymentVerificationPageContent() {
         }
 
         const coupon = couponSnapshot.docs[0].data();
-        if (new Date(coupon.expiryDate.toDate()) < new Date()) {
+        const couponDoc = couponSnapshot.docs[0];
+
+        if (new Date(coupon.expiryDate.seconds * 1000) < new Date()) {
             toast({ variant: 'destructive', title: 'Coupon Expired' });
             setCouponStatus('invalid');
             setFinalPrice(itemData.price);
+            return;
+        }
+
+        if (coupon.maxUses && coupon.uses >= coupon.maxUses) {
+            toast({ variant: 'destructive', title: 'Coupon usage limit reached.' });
+            setCouponStatus('invalid');
             return;
         }
         
@@ -221,7 +230,7 @@ function PaymentVerificationPageContent() {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
       if (file.size > 2 * 1024 * 1024) {
-        toast({ variant: 'destructive', title: 'File too large', description: 'Please upload an image smaller than 2MB.' });
+        router.push('/upload-error');
         return;
       }
       form.setValue('screenshotFile', file, { shouldValidate: true });
@@ -260,7 +269,10 @@ function PaymentVerificationPageContent() {
           couponCode: data.couponCode || null,
           referralCode: data.referralCode || null,
           finalPrice: finalPrice ?? itemData?.price ?? 0,
-      }, user);
+          userId: user.uid,
+          userEmail: user.email,
+          userDisplayName: user.displayName,
+      });
 
       toast({ title: 'Submitted!', description: 'Your request is pending approval. We will notify you soon.' });
       router.push('/dashboard');

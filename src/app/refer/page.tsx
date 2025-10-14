@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
@@ -9,9 +10,10 @@ import { useState, useEffect } from 'react';
 import { doc, onSnapshot, updateDoc, increment } from 'firebase/firestore';
 import { firestore } from '@/lib/firebase';
 import { Progress } from '@/components/ui/progress';
+import { Loader2 } from 'lucide-react';
 
 export default function ReferPage() {
-    const { user } = useAuth();
+    const { user, loading } = useAuth();
     const { toast } = useToast();
     const [isCopied, setIsCopied] = useState(false);
     const [appLink, setAppLink] = useState('');
@@ -54,14 +56,21 @@ export default function ReferPage() {
             return;
         }
 
-        // Award 10 points for sharing
-        const userRef = doc(firestore, 'users', user.uid);
-        await updateDoc(userRef, { rewardPoints: increment(10) });
-        toast({ title: "+10 Points!", description: "You earned 10 points for sharing." });
+        try {
+            const userRef = doc(firestore, 'users', user.uid);
+            await updateDoc(userRef, { rewardPoints: increment(10) });
+            toast({ title: "+10 Points!", description: "You earned 10 points for sharing." });
+        } catch(e) {
+            console.error("Failed to award points for sharing:", e);
+        }
 
         const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(referralMessage)}`;
         window.open(whatsappUrl, '_blank');
     };
+
+    if (loading) {
+        return <div className="flex h-screen w-full items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>
+    }
 
     return (
         <div className="max-w-2xl mx-auto space-y-8 p-4 md:p-6">

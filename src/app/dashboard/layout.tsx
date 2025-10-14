@@ -1,3 +1,4 @@
+
 'use client';
 import React, { useEffect, useState, useCallback } from 'react';
 import {
@@ -163,7 +164,7 @@ const AppSidebar = ({ isKidsMode, isMindSphereMode, appLogoUrl }: { isKidsMode: 
 
     return (
         <Sidebar>
-            <SidebarContent className="bg-sidebar border-r border-sidebar-border w-[250px] group-data-[collapsible=icon]:w-[52px]">
+            <SidebarContent className="bg-sidebar border-r-0 text-sidebar-foreground w-[250px] group-data-[collapsible=icon]:w-[52px]">
                 <div className="flex flex-col h-full">
                      <div className="p-3 bg-yellow-400/10 m-2 rounded-lg">
                         <div className="flex items-center gap-3">
@@ -224,7 +225,7 @@ const AppSidebar = ({ isKidsMode, isMindSphereMode, appLogoUrl }: { isKidsMode: 
                     </SidebarMenu>
 
                     <div className="p-3 bg-yellow-400/10 m-2 rounded-lg group-data-[collapsible=icon]:hidden">
-                        <Link href="/refer">
+                        <Link href="/refer" onClick={closeSidebar}>
                              <div className="flex items-center gap-3 justify-center">
                                 <Gift className="text-yellow-400 h-8 w-8" />
                                 <div>

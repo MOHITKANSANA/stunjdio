@@ -15,6 +15,9 @@ interface EnrollmentInput {
   couponCode?: string | null;
   referralCode?: string | null;
   finalPrice: number;
+  userId: string;
+  userEmail: string | null;
+  userDisplayName: string | null;
 }
 
 async function sendNotificationToAdmin(title: string, body: string) {
@@ -66,10 +69,10 @@ async function applyReferralReward(referralCode: string, referringUserUid: strin
 }
 
 
-export async function submitEnrollmentAction(input: EnrollmentInput, user: { uid: string, email: string | null, displayName: string | null }): Promise<{ success: boolean; error?: string }> {
-  const { enrollmentType, courseId, courseTitle, screenshotDataUrl, couponCode, referralCode, finalPrice } = input;
+export async function submitEnrollmentAction(input: EnrollmentInput): Promise<{ success: boolean; error?: string }> {
+  const { enrollmentType, courseId, courseTitle, screenshotDataUrl, couponCode, referralCode, finalPrice, userId, userEmail, userDisplayName } = input;
 
-  if (!user) {
+  if (!userId) {
       return { success: false, error: 'You must be logged in to enroll.' };
   }
 
@@ -82,9 +85,9 @@ export async function submitEnrollmentAction(input: EnrollmentInput, user: { uid
       enrollmentType,
       courseId,
       courseTitle,
-      userId: user.uid,
-      userEmail: user.email,
-      userDisplayName: user.displayName,
+      userId: userId,
+      userEmail: userEmail,
+      userDisplayName: userDisplayName,
       screenshotDataUrl, 
       couponCode,
       referralCode,
@@ -98,13 +101,16 @@ export async function submitEnrollmentAction(input: EnrollmentInput, user: { uid
         const referralUserSnapshot = await getDocs(referralUserQuery);
         if (!referralUserSnapshot.empty) {
             const referringUser = referralUserSnapshot.docs[0];
-            await applyReferralReward(referralCode, referringUser.id);
+            // Do not award points if the user is referring themselves
+            if (referringUser.id !== userId) {
+              await applyReferralReward(referralCode, referringUser.id);
+            }
         }
     }
 
     await sendNotificationToAdmin(
         'New Enrollment Request',
-        `${courseTitle} by ${user.displayName || 'a new user'}`
+        `${courseTitle} by ${userDisplayName || 'a new user'}`
     );
 
     revalidatePath('/admin');

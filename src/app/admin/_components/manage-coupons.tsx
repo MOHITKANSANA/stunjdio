@@ -41,12 +41,19 @@ export function ManageCoupons() {
       discountType: 'percentage',
     },
   });
+  
+  const [expiryTime, setExpiryTime] = useState('23:59');
 
   const onSubmit = async (data: CouponFormValues) => {
     setIsLoading(true);
     try {
+      const [hours, minutes] = expiryTime.split(':').map(Number);
+      const finalExpiryDate = new Date(data.expiryDate);
+      finalExpiryDate.setHours(hours, minutes);
+
       await addDoc(collection(firestore, 'coupons'), {
         ...data,
+        expiryDate: finalExpiryDate,
         isActive: true,
         uses: 0,
         createdAt: serverTimestamp(),
@@ -119,9 +126,15 @@ export function ManageCoupons() {
                   <FormItem><FormLabel>Discount Value</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>
                 )} />
             </div>
-             <FormField control={form.control} name="expiryDate" render={({ field }) => (
-              <FormItem><FormLabel>Expiry Date</FormLabel><FormControl><DatePicker date={field.value} setDate={field.onChange} /></FormControl><FormMessage /></FormItem>
-            )} />
+             <div className="grid grid-cols-2 gap-4">
+                <FormField control={form.control} name="expiryDate" render={({ field }) => (
+                    <FormItem><FormLabel>Expiry Date</FormLabel><FormControl><DatePicker date={field.value} setDate={field.onChange} /></FormControl><FormMessage /></FormItem>
+                )} />
+                 <FormItem>
+                    <FormLabel>Expiry Time</FormLabel>
+                    <Input type="time" value={expiryTime} onChange={e => setExpiryTime(e.target.value)} />
+                </FormItem>
+            </div>
              <FormField control={form.control} name="maxUses" render={({ field }) => (
               <FormItem><FormLabel>Maximum Uses (Optional)</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>
             )} />
