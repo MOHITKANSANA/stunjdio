@@ -261,7 +261,7 @@ function PaymentVerificationPageContent() {
     try {
       const screenshotDataUrl = await fileToDataUrl(data.screenshotFile);
       
-      await submitEnrollmentAction({
+      const result = await submitEnrollmentAction({
           enrollmentType: data.enrollmentType,
           courseId: data.itemId,
           courseTitle: getEnrollmentTitle(),
@@ -274,8 +274,12 @@ function PaymentVerificationPageContent() {
           userDisplayName: user.displayName,
       });
 
-      toast({ title: 'Submitted!', description: 'Your request is pending approval. We will notify you soon.' });
-      router.push('/dashboard');
+      if (result.success) {
+        toast({ title: 'Submitted!', description: 'Your request is pending approval. We will notify you soon.' });
+        router.push('/dashboard');
+      } else {
+        throw new Error(result.error || 'An unknown error occurred.');
+      }
     } catch (e: any) {
       toast({ variant: 'destructive', title: 'Submission Failed', description: e.message || 'An unknown error occurred.' });
     } finally {
@@ -367,7 +371,7 @@ function PaymentVerificationPageContent() {
                         <CardContent className='p-4 space-y-4'>
                             <div className="flex justify-between items-center">
                                 <h4 className="font-semibold">Price Details</h4>
-                                <p className="font-bold text-xl">₹{finalPrice !== null ? finalPrice.toFixed(2) : (itemData.price || 0).toFixed(2)}</p>
+                                <p className="font-bold text-xl">₹{finalPrice !== null ? finalPrice.toFixed(2) : (itemData?.price || 0).toFixed(2)}</p>
                             </div>
                             
                             <div className="space-y-2">
@@ -491,3 +495,5 @@ export default function PaymentVerificationPage() {
         </Suspense>
     )
 }
+
+    
