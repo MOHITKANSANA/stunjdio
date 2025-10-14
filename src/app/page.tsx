@@ -12,7 +12,7 @@ import { firestore } from "@/lib/firebase";
 export default function WelcomePage() {
     const { user, loading: authLoading } = useAuth();
     const router = useRouter();
-    const [isFading, setIsFading] = useState(false);
+    const [stage, setStage] = useState(0); // 0: M2, 1: Logo, 2: Fading out
     const [appLogoUrl, setAppLogoUrl] = useState<string | null>(null);
 
     useEffect(() => {
@@ -22,10 +22,9 @@ export default function WelcomePage() {
             }
         });
 
-        const redirectTimer = setTimeout(() => {
-            setIsFading(true);
-        }, 2500);
-
+        const timer1 = setTimeout(() => setStage(1), 1500); // Show M2 for 1.5s
+        const timer2 = setTimeout(() => setStage(2), 3000); // Show Logo for 1.5s
+        
         const navigationTimer = setTimeout(() => {
             if (!authLoading) {
                 if (user) {
@@ -34,40 +33,57 @@ export default function WelcomePage() {
                     router.replace('/login');
                 }
             }
-        }, 3000); // Wait for fade-out animation
+        }, 3500); // Start navigation after all animations
 
         return () => {
             appConfigUnsub();
-            clearTimeout(redirectTimer);
+            clearTimeout(timer1);
+            clearTimeout(timer2);
             clearTimeout(navigationTimer);
         };
     }, [user, authLoading, router]);
 
     return (
-        <div className={cn("splash-container h-screen w-screen flex flex-col items-center justify-center transition-opacity duration-500", isFading && "opacity-0")}>
-            <div className="flex-grow flex flex-col items-center justify-center text-center p-4">
-                 <div className="relative inline-block splash-item splash-item-1">
-                    {appLogoUrl ? (
-                         <Image src={appLogoUrl} alt="App Logo" width={180} height={180} className="h-44 w-44 rounded-full shadow-lg" priority />
-                    ) : (
-                         <div className="h-44 w-44 rounded-full bg-primary/20 flex items-center justify-center shadow-lg">
-                            <span className="text-6xl font-bold text-primary">L</span>
-                         </div>
-                    )}
+        <div className={cn(
+            "splash-container h-screen w-screen flex flex-col items-center justify-center transition-opacity duration-500",
+            stage === 2 && "opacity-0"
+        )}>
+            <div className="flex-grow flex flex-col items-center justify-center text-center p-4 relative w-full h-full">
+                {/* M² Logo with Tricolor Background */}
+                <div className={cn(
+                    "absolute inset-0 flex items-center justify-center transition-opacity duration-700",
+                    stage === 0 ? "opacity-100" : "opacity-0"
+                )}>
+                    <div className="relative flex items-center justify-center w-44 h-44">
+                        <div className="absolute inset-0 rounded-full bg-gradient-to-br from-orange-500 via-white to-green-600 blur-xl"></div>
+                        <h1 className="relative text-8xl font-bold text-white" style={{ textShadow: '2px 2px 8px rgba(0,0,0,0.5)' }}>
+                            M²
+                        </h1>
+                    </div>
                 </div>
 
-                <h1 className="splash-item splash-item-2 text-4xl md:text-5xl font-bold font-headline mt-6 metallic-text">Learn with Munedra</h1>
-                 <p className="splash-item splash-item-2 text-lg text-muted-foreground mt-2">Learn. Practice. Succeed.</p>
-                
+                {/* App Logo */}
+                <div className={cn(
+                    "absolute inset-0 flex flex-col items-center justify-center transition-opacity duration-700",
+                    stage === 1 ? "opacity-100" : "opacity-0 pointer-events-none"
+                )}>
+                    <div className="relative inline-block">
+                        {appLogoUrl ? (
+                            <Image src={appLogoUrl} alt="App Logo" width={180} height={180} className="h-44 w-44 rounded-full shadow-lg" priority />
+                        ) : (
+                            <div className="h-44 w-44 rounded-full bg-primary/20 flex items-center justify-center shadow-lg">
+                                <span className="text-6xl font-bold text-primary">L</span>
+                            </div>
+                        )}
+                    </div>
+                </div>
             </div>
-             <div className="w-full text-center pb-8 splash-item splash-item-3">
-                 <p className="text-sm font-medium text-muted-foreground uppercase tracking-widest">
-                    UPSC • SSC • NDA • Sainik School
-                 </p>
-                 <p className="text-sm text-muted-foreground mt-2">Mobile: +91 9327175729</p>
-                 <p className="text-xs font-medium text-muted-foreground/80 mt-4">
-                    Made with ❤️ in India
-                 </p>
+             <div className={cn(
+                "w-full text-center pb-8 transition-opacity duration-500",
+                 stage < 2 ? 'opacity-100' : 'opacity-0'
+             )}>
+                 <h1 className="text-3xl md:text-4xl font-bold font-headline metallic-text">Learn with Munedra</h1>
+                 <p className="text-md text-muted-foreground mt-1">Learn. Practice. Succeed.</p>
             </div>
         </div>
     );

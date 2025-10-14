@@ -17,19 +17,19 @@ const languages = [
     { value: "german", label: "German" },
 ];
 
-// Expanded lesson data with 100+ lessons
+// Simplified lesson data with text-only exercises
 const lessonData: Record<string, { type: string, word?: string, phrase?: string, options: string[], answer: string, prompt: string }[]> = {
     english: Array.from({ length: 25 }, (_, i) => [
         { type: 'vocab', word: `Hello ${i+1}`, options: [`नमस्ते ${i+1}`, 'धन्यवाद', 'माफ़ कीजिए', 'अलविदा'], answer: `नमस्ते ${i+1}`, prompt: "Translate this word:" },
         { type: 'vocab', word: `Goodbye ${i+1}`, options: [`अलविदा ${i+1}`, 'नमस्ते', 'पानी', 'घर'], answer: `अलविदा ${i+1}`, prompt: "What does this mean?" },
-        { type: 'speak', phrase: `How are you? ${i+1}`, options: [], answer: '', prompt: "Listen and repeat:" },
-        { type: 'listen', phrase: `My name is Alex ${i+1}`, options: [`My name is Alex ${i+1}`, 'My aim is Alex', 'My game is vex', 'My fame is next'], answer: `My name is Alex ${i+1}`, prompt: "What did you hear?"},
+        { type: 'vocab', word: `Thank you ${i+1}`, options: [`धन्यवाद ${i+1}`, 'नमस्ते', 'पानी', 'घर'], answer: `धन्यवाद ${i+1}`, prompt: "Translate this word:" },
+        { type: 'vocab', word: `Water ${i+1}`, options: [`पानी ${i+1}`, 'घर', 'नमस्ते', 'अलविदा'], answer: `पानी ${i+1}`, prompt: "What does this mean?" },
     ]).flat(),
      hindi: Array.from({ length: 25 }, (_, i) => [
         { type: 'vocab', word: `नमस्ते ${i+1}`, options: [`Hello ${i+1}`, 'Thank you', 'Excuse me', 'Goodbye'], answer: `Hello ${i+1}`, prompt: "Translate this word:" },
         { type: 'vocab', word: `धन्यवाद ${i+1}`, options: [`Thank you ${i+1}`, 'Hello', 'Water', 'Home'], answer: `Thank you ${i+1}`, prompt: "What does this mean?" },
-        { type: 'speak', phrase: `आप कैसे हैं? ${i+1}`, options: [], answer: '', prompt: "Listen and repeat:" },
-        { type: 'listen', phrase: `मेरा नाम एलेक्स है ${i+1}`, options: [`मेरा नाम एलेक्स है ${i+1}`, 'मेरा काम एलेक्स है', 'मेरा गाम एलेक्स है', 'मेरा दाम एलेक्स है'], answer: `मेरा नाम एलेक्स है ${i+1}`, prompt: "What did you hear?"},
+        { type: 'vocab', word: `पानी ${i+1}`, options: [`Water ${i+1}`, 'Home', 'Hello', 'Goodbye'], answer: `Water ${i+1}`, prompt: "Translate this word:" },
+        { type: 'vocab', word: `घर ${i+1}`, options: [`Home ${i+1}`, 'Water', 'Thank you', 'Hello'], answer: `Home ${i+1}`, prompt: "What does this mean?" },
     ]).flat(),
     spanish: [], french: [], german: []
 };
@@ -128,38 +128,10 @@ export default function GoLinguaPage() {
                     </div>
                 );
                 break;
-            case 'speak':
-                 exerciseContent = (
-                    <div className="text-center space-y-4">
-                        <div className="flex items-center justify-center gap-4 text-2xl font-bold">
-                            <Button variant="outline" size="icon"><Volume2/></Button>
-                            <span>{exercise.phrase}</span>
-                        </div>
-                        <Button className="w-full py-6 text-lg"><Mic className="mr-2"/>Tap to speak</Button>
-                    </div>
-                 );
-                 break;
-            case 'listen':
-                 exerciseContent = (
-                    <div className="space-y-4">
-                         <div className="flex items-center justify-center gap-4 text-2xl font-bold py-8">
-                            <Button variant="outline" size="icon" className="h-16 w-16"><Volume2 className="h-8 w-8"/></Button>
-                        </div>
-                        <div className="flex flex-col gap-2">
-                            {exercise.options.map(opt => (
-                                <Button
-                                  key={opt}
-                                  variant={selectedOption === opt ? (isCorrect ? 'default' : 'destructive') : 'outline'}
-                                  onClick={() => !isCorrect && setSelectedOption(opt)}
-                                  className={`h-auto py-3 text-base ${isCorrect !== null && opt !== exercise.answer && 'opacity-50'}`}
-                                >
-                                    {opt}
-                                </Button>
-                            ))}
-                        </div>
-                    </div>
-                );
-                break;
+            default:
+                // This will skip any non-vocab exercises
+                handleNext();
+                return null;
         }
 
         return (
