@@ -5,90 +5,113 @@ import { useEffect, useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Download } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { Alert, AlertDescription, AlertTitle } from './ui/alert';
+import { AlertTriangle } from 'lucide-react';
 
 let deferredPrompt: any = null;
 
 export const InstallPwaPrompt = () => {
     const { toast } = useToast();
     const [isInstallable, setIsInstallable] = useState(false);
+    const [showError, setShowError] = useState(false);
     const [isAppInstalled, setIsAppInstalled] = useState(false);
 
     useEffect(() => {
         const handleBeforeInstallPrompt = (event: Event) => {
             event.preventDefault();
             deferredPrompt = event;
-            if (!isAppInstalled) {
-                setIsInstallable(true);
-            }
+            setIsInstallable(true);
+            setShowError(false); // Hide error if prompt becomes available
         };
 
-        const checkInstalled = () => {
-            if (typeof window !== 'undefined' && window.matchMedia('(display-mode: standalone)').matches) {
+        const checkInstalledStatus = () => {
+             // For standalone PWAs
+            if (window.matchMedia('(display-mode: standalone)').matches) {
                 setIsAppInstalled(true);
-                setIsInstallable(false);
+                return;
+            }
+            // For iOS
+            if ((window.navigator as any).standalone) {
+                 setIsAppInstalled(true);
+                 return;
             }
         };
 
-        checkInstalled();
+        checkInstalledStatus();
         window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
         window.addEventListener('appinstalled', () => {
-            setIsAppInstalled(true);
-            setIsInstallable(false);
-            deferredPrompt = null;
+             setIsAppInstalled(true);
+             deferredPrompt = null;
         });
 
         return () => {
             window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
         };
-    }, [isAppInstalled]);
+    }, []);
 
     const handleInstallClick = useCallback(async () => {
+        setShowError(false);
+
         if (isAppInstalled) {
-             toast({
-                title: 'App Already Installed',
-                description: 'You can open the app from your home screen.',
-            });
+            toast({ title: "App is already installed!", description: "You can open it from your home screen." });
             return;
         }
 
         if (!deferredPrompt) {
-            toast({
-                title: 'Installation Not Available',
-                description: 'Your browser may not support PWA installation, or you may have dismissed the prompt. Please try again later or use the "Add to Home Screen" option in your browser menu.',
-                variant: 'destructive',
-            });
+            console.warn('PWA install prompt not available.');
+            setShowError(true);
             return;
         }
 
-        deferredPrompt.prompt();
-        const { outcome } = await deferredPrompt.userChoice;
+        try {
+            deferredPrompt.prompt();
+            const { outcome } = await deferredPrompt.userChoice;
 
-        if (outcome === 'accepted') {
-            toast({ title: 'Installation Successful!', description: 'The app has been added to your home screen.' });
-        } else {
-            toast({ title: 'Installation Cancelled' });
+            if (outcome === 'accepted') {
+                toast({ title: 'Installation Successful!', description: 'The app has been added to your home screen.' });
+            } else {
+                toast({ title: 'Installation Cancelled' });
+            }
+
+            deferredPrompt = null;
+            setIsInstallable(false);
+        } catch (error) {
+            console.error('Error during PWA installation:', error);
+            setShowError(true);
         }
-
-        deferredPrompt = null;
-        setIsInstallable(false);
     }, [toast, isAppInstalled]);
     
     if (isAppInstalled) {
         return (
-            <p className="text-center text-muted-foreground mt-8">
-                App is already installed. Open it from your home screen.
-            </p>
-        );
+             <Alert variant="default" className="border-green-500">
+                <AlertTriangle className="h-4 w-4 !text-green-500" />
+                <AlertTitle>App Installed</AlertTitle>
+                <AlertDescription>
+                   The app is already installed on your device. Open it from your home screen for the best experience.
+                </AlertDescription>
+            </Alert>
+        )
     }
     
     return (
-        <Button 
-            onClick={handleInstallClick} 
-            size="lg"
-            className="w-full text-lg h-14 bg-gradient-to-r from-blue-500 to-sky-500 text-white shadow-lg animate-pulse hover:animate-none"
-        >
-            <Download className="mr-3" />
-            Install App
-        </Button>
+        <div className="w-full space-y-4">
+            {showError && (
+                <Alert variant="destructive">
+                    <AlertTriangle className="h-4 w-4" />
+                    <AlertTitle>Installation Not Available</AlertTitle>
+                    <AlertDescription>
+                       Your browser may not support PWA installation, or the prompt is not ready. Please try again or use a supported browser like Chrome on Android or Safari on iOS.
+                    </AlertDescription>
+                </Alert>
+            )}
+             <Button 
+                onClick={handleInstallClick} 
+                size="lg"
+                className="w-full text-lg h-14 bg-gradient-to-r from-blue-500 to-sky-500 text-white shadow-lg hover:shadow-xl transition-all transform hover:scale-105 active:scale-95"
+            >
+                <Download className="mr-3" />
+                Install App
+            </Button>
+        </div>
     );
 }
