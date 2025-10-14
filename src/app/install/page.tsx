@@ -1,22 +1,16 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Download, Loader2 } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/hooks/use-auth';
-import { trackPwaInstallAction } from '@/app/actions/pwa';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { firestore } from '@/lib/firebase';
-import { cn } from '@/lib/utils';
 import Link from 'next/link';
+import { InstallPwaPrompt } from '@/components/install-pwa-prompt';
 
 export default function InstallPage() {
-    const { user } = useAuth();
-    const { toast } = useToast();
-    const [installPrompt, setInstallPrompt] = useState<any>(null);
-    const [isVisible, setIsVisible] = useState(false);
     const [appLogoUrl, setAppLogoUrl] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
 
@@ -28,44 +22,11 @@ export default function InstallPage() {
             setLoading(false);
         });
 
-        const handleBeforeInstallPrompt = (event: Event) => {
-            event.preventDefault();
-            setInstallPrompt(event);
-            setIsVisible(true);
-        };
-
-        window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-
-        // Check if the app is already installed
-        if (window.matchMedia('(display-mode: standalone)').matches) {
-            setIsVisible(false);
-        }
-
         return () => {
             appConfigUnsub();
-            window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
         };
     }, []);
 
-    const handleInstallClick = () => {
-        if (installPrompt) {
-            installPrompt.prompt();
-            installPrompt.userChoice.then(async (choiceResult: { outcome: string }) => {
-                if (choiceResult.outcome === 'accepted') {
-                    toast({ title: 'Installation Successful!', description: "The app has been added to your home screen." });
-                    setIsVisible(false);
-                    if (user) {
-                        await trackPwaInstallAction(user.uid);
-                    }
-                } else {
-                    toast({ title: 'Installation Cancelled', variant: 'destructive' });
-                }
-            });
-        } else {
-            toast({ title: 'Installation Not Available', description: 'The installation prompt is not available at the moment. It might be because the app is already installed or your browser doesn\'t support it.', variant: 'destructive' });
-        }
-    };
-    
     if (loading) {
         return (
              <div className="flex h-screen w-full items-center justify-center bg-gray-100 dark:bg-gray-900">
@@ -94,10 +55,7 @@ export default function InstallPage() {
                     </div>
                 </div>
 
-                <Button onClick={handleInstallClick} className="w-full h-12 text-lg font-semibold" disabled={!isVisible}>
-                    <Download className="mr-2" />
-                    Install App
-                </Button>
+                <InstallPwaPrompt />
                 
                  <div className="mt-8 text-center">
                     <Link href="/dashboard" className="text-sm text-muted-foreground hover:underline">

@@ -21,7 +21,7 @@ import Autoplay from "embla-carousel-autoplay";
 import { cn } from '@/lib/utils';
 import { getAudioAction } from '@/app/actions/ai-tutor';
 import NextImage from 'next/image';
-import { trackPwaInstallAction } from '@/app/actions/pwa';
+import { InstallPwaPrompt } from '@/components/install-pwa-prompt';
 
 export const LiveClassTimer = () => {
     const [liveClass, setLiveClass] = useState<any>(null);
@@ -127,59 +127,6 @@ export const TopStudentsSection = () => {
                 </div>
             )}
         </div>
-    )
-}
-
-export const InstallPwaPrompt = () => {
-    const { user } = useAuth();
-    const [installPrompt, setInstallPrompt] = useState<any>(null);
-    const [isVisible, setIsVisible] = useState(false);
-
-    useEffect(() => {
-        const handleBeforeInstallPrompt = (event: Event) => {
-            event.preventDefault();
-            setInstallPrompt(event);
-            if (!window.matchMedia('(display-mode: standalone)').matches) {
-                setIsVisible(true);
-            }
-        };
-
-        window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-
-        return () => {
-            window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-        }
-    }, []);
-
-    const handleInstallClick = () => {
-        if (installPrompt) {
-            installPrompt.prompt();
-            installPrompt.userChoice.then(async (choiceResult: { outcome: string }) => {
-                if (choiceResult.outcome === 'accepted') {
-                   setIsVisible(false);
-                   if (user) {
-                       await trackPwaInstallAction(user.uid);
-                   }
-                }
-            });
-        }
-    };
-    
-    if(!isVisible) return null;
-
-    return (
-      <Card className="bg-gradient-to-r from-purple-500 to-indigo-600 text-white shadow-lg">
-          <CardContent className="p-4 flex items-center justify-between gap-4">
-              <div className="flex items-center gap-3">
-                  <Download className="h-8 w-8" />
-                  <div>
-                      <h3 className="font-bold">Install the Learn with Munedra App</h3>
-                      <p className="text-sm opacity-90">For a better, faster, and offline-ready experience.</p>
-                  </div>
-              </div>
-              <Button onClick={handleInstallClick} className="bg-white text-purple-600 hover:bg-gray-100 shrink-0">Install Now</Button>
-          </CardContent>
-      </Card>
     )
 }
 
