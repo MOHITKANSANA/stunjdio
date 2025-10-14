@@ -40,6 +40,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { submitEnrollmentAction } from '@/app/actions/enrollment';
+import { Label } from '@/components/ui/label';
 
 const verificationFormSchema = z.object({
   enrollmentType: z.string().min(1, 'Please select an enrollment type.'),
@@ -403,7 +404,7 @@ function PaymentVerificationPageContent() {
                             </div>
 
                             {couponStatus === 'valid' && (
-                                <Alert variant="default" className="border-green-500 text-green-700 [&gt;svg]:text-green-700">
+                                <Alert variant="default" className="border-green-500 text-green-700 [&>svg]:text-green-700">
                                     <CheckCircle className="h-4 w-4" />
                                     <AlertTitle>Coupon Applied!</AlertTitle>
                                 </Alert>
