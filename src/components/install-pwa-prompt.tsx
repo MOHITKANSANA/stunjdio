@@ -17,12 +17,15 @@ export const InstallPwaPrompt = () => {
         const handleBeforeInstallPrompt = (event: Event) => {
             event.preventDefault();
             deferredPrompt = event;
-            setIsInstallable(true);
+            if (!isAppInstalled) {
+                setIsInstallable(true);
+            }
         };
 
         const checkInstalled = () => {
             if (typeof window !== 'undefined' && window.matchMedia('(display-mode: standalone)').matches) {
                 setIsAppInstalled(true);
+                setIsInstallable(false);
             }
         };
 
@@ -37,22 +40,23 @@ export const InstallPwaPrompt = () => {
         return () => {
             window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
         };
-    }, []);
+    }, [isAppInstalled]);
 
     const handleInstallClick = useCallback(async () => {
+        if (isAppInstalled) {
+             toast({
+                title: 'App Already Installed',
+                description: 'You can open the app from your home screen.',
+            });
+            return;
+        }
+
         if (!deferredPrompt) {
-             if (isAppInstalled) {
-                 toast({
-                    title: 'App Already Installed',
-                    description: 'You can open the app from your home screen.',
-                });
-            } else {
-                 toast({
-                    title: 'Installation Not Available',
-                    description: 'Your browser may not support PWA installation, or the prompt is not ready. Please try again or use a supported browser like Chrome on Android or Safari on iOS.',
-                    variant: 'destructive',
-                });
-            }
+            toast({
+                title: 'Installation Not Available',
+                description: 'Your browser may not support PWA installation, or you may have dismissed the prompt. Please try again later or use the "Add to Home Screen" option in your browser menu.',
+                variant: 'destructive',
+            });
             return;
         }
 
