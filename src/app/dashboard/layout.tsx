@@ -1,4 +1,3 @@
-
 'use client';
 import React, { useEffect, useState, useCallback } from 'react';
 import {
@@ -419,34 +418,6 @@ export default function DashboardLayout({
   }, [user, isKidsMode]);
 
   
-  const checkUserProfile = useCallback(async () => {
-    if (!user || pathname === '/dashboard/complete-profile') {
-        return;
-    }
-
-    try {
-        const userDocRef = doc(firestore, 'users', user.uid);
-        const userDoc = await getDoc(userDocRef);
-
-        if (userDoc.exists()) {
-            const userData = userDoc.data();
-            if (userData.ageGroup) {
-                setIsKidsMode(userData.ageGroup === '1-9');
-            } else {
-                router.replace('/dashboard/complete-profile');
-            }
-        } else {
-            await updateUserInFirestore(user);
-            router.replace('/dashboard/complete-profile');
-        }
-    } catch (error) {
-        console.error("Error checking user profile:", error);
-         if (pathname !== '/dashboard/complete-profile') {
-            router.replace('/dashboard/complete-profile');
-        }
-    }
-  }, [user, pathname, router]);
-
   useEffect(() => {
     if (loading) {
         return;
@@ -456,6 +427,34 @@ export default function DashboardLayout({
         router.replace('/');
         return;
     }
+    
+    const checkUserProfile = async () => {
+        if (!user || pathname === '/dashboard/complete-profile') {
+            return;
+        }
+
+        try {
+            const userDocRef = doc(firestore, 'users', user.uid);
+            const userDoc = await getDoc(userDocRef);
+
+            if (userDoc.exists()) {
+                const userData = userDoc.data();
+                if (userData.ageGroup) {
+                    setIsKidsMode(userData.ageGroup === '1-9');
+                } else {
+                    router.replace('/dashboard/complete-profile');
+                }
+            } else {
+                await updateUserInFirestore(user);
+                router.replace('/dashboard/complete-profile');
+            }
+        } catch (error) {
+            console.error("Error checking user profile:", error);
+            if (pathname !== '/dashboard/complete-profile') {
+                router.replace('/dashboard/complete-profile');
+            }
+        }
+    };
     
     checkUserProfile();
 
@@ -467,7 +466,7 @@ export default function DashboardLayout({
 
     return () => appConfigUnsub();
 
-  }, [user, loading, router, checkUserProfile]);
+  }, [user, loading, router]);
   
   if (loading) {
     return <LoadingScreen />;
