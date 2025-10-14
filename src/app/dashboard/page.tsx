@@ -1,3 +1,4 @@
+
 'use client';
 import React, { useState, useEffect } from 'react';
 import {
@@ -142,7 +143,7 @@ const MainDashboard = () => {
 
 export default function DashboardPage() {
     const { user, loading: authLoading } = useAuth();
-    const [isKidsMode, setIsKidsMode] = React.useState&lt;boolean | null&gt;(null);
+    const [isKidsMode, setIsKidsMode] = React.useState<boolean | null>(null);
 
     React.useEffect(() => {
         const checkUserProfile = async () => {
@@ -171,5 +172,5 @@ export default function DashboardPage() {
         )
     }
 
-    return &lt;MainDashboard /&gt;;
+    return (<MainDashboard />);
 }
