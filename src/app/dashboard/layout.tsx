@@ -34,6 +34,7 @@ import {
   Gift,
   Rss,
   Swords,
+  Download,
 } from 'lucide-react';
 
 import { useAuth, updateUserInFirestore } from '@/hooks/use-auth';
@@ -73,12 +74,13 @@ const sidebarNavItems = [
     { href: '/dashboard/profile', icon: User, label: 'profile' },
     { href: '/dashboard/courses', icon: Book, label: 'courses' },
     { href: '/dashboard/live-classes', icon: Clapperboard, label: 'Live Classes' },
+    { href: '/dashboard/tests', icon: ShieldQuestion, label: 'ai_tests' },
+    { href: '/dashboard/test-series', icon: Shield, label: 'Test Series' },
     { href: '/dashboard/battle-quiz', icon: Swords, label: 'Battle Quiz' },
     { href: '/dashboard/scholarship', icon: Award, label: 'scholarship' },
     { href: '/dashboard/papers', icon: Newspaper, label: 'Previous Papers' },
     { href: '/dashboard/news', icon: Newspaper, label: 'News' },
     { href: '/dashboard/tutor', icon: Bot, label: 'AI Tutor' },
-    { href: '/dashboard/tests', icon: ShieldQuestion, label: 'ai_tests' },
     { href: '/dashboard/golingua', icon: Languages, label: 'GoLingua' },
     { href: '/dashboard/feed', icon: Rss, label: 'Feed' },
 ];
@@ -164,7 +166,7 @@ const AppSidebar = ({ isKidsMode, isMindSphereMode, appLogoUrl }: { isKidsMode: 
 
     return (
         <Sidebar>
-            <SidebarContent className="bg-sidebar border-r-0 text-sidebar-foreground w-[250px] group-data-[collapsible=icon]:w-[52px]">
+            <SidebarContent className="bg-sidebar border-r-0 text-sidebar-foreground w-[220px] group-data-[collapsible=icon]:w-[52px]">
                 <div className="flex flex-col h-full">
                      <div className="p-3 bg-yellow-400/10 m-2 rounded-lg">
                         <div className="flex items-center gap-3">
@@ -212,6 +214,12 @@ const AppSidebar = ({ isKidsMode, isMindSphereMode, appLogoUrl }: { isKidsMode: 
                         {userData?.isAdmin && (
                             <>
                             <SidebarSeparator />
+                              <SidebarMenuItemWithHandler
+                                href="/install"
+                                icon={Download}
+                                label="Install Page"
+                                closeSidebar={closeSidebar}
+                              />
                             <SidebarMenuItem>
                                 <Link href="/admin" onClick={closeSidebar}>
                                 <SidebarMenuButton>
@@ -312,6 +320,7 @@ export default function DashboardLayout({
   const [timeUsed, setTimeUsed] = useState(0); // in seconds
   const [appLogoUrl, setAppLogoUrl] = useState<string | null>(null);
   const { toast } = useToast();
+  const [isProfileChecked, setIsProfileChecked] = useState(false);
   
   const isVideoPlaybackPage = pathname.includes('/video/') || pathname.includes('/live-class/');
   const isMindSphereMode = pathname.startsWith('/dashboard/mindsphere');
@@ -430,24 +439,22 @@ export default function DashboardLayout({
         return;
     }
     
-    // This check is now only for Kids Mode, the profile completion is handled on the login page.
-    const checkUserAgeGroup = async () => {
-        if (!user) return;
+    if (user && !isProfileChecked) {
+      const checkUserProfile = async () => {
         const userDocRef = doc(firestore, 'users', user.uid);
         const userDoc = await getDoc(userDocRef);
         if (userDoc.exists()) {
             const userData = userDoc.data();
-            if (userData.ageGroup) {
-                setIsKidsMode(userData.ageGroup === '1-9');
-            } else if (pathname !== '/dashboard/complete-profile') {
-                router.replace('/dashboard/complete-profile');
-            }
+            setIsKidsMode(userData.ageGroup === '1-9');
+             setIsProfileChecked(true); // Mark as checked
         } else if (pathname !== '/dashboard/complete-profile') {
              router.replace('/dashboard/complete-profile');
         }
-    };
-    
-    checkUserAgeGroup();
+       
+      };
+      checkUserProfile();
+    }
+
 
     const appConfigUnsub = onSnapshot(doc(firestore, 'settings', 'appConfig'), (doc) => {
         if (doc.exists()) {
@@ -457,9 +464,9 @@ export default function DashboardLayout({
 
     return () => appConfigUnsub();
 
-  }, [user, loading, router, pathname]);
+  }, [user, loading, router, pathname, isProfileChecked]);
   
-  if (loading) {
+  if (loading || !isProfileChecked) {
     return <LoadingScreen />;
   }
 
@@ -488,3 +495,5 @@ export default function DashboardLayout({
       </SidebarProvider>
   );
 }
+
+    
