@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -34,6 +35,7 @@ import { ManageEbookEnrollments } from "./_components/manage-ebook-enrollments";
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { EditContentForm } from "./_components/edit-content-form";
+import { RevenueDashboard } from "./_components/revenue-dashboard";
 
 
 const PwaInstallations = () => {
@@ -194,8 +196,9 @@ export default function AdminPage() {
                 <p className="text-muted-foreground mt-2">Manage your application content and users.</p>
             </div>
             
-             <Tabs defaultValue="content" className="w-full" orientation="vertical">
+             <Tabs defaultValue="revenue" className="w-full" orientation="vertical">
                 <TabsList className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-1 md:w-48 lg:w-56 shrink-0 h-max">
+                    <TabsTrigger value="revenue">Revenue</TabsTrigger>
                     <TabsTrigger value="content">Content</TabsTrigger>
                     <TabsTrigger value="manage_content">Manage Content</TabsTrigger>
                     <TabsTrigger value="users">Manage Users</TabsTrigger>
@@ -213,6 +216,10 @@ export default function AdminPage() {
                     <TabsTrigger value="settings">App Settings</TabsTrigger>
                 </TabsList>
                 
+                 <TabsContent value="revenue" className="mt-6 md:mt-0">
+                   <RevenueDashboard />
+                </TabsContent>
+
                 <TabsContent value="content" className="mt-6 md:mt-0">
                     <div className="grid gap-8 lg:grid-cols-2">
                         <div className="space-y-8">
