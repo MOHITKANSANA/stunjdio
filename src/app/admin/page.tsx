@@ -107,6 +107,7 @@ const ManageAllContent = () => {
     const [ebooks, ebooksLoading] = useCollection(collection(firestore, 'ebooks'));
     const [testSeries, testSeriesLoading] = useCollection(collection(firestore, 'testSeries'));
     const [previousPapers, previousPapersLoading] = useCollection(collection(firestore, 'previousPapers'));
+    const [bookShalaItems, bookShalaLoading] = useCollection(collection(firestore, 'bookShala'));
 
 
     const [editItem, setEditItem] = useState<{ id: string; collection: string; } | null>(null);
@@ -189,8 +190,7 @@ const ManageAllContent = () => {
                 {renderTable("Manage E-Books", ebooks, ebooksLoading, 'ebooks')}
                 {renderTable("Manage Test Series", testSeries, testSeriesLoading, 'testSeries')}
                 {renderTable("Manage Previous Year Papers", previousPapers, previousPapersLoading, 'previousPapers')}
-                {renderTable("Manage Book Shala Items", useCollection(collection(firestore, 'bookShala'))[0], useCollection(collection(firestore, 'bookShala'))[1], 'bookShala')}
-
+                {renderTable("Manage Book Shala Items", bookShalaItems, bookShalaLoading, 'bookShala')}
             </div>
         </div>
     );
@@ -206,27 +206,26 @@ export default function AdminPage() {
             </div>
             
              <Tabs defaultValue="revenue" className="w-full" orientation="vertical">
-                <div className="overflow-x-auto pb-2">
-                    <TabsList className="grid grid-flow-col auto-cols-max gap-4 md:grid-cols-1 md:w-48 lg:w-56 shrink-0 h-max">
-                        <TabsTrigger value="revenue">Revenue</TabsTrigger>
-                        <TabsTrigger value="content">Add Content</TabsTrigger>
-                        <TabsTrigger value="manage_content">Manage Content</TabsTrigger>
-                        <TabsTrigger value="users">Manage Users</TabsTrigger>
-                        <TabsTrigger value="book_shala">Book Shala</TabsTrigger>
-                        <TabsTrigger value="motivation">Motivation</TabsTrigger>
-                        <TabsTrigger value="course_enrollments">Course Enrollments</TabsTrigger>
-                        <TabsTrigger value="test_enrollments">Test Enrollments</TabsTrigger>
-                        <TabsTrigger value="ebook_enrollments">E-Book Enrollments</TabsTrigger>
-                        <TabsTrigger value="paper_enrollments">Paper Enrollments</TabsTrigger>
-                        <TabsTrigger value="scholarships">Scholarships</TabsTrigger>
-                        <TabsTrigger value="kids_tube">Kids Tube</TabsTrigger>
-                        <TabsTrigger value="coupons">Coupons</TabsTrigger>
-                        <TabsTrigger value="promotions">Promotions</TabsTrigger>
-                        <TabsTrigger value="pwa">PWA Installations</TabsTrigger>
-                        <TabsTrigger value="html_editor">HTML Editor</TabsTrigger>
-                        <TabsTrigger value="settings">App Settings</TabsTrigger>
-                    </TabsList>
-                </div>
+                <TabsList className="grid grid-cols-1 w-full md:w-56 shrink-0 h-max">
+                    <TabsTrigger value="revenue">Revenue</TabsTrigger>
+                    <TabsTrigger value="content">Add Content</TabsTrigger>
+                    <TabsTrigger value="manage_content">Manage Content</TabsTrigger>
+                    <TabsTrigger value="users">Manage Users</TabsTrigger>
+                    <TabsTrigger value="book_shala">Book Shala</TabsTrigger>
+                    <TabsTrigger value="motivation">Motivation</TabsTrigger>
+                    <TabsTrigger value="course_enrollments">Course Enrollments</TabsTrigger>
+                    <TabsTrigger value="test_enrollments">Test Enrollments</TabsTrigger>
+                    <TabsTrigger value="ebook_enrollments">E-Book Enrollments</TabsTrigger>
+                    <TabsTrigger value="paper_enrollments">Paper Enrollments</TabsTrigger>
+                    <TabsTrigger value="scholarships">Scholarships</TabsTrigger>
+                    <TabsTrigger value="centers">Center Management</TabsTrigger>
+                    <TabsTrigger value="kids_tube">Kids Tube</TabsTrigger>
+                    <TabsTrigger value="coupons">Coupons</TabsTrigger>
+                    <TabsTrigger value="promotions">Promotions</TabsTrigger>
+                    <TabsTrigger value="pwa">PWA Installations</TabsTrigger>
+                    <TabsTrigger value="html_editor">HTML Editor</TabsTrigger>
+                    <TabsTrigger value="settings">App Settings</TabsTrigger>
+                </TabsList>
                 
                  <TabsContent value="revenue" className="mt-6 md:mt-0">
                    <RevenueDashboard />
@@ -350,6 +349,10 @@ export default function AdminPage() {
                 <TabsContent value="scholarships" className="mt-6 md:mt-0">
                     <ManageScholarships />
                 </TabsContent>
+                <TabsContent value="centers" className="mt-6 md:mt-0">
+                    <Card><CardHeader><CardTitle>Center Management</CardTitle><CardDescription>This will be implemented in a future step.</CardDescription></CardHeader></Card>
+                </TabsContent>
+
 
                 <TabsContent value="kids_tube" className="mt-6 md:mt-0">
                      <div className="grid gap-8 lg:grid-cols-2">

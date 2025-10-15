@@ -10,9 +10,6 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
-import { collection, query, where, getDocs, addDoc, serverTimestamp } from 'firebase/firestore';
-import { firestore } from '@/lib/firebase';
-import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
 const scrutinySchema = z.object({
@@ -23,7 +20,8 @@ type ScrutinyFormValues = z.infer<typeof scrutinySchema>;
 export function ScrutinyForm() {
     const { toast } = useToast();
     const [isLoading, setIsLoading] = useState(false);
-    const [result, setResult] = useState<any>(null);
+    
+    const supportNumber = '918949814095';
 
     const form = useForm<ScrutinyFormValues>({ 
         resolver: zodResolver(scrutinySchema),
@@ -32,36 +30,26 @@ export function ScrutinyForm() {
         }
     });
 
-    const onSubmit = async (data: ScrutinyFormValues) => {
+    const onSubmit = (data: ScrutinyFormValues) => {
         setIsLoading(true);
-        setResult(null);
-        try {
-            const q = query(
-                collection(firestore, 'scholarshipTestResults'),
-                where('applicationNumber', '==', data.applicationNumber)
-            );
-            const querySnapshot = await getDocs(q);
-            if (querySnapshot.empty) {
-                toast({ variant: 'destructive', title: 'Not Found', description: 'No test result found for this application number. Cannot submit scrutiny.' });
-                setIsLoading(false);
-                return;
-            }
+        const message = `Hello, I would like to request my OMR sheet for review. My application number is ${data.applicationNumber}.`;
+        const whatsappUrl = `https://wa.me/${supportNumber}?text=${encodeURIComponent(message)}`;
+        
+        window.open(whatsappUrl, '_blank');
+        
+        toast({
+            title: "Redirecting to WhatsApp",
+            description: "Please send the pre-filled message to request your OMR sheet.",
+        });
 
-            const resultDoc = querySnapshot.docs[0];
-            setResult(resultDoc.data());
-
-        } catch (error) {
-            toast({ variant: 'destructive', title: 'Error', description: 'Could not fetch your test answers.' });
-        } finally {
-            setIsLoading(false);
-        }
+        setIsLoading(false);
     }
 
     return (
         <Card>
             <CardHeader>
-                <CardTitle>Answer Sheet Scrutiny</CardTitle>
-                <CardDescription>Enter your application number to review your submitted answers.</CardDescription>
+                <CardTitle>Check Your OMR Sheet</CardTitle>
+                <CardDescription>Enter your application number to send a request on WhatsApp to view your OMR sheet.</CardDescription>
             </CardHeader>
             <CardContent>
                 <Form {...form}>
@@ -75,26 +63,10 @@ export function ScrutinyForm() {
                         )} />
                         <Button type="submit" disabled={isLoading}>
                             {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                            View My Answers
+                            Send Request on WhatsApp
                         </Button>
                     </form>
                 </Form>
-
-                {result && (
-                    <div className="mt-6 space-y-4">
-                        <h3 className="text-lg font-bold">Your Submitted Answers</h3>
-                        {result.answers.map((answer: any, index: number) => (
-                            <div key={index} className={`p-4 rounded-lg border ${answer.isCorrect ? 'border-green-500 bg-green-500/10' : 'border-red-500 bg-red-500/10'}`}>
-                                <p className="font-semibold">{index + 1}. {answer.questionText}</p>
-                                <p className="text-sm">Your answer: <span className="font-medium">{answer.selectedOption || "Not Answered"}</span></p>
-                                {!answer.isCorrect && (
-                                     <p className="text-sm">Correct answer: <span className="font-medium text-green-600">{answer.correctAnswer}</span></p>
-                                )}
-                            </div>
-                        ))}
-                    </div>
-                )}
-
             </CardContent>
         </Card>
     )

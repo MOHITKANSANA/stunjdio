@@ -9,7 +9,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Copy, Check } from 'lucide-react';
+import { Loader2, Copy, Check, Checkbox } from 'lucide-react';
 import { addDoc, collection, serverTimestamp, query, orderBy } from 'firebase/firestore';
 import { firestore } from '@/lib/firebase';
 import { useAuth } from '@/hooks/use-auth';
@@ -29,6 +29,7 @@ const applyFormSchema = z.object({
     courseId: z.string().optional(),
     photo: z.any().optional(),
     signature: z.any().optional(),
+    centerChoices: z.array(z.string()).length(3, 'Please select exactly 3 center choices.'),
 }).refine(data => {
     if (data.scholarshipType === 'Specific Course' && !data.courseId) {
         return false;
@@ -45,9 +46,10 @@ type ApplyFormValues = z.infer<typeof applyFormSchema>;
 const STEPS = {
   PERSONAL_DETAILS: 1,
   SCHOLARSHIP_CHOICE: 2,
-  UPLOADS: 3,
-  CONFIRMATION_REVIEW: 4,
-  SUCCESS: 5,
+  CENTER_CHOICE: 3,
+  UPLOADS: 4,
+  CONFIRMATION_REVIEW: 5,
+  SUCCESS: 6,
 };
 
 function getCroppedImg(image: HTMLImageElement, crop: Crop, fileName: string): Promise<string> {
@@ -90,6 +92,10 @@ export function ApplyForm({ onFormSubmit }: { onFormSubmit: () => void }) {
     const [coursesCollection, coursesLoading] = useCollection(
         query(collection(firestore, 'courses'), orderBy('title', 'asc'))
     );
+    const [centersCollection, centersLoading] = useCollection(
+        query(collection(firestore, 'scholarshipCenters'), orderBy('state', 'asc'))
+    );
+
 
     const [photoPreview, setPhotoPreview] = useState<string | null>(null);
     const photoImgRef = useRef<HTMLImageElement>(null);
@@ -110,12 +116,14 @@ export function ApplyForm({ onFormSubmit }: { onFormSubmit: () => void }) {
             phone: '',
             address: '',
             scholarshipType: '',
+            centerChoices: [],
         },
         mode: 'onChange'
     });
 
     const scholarshipType = form.watch('scholarshipType');
     const formData = form.watch();
+    const centerChoices = form.watch('centerChoices') || [];
 
     const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
@@ -134,6 +142,8 @@ export function ApplyForm({ onFormSubmit }: { onFormSubmit: () => void }) {
             isValid = await form.trigger(['name', 'email', 'phone', 'address']);
         } else if (step === STEPS.SCHOLARSHIP_CHOICE) {
             isValid = await form.trigger(['scholarshipType', 'courseId']);
+        } else if (step === STEPS.CENTER_CHOICE) {
+            isValid = await form.trigger(['centerChoices']);
         } else if (step === STEPS.UPLOADS) {
             if (photoImgRef.current && photoCrop) {
                 const cropped = await getCroppedImg(photoImgRef.current, photoCrop, 'photo.jpeg');
@@ -161,6 +171,13 @@ export function ApplyForm({ onFormSubmit }: { onFormSubmit: () => void }) {
         return course?.data().title || '';
     };
 
+    const getCenterName = (centerId: string) => {
+        const center = centersCollection?.docs.find(doc => doc.id === centerId);
+        if (!center) return '';
+        const data = center.data();
+        return `${data.name}, ${data.city}, ${data.state}`;
+    };
+
     const onSubmit = async (data: ApplyFormValues) => {
         if (!user) {
             toast({ variant: 'destructive', title: 'Error', description: 'You must be logged in.' });
@@ -179,6 +196,7 @@ export function ApplyForm({ onFormSubmit }: { onFormSubmit: () => void }) {
                 scholarshipType: data.scholarshipType,
                 courseId: data.courseId || null,
                 courseTitle: getCourseTitle(data.courseId),
+                centerChoices: data.centerChoices.map(getCenterName),
                 photoUrl: croppedPhoto,
                 signatureUrl: croppedSignature,
                 status: 'applied',
@@ -286,6 +304,48 @@ export function ApplyForm({ onFormSubmit }: { onFormSubmit: () => void }) {
                         )}
                     </>
                 );
+            case STEPS.CENTER_CHOICE:
+                return (
+                    <FormField
+                        control={form.control}
+                        name="centerChoices"
+                        render={() => (
+                            <FormItem>
+                                <div className="mb-4">
+                                <FormLabel className="text-base">Exam Center Choices</FormLabel>
+                                <FormMessage />
+                                </div>
+                                <div className="space-y-2">
+                                {[...Array(3)].map((_, index) => (
+                                     <FormField
+                                        key={index}
+                                        control={form.control}
+                                        name={`centerChoices.${index}`}
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Choice {index + 1}</FormLabel>
+                                                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                                <FormControl><SelectTrigger><SelectValue placeholder="Select a center" /></SelectTrigger></FormControl>
+                                                <SelectContent>
+                                                    {centersLoading && <p>Loading...</p>}
+                                                    {centersCollection?.docs
+                                                        .filter(doc => !centerChoices.includes(doc.id) || centerChoices[index] === doc.id)
+                                                        .map(doc => (
+                                                        <SelectItem key={doc.id} value={doc.id}>
+                                                            {getCenterName(doc.id)}
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                                </Select>
+                                            </FormItem>
+                                        )}
+                                     />
+                                ))}
+                                </div>
+                            </FormItem>
+                        )}
+                        />
+                );
             case STEPS.UPLOADS:
                 return (
                     <div className="space-y-6">
@@ -327,6 +387,11 @@ export function ApplyForm({ onFormSubmit }: { onFormSubmit: () => void }) {
                         {formData.scholarshipType === 'Specific Course' && (
                             <p><span className="font-medium">Course:</span> {getCourseTitle(formData.courseId)}</p>
                         )}
+                         <hr />
+                        <h4 className="font-semibold">Center Choices</h4>
+                        <ol className="list-decimal list-inside">
+                           {centerChoices.map((id, i) => <li key={i}>{getCenterName(id)}</li>)}
+                        </ol>
                         <hr />
                         <h4 className="font-semibold">Uploads</h4>
                         <p><span className="font-medium">Photo:</span> {croppedPhoto ? 'Provided' : 'Not provided'}</p>
@@ -343,8 +408,9 @@ export function ApplyForm({ onFormSubmit }: { onFormSubmit: () => void }) {
         <CardHeader>
             {step === STEPS.PERSONAL_DETAILS && <><CardTitle>Step 1: Personal Details</CardTitle><CardDescription>Please fill in your personal information.</CardDescription></>}
             {step === STEPS.SCHOLARSHIP_CHOICE && <><CardTitle>Step 2: Scholarship Choice</CardTitle><CardDescription>Tell us what you would like to avail for free.</CardDescription></>}
-            {step === STEPS.UPLOADS && <><CardTitle>Step 3: Uploads (Optional)</CardTitle><CardDescription>You can upload your photo and signature if you wish.</CardDescription></>}
-            {step === STEPS.CONFIRMATION_REVIEW && <><CardTitle>Step 4: Review and Confirm</CardTitle><CardDescription>Please review your details before submitting.</CardDescription></>}
+            {step === STEPS.CENTER_CHOICE && <><CardTitle>Step 3: Choose Exam Centers</CardTitle><CardDescription>Select 3 preferred offline test centers.</CardDescription></>}
+            {step === STEPS.UPLOADS && <><CardTitle>Step 4: Uploads (Optional)</CardTitle><CardDescription>You can upload your photo and signature if you wish.</CardDescription></>}
+            {step === STEPS.CONFIRMATION_REVIEW && <><CardTitle>Step 5: Review and Confirm</CardTitle><CardDescription>Please review your details before submitting.</CardDescription></>}
         </CardHeader>
         <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)}>

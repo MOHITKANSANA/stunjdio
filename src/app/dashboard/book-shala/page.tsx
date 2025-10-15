@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/use-auth';
 
-const BookCard = ({ book, bookId, isEnrolled }: { book: any, bookId: string, isEnrolled: boolean }) => {
+const BookCard = ({ book, bookId }: { book: any, bookId: string }) => {
     return (
         <Card className="flex flex-col overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300">
             <div className="relative h-56 w-full bg-muted">
@@ -73,7 +73,7 @@ export default function BookShalaPage() {
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 {books?.docs.map(doc => {
                     const book = doc.data();
-                    return <BookCard key={doc.id} book={book} bookId={doc.id} isEnrolled={false} />
+                    return <BookCard key={doc.id} book={book} bookId={doc.id} />
                 })}
             </div>
         </div>
