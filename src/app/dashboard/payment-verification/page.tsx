@@ -62,7 +62,10 @@ function PaymentVerificationPageContent() {
   const preselectedTestSeriesId = searchParams.get('testSeriesId');
   const preselectedEbookId = searchParams.get('ebookId');
   const preselectedPaperId = searchParams.get('paperId');
-
+  const preselectedBookId = searchParams.get('bookId'); // For Book Shala
+  const address = searchParams.get('address');
+  const phone = searchParams.get('phone');
+  const name = searchParams.get('name');
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
@@ -70,7 +73,6 @@ function PaymentVerificationPageContent() {
   const [couponStatus, setCouponStatus] = useState<'idle' | 'loading' | 'valid' | 'invalid'>('idle');
   const [finalPrice, setFinalPrice] = useState<number | null>(null);
 
-  
   const [coursesCollection, coursesLoading] = useCollection(
     query(collection(firestore, 'courses'), where('isFree', '==', false), orderBy('title', 'asc'))
   );
@@ -83,8 +85,14 @@ function PaymentVerificationPageContent() {
   const [papersCollection, papersLoading] = useCollection(
     query(collection(firestore, 'previousPapers'), where('price', '>', 0), orderBy('title', 'asc'))
   );
+  const [bookShalaCollection, bookShalaLoading] = useCollection(
+    query(collection(firestore, 'bookShala'), where('price', '>', 0), orderBy('title', 'asc'))
+  );
+
 
   const [settingsDoc] = useDocumentData(doc(firestore, 'settings', 'appConfig'));
+  const [bookShalaSettingsDoc] = useDocumentData(doc(firestore, 'settings', 'bookShala'));
+
   const qrCodeUrl = settingsDoc?.paymentQrCodeUrl;
 
 
@@ -109,6 +117,7 @@ function PaymentVerificationPageContent() {
           case 'Test Series': return 'testSeries';
           case 'E-Book': return 'ebooks';
           case 'Previous Year Paper': return 'previousPapers';
+          case 'Book': return 'bookShala';
           default: return '';
       }
   }
@@ -121,9 +130,13 @@ function PaymentVerificationPageContent() {
 
   useEffect(() => {
     if (itemData) {
-        setFinalPrice(itemData.price);
+        let price = itemData.price || 0;
+        if (enrollmentType === 'Book' && bookShalaSettingsDoc) {
+            price += bookShalaSettingsDoc.verificationFee || 5;
+        }
+        setFinalPrice(price);
     }
-  }, [itemData]);
+  }, [itemData, enrollmentType, bookShalaSettingsDoc]);
 
   useEffect(() => {
     let type = '';
@@ -132,12 +145,13 @@ function PaymentVerificationPageContent() {
     else if (preselectedTestSeriesId) { type = 'Test Series'; id = preselectedTestSeriesId; }
     else if (preselectedEbookId) { type = 'E-Book'; id = preselectedEbookId; }
     else if (preselectedPaperId) { type = 'Previous Year Paper'; id = preselectedPaperId; }
+    else if (preselectedBookId) { type = 'Book'; id = preselectedBookId; }
     
     if (type && id) {
         form.setValue('enrollmentType', type);
         form.setValue('itemId', id);
     }
-  }, [preselectedCourseId, preselectedTestSeriesId, preselectedEbookId, preselectedPaperId, form]);
+  }, [preselectedCourseId, preselectedTestSeriesId, preselectedEbookId, preselectedPaperId, preselectedBookId, form]);
 
   const handleApplyCoupon = async () => {
     if (!enteredCouponCode || !selectedItemId || !itemData) return;
@@ -159,7 +173,6 @@ function PaymentVerificationPageContent() {
         }
 
         const coupon = couponSnapshot.docs[0].data();
-        const couponDoc = couponSnapshot.docs[0];
 
         if (new Date(coupon.expiryDate.seconds * 1000) < new Date()) {
             toast({ variant: 'destructive', title: 'Coupon Expired' });
@@ -218,7 +231,7 @@ function PaymentVerificationPageContent() {
     toast({ title: 'Referral Applied!', description: `You got a 10% discount!` });
   }
 
-  if (authLoading || coursesLoading || testSeriesLoading || ebooksLoading || papersLoading) {
+  if (authLoading || coursesLoading || testSeriesLoading || ebooksLoading || papersLoading || bookShalaLoading) {
     return (
       <div className="max-w-xl mx-auto p-4 md:p-8">
         <Skeleton className="h-96 w-full" />
@@ -261,7 +274,7 @@ function PaymentVerificationPageContent() {
     try {
       const screenshotDataUrl = await fileToDataUrl(data.screenshotFile);
       
-      const result = await submitEnrollmentAction({
+      const enrollmentData: any = {
           enrollmentType: data.enrollmentType,
           courseId: data.itemId,
           courseTitle: getEnrollmentTitle(),
@@ -272,14 +285,22 @@ function PaymentVerificationPageContent() {
           userId: user.uid,
           userEmail: user.email,
           userDisplayName: user.displayName,
-      });
+      };
 
-      if (result.success) {
-        toast({ title: 'Submitted!', description: 'Your request is pending approval. We will notify you soon.' });
-        router.push('/dashboard');
-      } else {
-        throw new Error(result.error || 'An unknown error occurred.');
+      if (data.enrollmentType === 'Book') {
+          enrollmentData.address = {
+            line1: address,
+            phone: phone,
+            customerName: name,
+          };
+          enrollmentData.status = 'pending_verification';
       }
+
+      await addDoc(collection(firestore, 'enrollments'), enrollmentData);
+
+      toast({ title: 'Submitted!', description: 'Your request is pending approval. We will notify you soon.' });
+      router.push('/dashboard/orders');
+
     } catch (e: any) {
       toast({ variant: 'destructive', title: 'Submission Failed', description: e.message || 'An unknown error occurred.' });
     } finally {
@@ -289,11 +310,13 @@ function PaymentVerificationPageContent() {
   
   const renderItemSelect = () => {
     let items;
+    let collectionLoading = true;
     switch(enrollmentType) {
-        case 'Course': items = coursesCollection?.docs; break;
-        case 'Test Series': items = testSeriesCollection?.docs; break;
-        case 'E-Book': items = ebooksCollection?.docs; break;
-        case 'Previous Year Paper': items = papersCollection?.docs; break;
+        case 'Course': items = coursesCollection?.docs; collectionLoading = coursesLoading; break;
+        case 'Test Series': items = testSeriesCollection?.docs; collectionLoading = testSeriesLoading; break;
+        case 'E-Book': items = ebooksCollection?.docs; collectionLoading = ebooksLoading; break;
+        case 'Previous Year Paper': items = papersCollection?.docs; collectionLoading = papersLoading; break;
+        case 'Book': items = bookShalaCollection?.docs; collectionLoading = bookShalaLoading; break;
         default: items = [];
     }
 
@@ -304,14 +327,14 @@ function PaymentVerificationPageContent() {
             render={({ field }) => (
             <FormItem>
                 <FormLabel>Select {enrollmentType}</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <Select onValueChange={field.onChange} defaultValue={field.value} disabled={!!preselectedBookId}>
                 <FormControl>
                     <SelectTrigger>
                     <SelectValue placeholder={`Select a ${enrollmentType}`} />
                     </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                    {items?.map(doc => (
+                    {collectionLoading ? <SelectItem value="loading" disabled>Loading...</SelectItem> : items?.map(doc => (
                         <SelectItem key={doc.id} value={doc.id}>{doc.data().title}</SelectItem>
                     ))}
                 </SelectContent>
@@ -340,29 +363,32 @@ function PaymentVerificationPageContent() {
               </CardHeader>
               <CardContent className="space-y-6">
                 
-                <FormField
-                  control={form.control}
-                  name="enrollmentType"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>What are you paying for?</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select an option" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="Course">Course</SelectItem>
-                          <SelectItem value="Test Series">Test Series</SelectItem>
-                          <SelectItem value="E-Book">E-Book</SelectItem>
-                          <SelectItem value="Previous Year Paper">Previous Year Paper</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                {!(preselectedBookId || preselectedCourseId || preselectedEbookId || preselectedPaperId || preselectedTestSeriesId) &&
+                  <FormField
+                    control={form.control}
+                    name="enrollmentType"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>What are you paying for?</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select an option" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="Course">Course</SelectItem>
+                            <SelectItem value="Test Series">Test Series</SelectItem>
+                            <SelectItem value="E-Book">E-Book</SelectItem>
+                            <SelectItem value="Previous Year Paper">Previous Year Paper</SelectItem>
+                             <SelectItem value="Book">Book (from Book Shala)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                }
 
                 {enrollmentType && renderItemSelect()}
 
@@ -370,10 +396,18 @@ function PaymentVerificationPageContent() {
                     <Card className='bg-muted/50'>
                         <CardContent className='p-4 space-y-4'>
                             <div className="flex justify-between items-center">
-                                <h4 className="font-semibold">Price Details</h4>
+                                <h4 className="font-semibold">Price Details for {itemData.title}</h4>
                                 <p className="font-bold text-xl">₹{finalPrice !== null ? finalPrice.toFixed(2) : (itemData?.price || 0).toFixed(2)}</p>
                             </div>
                             
+                            {enrollmentType === 'Book' && (
+                                <Alert>
+                                    <AlertDescription>
+                                        बुक शाला से ऑर्डर करने पर आपको ₹5 का अतिरिक्त शुल्क देना होगा जो वेरिफिकेशन और हैंडलिंग के लिए है।
+                                    </AlertDescription>
+                                </Alert>
+                            )}
+
                             <div className="space-y-2">
                                 <Label>Coupon Code</Label>
                                 <div className="flex gap-2">
@@ -495,5 +529,3 @@ export default function PaymentVerificationPage() {
         </Suspense>
     )
 }
-
-    

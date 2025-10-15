@@ -479,7 +479,9 @@ export default function DashboardLayout({
 }) {
     return (
         <SidebarProvider>
-            <DashboardLayoutContent>{children}</DashboardLayoutContent>
+            <Suspense fallback={<LoadingScreen />}>
+              <DashboardLayoutContent>{children}</DashboardLayoutContent>
+            </Suspense>
         </SidebarProvider>
     )
 }

@@ -17,7 +17,7 @@ const BookCard = ({ book, bookId }: { book: any, bookId: string }) => {
     return (
         <Card className="flex flex-col overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300">
             <div className="relative h-56 w-full bg-muted">
-                <Image src={book.thumbnailUrl || `https://picsum.photos/seed/${book.id}/600/800`} alt={book.title} fill style={{objectFit: "cover"}} data-ai-hint="book cover" />
+                <Image src={book.thumbnailUrl || `https://picsum.photos/seed/${bookId}/600/800`} alt={book.title} fill style={{objectFit: "cover"}} data-ai-hint="book cover" />
             </div>
             <CardHeader>
                 <CardTitle className="text-xl line-clamp-2">{book.title}</CardTitle>
@@ -31,7 +31,7 @@ const BookCard = ({ book, bookId }: { book: any, bookId: string }) => {
             </CardContent>
             <CardFooter>
                  <Button asChild className="w-full">
-                    <Link href={`/dashboard/payment-verification?bookId=${bookId}`}>
+                    <Link href={`/dashboard/book-shala/address?bookId=${bookId}`}>
                         Buy Now
                     </Link>
                 </Button>
