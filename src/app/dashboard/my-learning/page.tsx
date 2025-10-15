@@ -1,3 +1,4 @@
+
 'use client';
 
 import { BookOpenCheck, Library, Trash2, Eye, FileText, Newspaper } from "lucide-react";
@@ -5,14 +6,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from '@/hooks/use-auth';
 import { useCollection } from 'react-firebase-hooks/firestore';
-import { collection, query, where, orderBy, deleteDoc, doc } from 'firebase/firestore';
+import { collection, query, where, orderBy, deleteDoc, doc, getDoc } from 'firebase/firestore';
 import { firestore } from '@/lib/firebase';
 import { Skeleton } from "@/components/ui/skeleton";
 import Image from 'next/image';
 import Link from 'next/link';
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import type { DocumentData } from 'firebase/firestore';
+import type { DocumentData, QueryDocumentSnapshot } from 'firebase/firestore';
+import { useEffect, useState } from "react";
 
 const CourseCard = ({ course, courseId, enrollmentId, onUnenroll }: { course: any, courseId: string, enrollmentId: string, onUnenroll: (id: string, title: string) => void }) => {
     return (
@@ -43,29 +45,74 @@ export default function MyLearningPage() {
     const { user, loading: authLoading } = useAuth();
     const { toast } = useToast();
     
-    const enrollmentsQuery = user 
-        ? query(
-            collection(firestore, 'enrollments'), 
-            where('userId', '==', user.uid),
-            where('status', '==', 'approved')
-        )
-        : null;
-    const [enrollments, enrollmentsLoading, enrollmentsError] = useCollection(enrollmentsQuery);
+    const [enrollments, setEnrollments] = useState<QueryDocumentSnapshot<DocumentData>[]>([]);
+    const [enrollmentsLoading, setEnrollmentsLoading] = useState(true);
 
-    const enrolledCourseIds = enrollments?.docs.filter(doc => doc.data().enrollmentType === 'Course').map(doc => doc.data().courseId).filter(Boolean) || [];
+    useEffect(() => {
+        if (user) {
+            const q = query(
+                collection(firestore, 'enrollments'),
+                where('userId', '==', user.uid),
+                where('status', '==', 'approved')
+            );
+            const unsubscribe = onSnapshot(q, async (snapshot) => {
+                const now = new Date();
+                const validEnrollments: QueryDocumentSnapshot<DocumentData>[] = [];
+                for (const doc of snapshot.docs) {
+                    const enrollment = doc.data();
+                    if (enrollment.enrollmentType === 'Course' && enrollment.courseId) {
+                        try {
+                            const courseDoc = await getDoc(doc(firestore, 'courses', enrollment.courseId));
+                            if (courseDoc.exists()) {
+                                const courseData = courseDoc.data();
+                                const enrollmentDate = enrollment.createdAt.toDate();
+                                const validityDays = courseData.validity || 365; // Default to 365 days if not set
+                                const expiryDate = new Date(enrollmentDate.getTime() + validityDays * 24 * 60 * 60 * 1000);
+                                if (now < expiryDate) {
+                                    validEnrollments.push(doc);
+                                }
+                            }
+                        } catch (e) {
+                            console.error("Error fetching course for validity check", e);
+                            validEnrollments.push(doc); // failsafe to include if course doc fails
+                        }
+                    } else {
+                        // For non-course enrollments, no validity check needed for now
+                        validEnrollments.push(doc);
+                    }
+                }
+                setEnrollments(validEnrollments);
+                setEnrollmentsLoading(false);
+            }, (error) => {
+                console.error("Error fetching enrollments: ", error);
+                setEnrollmentsLoading(false);
+            });
+            return () => unsubscribe();
+        } else {
+            setEnrollmentsLoading(false);
+        }
+    }, [user]);
+
+    const enrolledCourseIds = enrollments.filter(doc => doc.data().enrollmentType === 'Course').map(doc => doc.data().courseId).filter(Boolean) || [];
     const coursesQuery = user && enrolledCourseIds.length > 0
         ? query(collection(firestore, 'courses'), where('__name__', 'in', enrolledCourseIds)) : null;
     const [myCourses, myCoursesLoading, myCoursesError] = useCollection(coursesQuery);
     
-    const enrolledEbookIds = enrollments?.docs.filter(doc => doc.data().enrollmentType === 'E-Book').map(doc => doc.data().courseId).filter(Boolean) || [];
+    const enrolledEbookIds = enrollments.filter(doc => doc.data().enrollmentType === 'E-Book').map(doc => doc.data().courseId).filter(Boolean) || [];
     const ebooksQuery = user && enrolledEbookIds.length > 0
         ? query(collection(firestore, 'ebooks'), where('__name__', 'in', enrolledEbookIds)) : null;
     const [myEbooks, myEbooksLoading, myEbooksError] = useCollection(ebooksQuery);
 
-    const enrolledTestIds = enrollments?.docs.filter(doc => doc.data().enrollmentType === 'Test Series').map(doc => doc.data().courseId).filter(Boolean) || [];
+    const enrolledTestIds = enrollments.filter(doc => doc.data().enrollmentType === 'Test Series').map(doc => doc.data().courseId).filter(Boolean) || [];
     const testsQuery = user && enrolledTestIds.length > 0
         ? query(collection(firestore, 'testSeries'), where('__name__', 'in', enrolledTestIds)) : null;
     const [myTests, myTestsLoading, myTestsError] = useCollection(testsQuery);
+    
+    const enrolledPaperIds = enrollments.filter(doc => doc.data().enrollmentType === 'Previous Year Paper').map(doc => doc.data().courseId).filter(Boolean) || [];
+    const papersQuery = user && enrolledPaperIds.length > 0
+        ? query(collection(firestore, 'previousPapers'), where('__name__', 'in', enrolledPaperIds)) : null;
+    const [myPapers, myPapersLoading, myPapersError] = useCollection(papersQuery);
+
     
     const handleUnenroll = async (enrollmentId: string, title: string) => {
         if (window.confirm(`Are you sure you want to un-enroll from "${title}"?`)) {
@@ -85,8 +132,8 @@ export default function MyLearningPage() {
         }
     };
 
-    const createIdMap = (enrollments: DocumentData | undefined) => {
-        return enrollments?.docs.reduce((acc: Record<string, string>, doc: DocumentData) => {
+    const createIdMap = (enrollments: QueryDocumentSnapshot<DocumentData>[]) => {
+        return enrollments.reduce((acc: Record<string, string>, doc: QueryDocumentSnapshot<DocumentData>) => {
             const data = doc.data();
             if (data.courseId) {
                 acc[data.courseId] = doc.id;
@@ -161,14 +208,14 @@ export default function MyLearningPage() {
         );
     };
 
-    const renderTestGrid = () => {
-        if(myTestsLoading) return <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">{[...Array(3)].map((_,i) => <Skeleton key={i} className="h-48" />)}</div>
-        if(myTestsError) return <p className="text-destructive">Error loading tests.</p>
-        if(!myTests || myTests.empty) return <div className="text-center py-12"><FileText className="mx-auto h-12 w-12 text-muted-foreground" /><h3 className="mt-4 text-lg font-semibold">No Tests Found</h3></div>
+    const renderTestGrid = (tests: any[] | undefined, isLoading: boolean, error: any) => {
+        if(isLoading) return <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">{[...Array(3)].map((_,i) => <Skeleton key={i} className="h-48" />)}</div>
+        if(error) return <p className="text-destructive">Error loading tests.</p>
+        if(!tests || tests.length === 0) return <div className="text-center py-12"><FileText className="mx-auto h-12 w-12 text-muted-foreground" /><h3 className="mt-4 text-lg font-semibold">No Tests Found</h3></div>
 
         return (
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                {myTests.docs.map(doc => (
+                {tests.map(doc => (
                      <Card key={doc.id} className="flex flex-col overflow-hidden shadow-lg hover:shadow-xl">
                         <CardHeader>
                             <CardTitle>{doc.data().title}</CardTitle>
@@ -196,19 +243,23 @@ export default function MyLearningPage() {
                 <p className="text-muted-foreground mt-2">All your enrolled materials in one place.</p>
             </div>
              <Tabs defaultValue="courses" className="w-full">
-                <TabsList className="grid w-full grid-cols-3 max-w-lg">
+                <TabsList className="grid w-full grid-cols-4 max-w-xl">
                     <TabsTrigger value="courses">Courses</TabsTrigger>
                     <TabsTrigger value="ebooks">E-Books</TabsTrigger>
                     <TabsTrigger value="tests">Tests</TabsTrigger>
+                    <TabsTrigger value="papers">Papers</TabsTrigger>
                 </TabsList>
                 <TabsContent value="courses" className="mt-6">
-                    {renderCourseGrid(myCourses?.docs, myCoursesLoading || enrollmentsLoading || authLoading, myCoursesError || enrollmentsError)}
+                    {renderCourseGrid(myCourses?.docs, myCoursesLoading || enrollmentsLoading || authLoading, myCoursesError)}
                 </TabsContent>
                 <TabsContent value="ebooks" className="mt-6">
                     {renderEbookGrid()}
                 </TabsContent>
                 <TabsContent value="tests" className="mt-6">
-                    {renderTestGrid()}
+                    {renderTestGrid(myTests?.docs, myTestsLoading, myTestsError)}
+                </TabsContent>
+                 <TabsContent value="papers" className="mt-6">
+                    {renderTestGrid(myPapers?.docs, myPapersLoading, myPapersError)}
                 </TabsContent>
             </Tabs>
         </div>

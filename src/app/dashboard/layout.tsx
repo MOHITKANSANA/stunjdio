@@ -37,7 +37,8 @@ import {
   Download,
   Instagram,
   Facebook,
-  MessageCircle as WhatsAppIcon,
+  MessageCircle,
+  BrainCircuit,
 } from 'lucide-react';
 
 import { useAuth, updateUserInFirestore } from '@/hooks/use-auth';
@@ -73,6 +74,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 const sidebarNavItems = [
     { href: '/dashboard', icon: Home, label: 'home' },
     { href: '/dashboard/my-learning', icon: Library, label: 'My Library' },
+    { href: '/dashboard/mindsphere', icon: BrainCircuit, label: 'Mind Sphere' },
     { href: '/dashboard/ebooks', icon: BookCopy, label: 'E-Books' },
     { href: '/dashboard/profile', icon: User, label: 'profile' },
     { href: '/dashboard/courses', icon: Book, label: 'courses' },
@@ -126,28 +128,9 @@ const AppSidebar = ({ isKidsMode, isMindSphereMode, appLogoUrl }: { isKidsMode: 
     const { isMobile, setOpenMobile } = useSidebar();
     const { t } = useLanguage();
     const { user, logout } = useAuth();
-    const router = useRouter();
-    const [customPages, setCustomPages] = useState<any[]>([]);
     const [userData, setUserData] = useState<any>(null);
-    const [socialLinks, setSocialLinks] = useState<any[]>([]);
 
-    useEffect(() => {
-        const q = query(collection(firestore, "htmlPages"), orderBy("slug"));
-        const unsub = onSnapshot(q, (snapshot) => {
-            setCustomPages(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-        });
-        
-        const socialUnsub = onSnapshot(doc(firestore, 'settings', 'appConfig'), (doc) => {
-            if (doc.exists()) {
-                setSocialLinks(doc.data().socialMediaLinks || []);
-            }
-        });
-
-        return () => {
-          unsub();
-          socialUnsub();
-        };
-    }, []);
+    const router = useRouter();
     
      useEffect(() => {
         if (user) {
@@ -177,16 +160,6 @@ const AppSidebar = ({ isKidsMode, isMindSphereMode, appLogoUrl }: { isKidsMode: 
         : isMindSphereMode 
         ? mindSphereSidebarNavItems
         : sidebarNavItems;
-
-    const SocialIcon = ({ iconName }: { iconName?: string }) => {
-        switch (iconName) {
-            case 'youtube': return <Youtube />;
-            case 'facebook': return <Facebook />;
-            case 'instagram': return <Instagram />;
-            case 'whatsapp': return <WhatsAppIcon />;
-            default: return <Info />;
-        }
-    };
 
     return (
         <Sidebar>
@@ -223,16 +196,12 @@ const AppSidebar = ({ isKidsMode, isMindSphereMode, appLogoUrl }: { isKidsMode: 
                             closeSidebar={closeSidebar}
                         />
 
-                        {socialLinks.map((link) => (
-                             <SidebarMenuItem key={link.name}>
-                                <a href={link.url} target="_blank" rel="noopener noreferrer" onClick={closeSidebar}>
-                                    <SidebarMenuButton>
-                                        <SocialIcon iconName={link.iconName} />
-                                        <span>{link.name}</span>
-                                    </SidebarMenuButton>
-                                </a>
-                            </SidebarMenuItem>
-                        ))}
+                        <SidebarMenuItemWithHandler
+                            href="/dashboard/social"
+                            icon={Users}
+                            label="Social Media"
+                            closeSidebar={closeSidebar}
+                        />
 
                         {userData?.isAdmin && (
                             <>
@@ -505,7 +474,7 @@ export default function DashboardLayout({
              {!isVideoPlaybackPage && <AppHeader appLogoUrl={appLogoUrl} />}
              <div className={cn("flex flex-col md:flex-row w-full h-full overflow-hidden")}>
                 {!isVideoPlaybackPage && <AppSidebar isKidsMode={isKidsMode} isMindSphereMode={isMindSphereMode} appLogoUrl={appLogoUrl} />}
-                 <main className="flex-1 overflow-y-auto h-full">
+                 <main className="flex-1 overflow-y-auto h-full" onClick={() => isMobile && setOpenMobile(false)}>
                     <SidebarInset>
                         <div className={cn(!isVideoPlaybackPage && 'p-4 md:p-6')}>
                             {children}
