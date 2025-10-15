@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -84,13 +83,12 @@ export default function SocialMediaPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {allLinks.map((link, index) => (
                         <a href={link.url} target="_blank" rel="noopener noreferrer" key={index} className="block">
-                            <Card className="hover:bg-muted hover:shadow-lg transition-all duration-200">
+                            <Card className="hover:bg-muted hover:shadow-lg transition-all duration-200 h-full">
                                 <CardContent className="p-4 flex items-center gap-4">
-                                    <SocialIcon iconName={link.iconName} iconUrl={(link as any).icon} />
-                                    <div>
-                                        <p className="font-semibold">{link.name}</p>
-                                        <p className="text-xs text-muted-foreground truncate">{link.url}</p>
+                                    <div className="flex-shrink-0">
+                                        <SocialIcon iconName={link.iconName} iconUrl={(link as any).icon} />
                                     </div>
+                                    <p className="font-semibold text-base">{link.name}</p>
                                 </CardContent>
                             </Card>
                         </a>
