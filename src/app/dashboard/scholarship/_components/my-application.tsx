@@ -7,10 +7,11 @@ import { collection, query, where, orderBy } from 'firebase/firestore';
 import { useCollection } from 'react-firebase-hooks/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { AlertTriangle } from 'lucide-react';
 
 export function MyApplicationTab() {
     const { user } = useAuth();
-    // Fetch all applications for the user, then sort client-side
+    // Fetch all applications for the user, then sort client-side to avoid index issues.
     const [applications, loading, error] = useCollection(
         user ? query(collection(firestore, 'scholarshipApplications'), where('userId', '==', user.uid)) : null
     );
@@ -23,7 +24,15 @@ export function MyApplicationTab() {
     });
 
     if (loading) return <Skeleton className="h-48 w-full" />
-    if (error) return <p className="text-destructive">Could not load your applications. The database may require an index. Please contact support.</p>
+    if (error) {
+        return (
+            <div className="text-center text-destructive p-4 border border-destructive/50 rounded-lg">
+                <AlertTriangle className="mx-auto mb-2" />
+                <p className="font-semibold">Could not load your applications</p>
+                <p className="text-xs">{error.message}</p>
+            </div>
+        );
+    }
     if (!sortedApplications || sortedApplications.length === 0) return <p className="text-muted-foreground text-center p-8">You have not applied for any scholarships yet.</p>
 
     return (

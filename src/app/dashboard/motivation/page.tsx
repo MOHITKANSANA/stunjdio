@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Heart, Film, GalleryHorizontal, Video } from 'lucide-react';
+import { Heart, Film, GalleryHorizontal, Video, AlertTriangle } from 'lucide-react';
 import Image from 'next/image';
 import { useCollection } from 'react-firebase-hooks/firestore';
 import { collection, query, orderBy } from 'firebase/firestore';
@@ -27,7 +27,7 @@ const ShortsTab = () => {
 
     const videos = videosCollection?.docs
         .filter(doc => doc.data().type === 'short_video')
-        .sort((a, b) => b.data().createdAt?.toDate() - a.data().createdAt?.toDate());
+        .sort((a, b) => (b.data().createdAt?.toDate() || 0) - (a.data().createdAt?.toDate() || 0));
 
 
     if (loading) {
@@ -41,7 +41,11 @@ const ShortsTab = () => {
     }
     
     if (error) {
-        return <p className="text-center text-destructive">Could not load videos.</p>
+        return <div className="text-center text-destructive p-4 border border-destructive/50 rounded-lg">
+            <AlertTriangle className="mx-auto mb-2" />
+            <p className="font-semibold">Could not load videos</p>
+            <p className="text-xs">{error.message}</p>
+        </div>
     }
 
     if (!videos || videos.length === 0) {
@@ -83,7 +87,7 @@ const FullVideosTab = () => {
 
     const videos = videosCollection?.docs
         .filter(doc => doc.data().type === 'full_video')
-        .sort((a, b) => b.data().createdAt?.toDate() - a.data().createdAt?.toDate());
+        .sort((a, b) => (b.data().createdAt?.toDate() || 0) - (a.data().createdAt?.toDate() || 0));
 
 
      if (loading) {
@@ -97,7 +101,11 @@ const FullVideosTab = () => {
     }
 
     if (error) {
-        return <p className="text-center text-destructive">Could not load videos.</p>
+        return <div className="text-center text-destructive p-4 border border-destructive/50 rounded-lg">
+            <AlertTriangle className="mx-auto mb-2" />
+            <p className="font-semibold">Could not load videos</p>
+            <p className="text-xs">{error.message}</p>
+        </div>
     }
 
     if (!videos || videos.length === 0) {
@@ -134,7 +142,7 @@ const FullVideosTab = () => {
 
 const GalleryTab = () => {
     const [images, loading, error] = useCollection(
-        query(collection(firestore, 'galleryImages'), orderBy('createdAt', 'desc'))
+        query(collection(firestore, 'galleryImages'))
     );
 
     if (loading) {
@@ -147,7 +155,11 @@ const GalleryTab = () => {
         )
     }
     if (error) {
-        return <p className="text-center text-destructive">Could not load gallery.</p>
+        return <div className="text-center text-destructive p-4 border border-destructive/50 rounded-lg">
+            <AlertTriangle className="mx-auto mb-2" />
+            <p className="font-semibold">Could not load gallery</p>
+            <p className="text-xs">{error.message}</p>
+        </div>
     }
     if (!images || images.empty) {
          return (
@@ -158,10 +170,13 @@ const GalleryTab = () => {
             </div>
         );
     }
+    
+    // Client-side sorting
+    const sortedImages = images.docs.sort((a, b) => (b.data().createdAt?.toDate() || 0) - (a.data().createdAt?.toDate() || 0));
 
     return (
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-            {images?.docs.map(doc => {
+            {sortedImages.map(doc => {
                 const image = doc.data();
                 return (
                     <div key={doc.id} className="relative aspect-square w-full rounded-lg overflow-hidden shadow-lg">

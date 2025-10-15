@@ -52,6 +52,7 @@ const socialLinkSchema = z.object({
 
 const appSettingsSchema = z.object({
   socialMediaLinks: z.array(socialLinkSchema).optional(),
+  defaultTheme: z.enum(['light', 'dark', 'system']).optional(),
 });
 type AppSettingsFormValues = z.infer<typeof appSettingsSchema>;
 
@@ -98,6 +99,7 @@ export function AppSettingsForm() {
   const [isLogoLoading, setIsLogoLoading] = useState(false);
   const [isSocialLoading, setIsSocialLoading] = useState(false);
   const [isLinkLoading, setIsLinkLoading] = useState(false);
+  const [isThemeLoading, setIsThemeLoading] = useState(false);
   
   const [qrPreview, setQrPreview] = useState<string | null>(null);
   const qrFileInputRef = useRef<HTMLInputElement>(null);
@@ -120,6 +122,9 @@ export function AppSettingsForm() {
   const linkForm = useForm<AppLinkValues>({
     resolver: zodResolver(appLinkSchema),
   });
+  const themeForm = useForm<AppSettingsFormValues>({
+    resolver: zodResolver(appSettingsSchema),
+  });
 
 
   const { fields, append, remove } = useFieldArray({
@@ -136,11 +141,12 @@ export function AppSettingsForm() {
         setLogoPreview(data.appLogoUrl || null);
         socialForm.reset({ socialMediaLinks: data.socialMediaLinks || [] });
         linkForm.reset({ referralLink: data.referralLink || '' });
+        themeForm.reset({ defaultTheme: data.defaultTheme || 'dark' });
       }
       setSettingsLoading(false);
     });
     return () => unsub();
-  }, [socialForm, linkForm]);
+  }, [socialForm, linkForm, themeForm]);
 
 
   
@@ -240,6 +246,18 @@ export function AppSettingsForm() {
       setIsSocialLoading(false);
     }
   };
+
+  const onThemeSubmit = async (data: AppSettingsFormValues) => {
+    setIsThemeLoading(true);
+    try {
+      await setDoc(doc(firestore, 'settings', 'appConfig'), { defaultTheme: data.defaultTheme }, { merge: true });
+      toast({ title: 'Success', description: 'App default theme updated.' });
+    } catch (error: any) {
+      toast({ variant: 'destructive', title: 'Error', description: error.message });
+    } finally {
+      setIsThemeLoading(false);
+    }
+  }
 
 
   const handleRemoveCarouselImage = async (imageUrlToRemove: string) => {
@@ -359,6 +377,39 @@ export function AppSettingsForm() {
                             <Button type="submit" disabled={isLinkLoading}>
                                 {isLinkLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                 Save Link
+                            </Button>
+                        </form>
+                    </Form>
+                </CardContent>
+            </Card>
+             <Card>
+                <CardHeader><CardTitle>App Default Theme</CardTitle><CardDescription>Set the default theme for all users.</CardDescription></CardHeader>
+                <CardContent>
+                    <Form {...themeForm}>
+                        <form onSubmit={themeForm.handleSubmit(onThemeSubmit)} className="space-y-4">
+                            <FormField
+                                control={themeForm.control}
+                                name="defaultTheme"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Default Theme</FormLabel>
+                                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                            <FormControl>
+                                                <SelectTrigger><SelectValue placeholder="Select a theme" /></SelectTrigger>
+                                            </FormControl>
+                                            <SelectContent>
+                                                <SelectItem value="dark">Dark</SelectItem>
+                                                <SelectItem value="light">Light</SelectItem>
+                                                <SelectItem value="system">System Preference</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                            <Button type="submit" disabled={isThemeLoading}>
+                                {isThemeLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                Save Theme
                             </Button>
                         </form>
                     </Form>

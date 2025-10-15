@@ -1,6 +1,7 @@
 
 'use client';
 
+import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AddCourseForm } from "./_components/add-course-form";
@@ -30,7 +31,6 @@ import { Trash2, Edit } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { ManageCoupons } from "./_components/manage-coupons";
 import { ManageEbookEnrollments } from "./_components/manage-ebook-enrollments";
-import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { EditContentForm } from "./_components/edit-content-form";
 import { RevenueDashboard } from "./_components/revenue-dashboard";
@@ -207,7 +207,7 @@ export default function AdminPage() {
             </div>
             
              <Tabs defaultValue="revenue" className="w-full">
-                <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
+                <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8">
                     <TabsTrigger value="revenue">Revenue</TabsTrigger>
                     <TabsTrigger value="content">Add Content</TabsTrigger>
                     <TabsTrigger value="manage_content">Manage Content</TabsTrigger>
