@@ -38,6 +38,7 @@ import { ManagePaperEnrollments } from "./_components/manage-paper-enrollments";
 import { AddBookShalaForm } from "./_components/add-book-shala-form";
 import { ManageBookShalaOrders } from "./_components/manage-book-shala";
 import { AddMotivationItemForm } from "./_components/add-motivation-item-form";
+import { ManageCenters } from "./_components/manage-centers";
 
 
 const PwaInstallations = () => {
@@ -264,10 +265,6 @@ export default function AdminPage() {
                                 <CardHeader><CardTitle>Add Previous Paper</CardTitle></CardHeader>
                                 <CardContent><AddPaperForm /></CardContent>
                             </Card>
-                             <Card>
-                                <CardHeader><CardTitle>Add Gallery Image</CardTitle></CardHeader>
-                                <CardContent><AddMotivationItemForm /></CardContent>
-                            </Card>
                         </div>
                     </div>
                 </TabsContent>
@@ -350,7 +347,7 @@ export default function AdminPage() {
                     <ManageScholarships />
                 </TabsContent>
                 <TabsContent value="centers" className="mt-6 md:mt-0">
-                    <Card><CardHeader><CardTitle>Center Management</CardTitle><CardDescription>This will be implemented in a future step.</CardDescription></CardHeader></Card>
+                    <ManageCenters />
                 </TabsContent>
 
 

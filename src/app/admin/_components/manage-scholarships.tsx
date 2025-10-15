@@ -19,45 +19,16 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Switch } from '@/components/ui/switch';
-import { Loader2, PlusCircle, Trash2 } from 'lucide-react';
+import { Loader2, PlusCircle, Trash2, Calendar, Download } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 
 
 const settingsSchema = z.object({
-  startDate: z.date().optional(),
-  endDate: z.date().optional(),
-  testStartDate: z.date().optional(),
-  testEndDate: z.date().optional(),
+  applicationStartDate: z.date().optional(),
+  applicationEndDate: z.date().optional(),
   resultDate: z.date().optional(),
-  isTestFree: z.boolean().default(false),
 });
 type SettingsFormValues = z.infer<typeof settingsSchema>;
-
-const questionSchema = z.object({
-  text: z.string().min(1, 'Question text is required.'),
-  options: z.array(z.string().min(1, 'Option cannot be empty.')).length(4, 'There must be exactly 4 options.'),
-  correctAnswer: z.string().min(1, 'Please specify the correct answer.'),
-});
-
-const testCreationSchema = z.object({
-    title: z.string().min(1, 'Title is required.'),
-    questions: z.array(questionSchema).min(1, 'Add at least one question.'),
-});
-type TestCreationFormValues = z.infer<typeof testCreationSchema>;
-
-const jsonTestSchema = z.object({
-    title: z.string().min(1, 'Title is required.'),
-    jsonContent: z.string().refine(val => {
-        try {
-            const parsed = JSON.parse(val);
-            return z.array(questionSchema).min(1).safeParse(parsed).success;
-        } catch {
-            return false;
-        }
-    }, { message: "Invalid JSON format or doesn't match question schema." }),
-});
-type JsonTestFormValues = z.infer<typeof jsonTestSchema>;
-
 
 const ScholarshipSettings = () => {
     const { toast } = useToast();
@@ -65,21 +36,15 @@ const ScholarshipSettings = () => {
     const [docData, setDocData] = useDocumentData(doc(firestore, 'settings', 'scholarship'));
 
     const form = useForm<SettingsFormValues>({
-        resolver: zodResolver(settingsSchema),
-        defaultValues: {
-            isTestFree: false,
-        }
+        resolver: zodResolver(settingsSchema)
     });
     
     useEffect(() => {
         if (docData) {
             form.reset({
-                startDate: docData.startDate?.toDate(),
-                endDate: docData.endDate?.toDate(),
-                testStartDate: docData.testStartDate?.toDate(),
-                testEndDate: docData.testEndDate?.toDate(),
+                applicationStartDate: docData.applicationStartDate?.toDate(),
+                applicationEndDate: docData.applicationEndDate?.toDate(),
                 resultDate: docData.resultDate?.toDate(),
-                isTestFree: docData.isTestFree || false,
             });
              setIsLoading(false);
         } else {
@@ -103,49 +68,21 @@ const ScholarshipSettings = () => {
 
     return (
          <Card>
-            <CardHeader><CardTitle>Manage Scholarship Dates & Settings</CardTitle></CardHeader>
+            <CardHeader><CardTitle>Manage Scholarship Dates</CardTitle></CardHeader>
             <CardContent>
                 <Form {...form}>
                     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <FormField control={form.control} name="startDate" render={({ field }) => (
-                                <FormItem><FormLabel>Application Start</FormLabel><FormControl><DatePicker date={field.value} setDate={field.onChange} /></FormControl></FormItem>
+                            <FormField control={form.control} name="applicationStartDate" render={({ field }) => (
+                                <FormItem><FormLabel>Application Start Date</FormLabel><FormControl><DatePicker date={field.value} setDate={field.onChange} /></FormControl></FormItem>
                             )} />
-                             <FormField control={form.control} name="endDate" render={({ field }) => (
-                                <FormItem><FormLabel>Application End</FormLabel><FormControl><DatePicker date={field.value} setDate={field.onChange} /></FormControl></FormItem>
-                            )} />
-                             <FormField control={form.control} name="testStartDate" render={({ field }) => (
-                                <FormItem><FormLabel>Test Start</FormLabel><FormControl><DatePicker date={field.value} setDate={field.onChange} /></FormControl></FormItem>
-                            )} />
-                             <FormField control={form.control} name="testEndDate" render={({ field }) => (
-                                <FormItem><FormLabel>Test End</FormLabel><FormControl><DatePicker date={field.value} setDate={field.onChange} /></FormControl></FormItem>
+                             <FormField control={form.control} name="applicationEndDate" render={({ field }) => (
+                                <FormItem><FormLabel>Application End Date</FormLabel><FormControl><DatePicker date={field.value} setDate={field.onChange} /></FormControl></FormItem>
                             )} />
                              <FormField control={form.control} name="resultDate" render={({ field }) => (
-                                <FormItem><FormLabel>Result Declaration</FormLabel><FormControl><DatePicker date={field.value} setDate={field.onChange} /></FormControl></FormItem>
+                                <FormItem><FormLabel>Result Declaration Date</FormLabel><FormControl><DatePicker date={field.value} setDate={field.onChange} /></FormControl></FormItem>
                             )} />
                         </div>
-                        <FormField
-                            control={form.control}
-                            name="isTestFree"
-                            render={({ field }) => (
-                                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                                <div className="space-y-0.5">
-                                    <FormLabel className="text-base">
-                                    Make Test Free for All
-                                    </FormLabel>
-                                    <FormDescription>
-                                    If enabled, any user can take the scholarship test without payment approval.
-                                    </FormDescription>
-                                </div>
-                                <FormControl>
-                                    <Switch
-                                    checked={field.value}
-                                    onCheckedChange={field.onChange}
-                                    />
-                                </FormControl>
-                                </FormItem>
-                            )}
-                        />
                         <Button type="submit">Save Settings</Button>
                     </form>
                 </Form>
@@ -154,130 +91,85 @@ const ScholarshipSettings = () => {
     )
 }
 
-const ScholarshipTestCreator = () => {
+const ManageCenters = () => {
     const { toast } = useToast();
-    const [isLoading, setIsLoading] = useState(false);
-    const [testData, testLoading] = useDocumentData(doc(firestore, 'settings', 'scholarshipTest'));
+    const [centersCollection, centersLoading] = useCollection(query(collection(firestore, 'scholarshipCenters'), orderBy('state', 'asc')));
+    const [newState, setNewState] = useState('');
+    const [newCity, setNewCity] = useState('');
+    const [newCenterName, setNewCenterName] = useState('');
+    const [examDate, setExamDate] = useState<Date|undefined>();
+    const [admitCardDate, setAdmitCardDate] = useState<Date|undefined>();
+    const [isSaving, setIsSaving] = useState(false);
 
-    const manualForm = useForm<TestCreationFormValues>({
-        resolver: zodResolver(testCreationSchema),
-        defaultValues: { title: 'Go Swami National Scholarship Test (GSNST)', questions: [] },
-    });
-    
-    const jsonForm = useForm<JsonTestFormValues>({
-        resolver: zodResolver(jsonTestSchema),
-        defaultValues: { title: 'Go Swami National Scholarship Test (GSNST)', jsonContent: '' },
-    });
-
-    const { fields, append, remove, replace } = useFieldArray({
-        control: manualForm.control,
-        name: 'questions',
-    });
-    
-    useEffect(() => {
-        if(testData) {
-            manualForm.reset({
-                title: testData.title,
-                questions: testData.questions
+    const handleAddCenter = async () => {
+        if (!newState || !newCity || !newCenterName || !examDate || !admitCardDate) {
+            toast({ variant: 'destructive', title: 'All fields are required.' });
+            return;
+        }
+        setIsSaving(true);
+        try {
+            await addDoc(collection(firestore, 'scholarshipCenters'), {
+                state: newState,
+                city: newCity,
+                name: newCenterName,
+                examDate,
+                admitCardDate
             });
-            jsonForm.setValue('title', testData.title);
+            setNewState('');
+            setNewCity('');
+            setNewCenterName('');
+            setExamDate(undefined);
+            setAdmitCardDate(undefined);
+            toast({ title: 'Center Added!' });
+        } catch (e) {
+            toast({ variant: 'destructive', title: 'Could not add center.' });
         }
-    }, [testData, manualForm, jsonForm]);
-
-    const onManualSubmit = async (data: TestCreationFormValues) => {
-        setIsLoading(true);
-        try {
-            await setDoc(doc(firestore, 'settings', 'scholarshipTest'), { ...data, createdAt: serverTimestamp() }, { merge: true });
-            toast({ title: 'Success', description: 'Scholarship Test saved successfully.' });
-        } catch (error) {
-            console.error('Error saving test:', error);
-            toast({ variant: 'destructive', title: 'Error', description: 'Could not save the test.' });
-        } finally {
-            setIsLoading(false);
-        }
-    };
+        setIsSaving(false);
+    }
     
-    const onJsonSubmit = async (data: JsonTestFormValues) => {
-        setIsLoading(true);
-        try {
-            const questions = JSON.parse(data.jsonContent);
-            await setDoc(doc(firestore, 'settings', 'scholarshipTest'), { title: data.title, questions, createdAt: serverTimestamp() }, { merge: true });
-            toast({ title: 'Success', description: 'Test saved from JSON.'});
-        } catch (error) {
-            toast({ variant: 'destructive', title: 'Error', description: 'Could not save test from JSON.'});
-        } finally {
-            setIsLoading(false);
-        }
-    }
-
-    if (testLoading) {
-        return <Skeleton className="h-96 w-full" />
-    }
-
     return (
-        <Card>
-            <CardHeader>
-                <CardTitle>Create/Manage Scholarship Test</CardTitle>
-                <CardDescription>Add or edit questions for the scholarship test.</CardDescription>
-            </CardHeader>
+         <Card>
+            <CardHeader><CardTitle>Manage Test Centers</CardTitle></CardHeader>
             <CardContent>
-                <Tabs defaultValue="manual">
-                    <TabsList className="grid w-full grid-cols-2">
-                        <TabsTrigger value="manual">Manual Entry</TabsTrigger>
-                        <TabsTrigger value="json">JSON Upload</TabsTrigger>
-                    </TabsList>
-                    <TabsContent value="manual" className="mt-4">
-                        <Form {...manualForm}>
-                            <form onSubmit={manualForm.handleSubmit(onManualSubmit)} className="space-y-4">
-                                <FormField control={manualForm.control} name="title" render={({ field }) => (
-                                    <FormItem><FormLabel>Test Title</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
-                                )} />
-                                <div className="space-y-4">
-                                    <h3 className="text-lg font-semibold">Questions</h3>
-                                    {fields.map((field, index) => (
-                                        <div key={field.id} className="p-4 border rounded-lg space-y-3 relative bg-muted/50">
-                                            <FormField control={manualForm.control} name={`questions.${index}.text`} render={({ field }) => (
-                                                <FormItem><FormLabel>Question {index + 1}</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>
-                                            )} />
-                                            {Array(4).fill(0).map((_, optionIndex) => (
-                                                <FormField key={optionIndex} control={manualForm.control} name={`questions.${index}.options.${optionIndex}`} render={({ field }) => (
-                                                    <FormItem><FormLabel>Option {optionIndex + 1}</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
-                                                )} />
-                                            ))}
-                                            <FormField control={manualForm.control} name={`questions.${index}.correctAnswer`} render={({ field }) => (
-                                                <FormItem><FormLabel>Correct Answer</FormLabel><FormControl><Input placeholder="Copy one of the options above" {...field} /></FormControl><FormMessage /></FormItem>
-                                            )} />
-                                            <Button type="button" variant="destructive" size="icon" onClick={() => remove(index)} className="absolute top-2 right-2 h-7 w-7"><Trash2 className="h-4 w-4" /></Button>
-                                        </div>
-                                    ))}
-                                    <Button type="button" variant="outline" onClick={() => append({ text: '', options: ['', '', '', ''], correctAnswer: '' })}><PlusCircle className="mr-2" />Add Question</Button>
-                                </div>
-                                <Button type="submit" disabled={isLoading} className="w-full">{isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Save Test</Button>
-                            </form>
-                        </Form>
-                    </TabsContent>
-                    <TabsContent value="json" className="mt-4">
-                         <Form {...jsonForm}>
-                            <form onSubmit={jsonForm.handleSubmit(onJsonSubmit)} className="space-y-4">
-                                <FormField control={jsonForm.control} name="title" render={({ field }) => (
-                                    <FormItem><FormLabel>Test Title</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
-                                )}/>
-                                <FormField control={jsonForm.control} name="jsonContent" render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Questions JSON</FormLabel>
-                                        <FormControl><Textarea className="min-h-[200px] font-mono" placeholder='[{"text": "Q1", "options": ["A", "B", "C", "D"], "correctAnswer": "A"}]' {...field} /></FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}/>
-                                 <Button type="submit" disabled={isLoading} className="w-full">{isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Save from JSON</Button>
-                            </form>
-                        </Form>
-                    </TabsContent>
-                </Tabs>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                    <Input placeholder="State" value={newState} onChange={e => setNewState(e.target.value)} />
+                    <Input placeholder="City" value={newCity} onChange={e => setNewCity(e.target.value)} />
+                    <Input placeholder="Center Name / Address" value={newCenterName} onChange={e => setNewCenterName(e.target.value)} />
+                     <DatePicker date={examDate} setDate={setExamDate} />
+                    <DatePicker date={admitCardDate} setDate={setAdmitCardDate} />
+                    <Button onClick={handleAddCenter} disabled={isSaving}>
+                        {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        Add Center
+                    </Button>
+                </div>
+                 {centersLoading && <Skeleton className="h-48 w-full" />}
+                 {!centersLoading && (
+                     <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>Center</TableHead>
+                                <TableHead>Exam Date</TableHead>
+                                <TableHead>Admit Card Date</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {centersCollection?.docs.map(doc => {
+                                const center = doc.data();
+                                return (
+                                    <TableRow key={doc.id}>
+                                        <TableCell>{center.name}, {center.city}, {center.state}</TableCell>
+                                        <TableCell>{center.examDate?.toDate().toLocaleDateString()}</TableCell>
+                                        <TableCell>{center.admitCardDate?.toDate().toLocaleDateString()}</TableCell>
+                                    </TableRow>
+                                )
+                            })}
+                        </TableBody>
+                     </Table>
+                 )}
             </CardContent>
         </Card>
     );
-};
+}
 
 
 export function ManageScholarships() {
@@ -287,10 +179,6 @@ export function ManageScholarships() {
         query(collection(firestore, 'scholarshipApplications'), orderBy('appliedAt', 'desc'))
     );
     
-    const [results, resultsLoading, resultsError] = useCollection(
-        query(collection(firestore, 'scholarshipTestResults'), orderBy('submittedAt', 'desc'))
-    );
-
     const handleUpdateStatus = async (id: string, field: string, status: string) => {
         try {
             await updateDoc(doc(firestore, 'scholarshipApplications', id), { [field]: status });
@@ -311,7 +199,7 @@ export function ManageScholarships() {
                     <TableRow>
                         <TableHead>Applicant</TableHead>
                         <TableHead>Applied For</TableHead>
-                        <TableHead>Payment</TableHead>
+                        <TableHead>Choices</TableHead>
                         <TableHead>Actions</TableHead>
                     </TableRow>
                 </TableHeader>
@@ -325,16 +213,16 @@ export function ManageScholarships() {
                                     <p className="text-xs text-muted-foreground">{app.applicationNumber}</p>
                                 </TableCell>
                                 <TableCell>{app.scholarshipType}</TableCell>
-                                <TableCell>
-                                    {app.paymentScreenshotDataUrl ? (
-                                        <a href={app.paymentScreenshotDataUrl} target="_blank" rel="noopener noreferrer">View</a>
-                                    ) : "N/A"}
+                                 <TableCell className="text-xs">
+                                     <ol className="list-decimal list-inside">
+                                        {app.centerChoices?.map((c: string, i: number) => <li key={i}>{c}</li>)}
+                                     </ol>
                                 </TableCell>
                                 <TableCell className="space-x-2">
-                                    {status === 'payment_pending' && (
+                                     {status === 'applied' && (
                                         <>
-                                            <Button size="sm" onClick={() => handleUpdateStatus(appDoc.id, 'status', 'payment_approved')}>Approve</Button>
-                                            <Button size="sm" variant="destructive" onClick={() => handleUpdateStatus(appDoc.id, 'status', 'payment_rejected')}>Reject</Button>
+                                            <Button size="sm" onClick={() => handleUpdateStatus(appDoc.id, 'status', 'approved')}>Approve</Button>
+                                            <Button size="sm" variant="destructive" onClick={() => handleUpdateStatus(appDoc.id, 'status', 'rejected')}>Reject</Button>
                                         </>
                                     )}
                                 </TableCell>
@@ -346,82 +234,25 @@ export function ManageScholarships() {
         )
     };
     
-    const renderResultsTable = () => {
-         if (resultsLoading) return <Skeleton className="h-48 w-full" />;
-         if (!results || results.docs.length === 0) return <p className="text-center text-muted-foreground p-8">No test results found.</p>;
-         
-         return (
-             <Table>
-                <TableHeader>
-                    <TableRow>
-                        <TableHead>Applicant</TableHead>
-                        <TableHead>Score</TableHead>
-                        <TableHead>Result</TableHead>
-                        <TableHead>Actions</TableHead>
-                    </TableRow>
-                </TableHeader>
-                <TableBody>
-                    {results.docs.map(resDoc => {
-                        const res = resDoc.data();
-                        const applicant = applications?.docs.find(a => a.id === res.applicantId)?.data();
-                        return (
-                            <TableRow key={resDoc.id}>
-                                <TableCell>
-                                    <p>{res.applicantName}</p>
-                                    <p className="text-xs text-muted-foreground">{res.applicationNumber}</p>
-                                </TableCell>
-                                <TableCell>{res.score} / {res.totalQuestions}</TableCell>
-                                 <TableCell><Badge variant={applicant?.resultStatus === 'pass' ? 'default' : (applicant?.resultStatus === 'fail' ? 'destructive' : 'secondary')}>{applicant?.resultStatus || 'pending'}</Badge></TableCell>
-                                <TableCell className="space-x-2">
-                                     <Button size="sm" variant="outline" onClick={() => handleUpdateStatus(res.applicantId, 'resultStatus', 'pass')}>Pass</Button>
-                                     <Button size="sm" variant="outline" onClick={() => handleUpdateStatus(res.applicantId, 'resultStatus', 'fail')}>Fail</Button>
-                                </TableCell>
-                            </TableRow>
-                        )
-                    })}
-                </TableBody>
-            </Table>
-         )
-    }
-
     return (
         <div className="space-y-8">
             <ScholarshipSettings />
-            <ScholarshipTestCreator />
-
-             <Tabs defaultValue="applications">
-                <TabsList className="grid grid-cols-2">
-                    <TabsTrigger value="applications">Applications</TabsTrigger>
-                    <TabsTrigger value="results">Test Results</TabsTrigger>
-                </TabsList>
-                <TabsContent value="applications" className="mt-4">
-                     <Card>
-                        <CardHeader><CardTitle>Scholarship Applications</CardTitle></CardHeader>
-                        <CardContent>
-                             <Tabs defaultValue="payment_pending">
-                                <TabsList>
-                                    <TabsTrigger value="payment_pending">Payment Pending</TabsTrigger>
-                                    <TabsTrigger value="payment_approved">Payment Approved</TabsTrigger>
-                                </TabsList>
-                                <TabsContent value="payment_pending" className="mt-4">
-                                    {renderApplicationsTable('payment_pending')}
-                                </TabsContent>
-                                 <TabsContent value="payment_approved" className="mt-4">
-                                    {renderApplicationsTable('payment_approved')}
-                                </TabsContent>
-                            </Tabs>
-                        </CardContent>
-                    </Card>
-                </TabsContent>
-                <TabsContent value="results" className="mt-4">
-                     <Card>
-                        <CardHeader><CardTitle>Test Results</CardTitle></CardHeader>
-                        <CardContent>
-                            {renderResultsTable()}
-                        </CardContent>
-                    </Card>
-                </TabsContent>
-             </Tabs>
+            <ManageCenters />
+             <Card>
+                <CardHeader><CardTitle>Scholarship Applications</CardTitle></CardHeader>
+                <CardContent>
+                     <Tabs defaultValue="applied">
+                        <TabsList>
+                            <TabsTrigger value="applied">New Applications</TabsTrigger>
+                            <TabsTrigger value="approved">Approved</TabsTrigger>
+                            <TabsTrigger value="rejected">Rejected</TabsTrigger>
+                        </TabsList>
+                        <TabsContent value="applied" className="mt-4">{renderApplicationsTable('applied')}</TabsContent>
+                         <TabsContent value="approved" className="mt-4">{renderApplicationsTable('approved')}</TabsContent>
+                         <TabsContent value="rejected" className="mt-4">{renderApplicationsTable('rejected')}</TabsContent>
+                    </Tabs>
+                </CardContent>
+            </Card>
         </div>
     );
 }
@@ -429,3 +260,4 @@ export function ManageScholarships() {
     
 
     
+

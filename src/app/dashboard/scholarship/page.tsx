@@ -9,18 +9,16 @@ import { doc, getDoc, collection, query, where, getDocs, addDoc, serverTimestamp
 import { firestore } from '@/lib/firebase';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { useAuth } from '@/hooks/use-auth';
-import { useCollection } from 'react-firebase-hooks/firestore';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ApplyForm } from './_components/apply-form';
 import { OnlineTest } from './_components/online-test';
 import { ViewResult } from './_components/view-result';
 import { ScrutinyForm } from './_components/scrutiny-form';
+import { ScholarshipHistory } from './_components/scholarship-history';
 
 
-type ActiveTab = 'apply' | 'admit-card' | 'result' | 'scrutiny' | 'history';
+type ActiveTab = 'apply' | 'admit-card' | 'result' | 'scrutiny';
 
 
 function ScholarshipPageContent() {
@@ -35,7 +33,7 @@ function ScholarshipPageContent() {
 
   useEffect(() => {
     const tab = searchParams.get('tab') as ActiveTab;
-    if (tab && ['apply', 'admit-card', 'result', 'scrutiny', 'history'].includes(tab)) {
+    if (tab && ['apply', 'admit-card', 'result', 'scrutiny'].includes(tab)) {
         setActiveTab(tab);
     }
   }, [searchParams]);
@@ -54,8 +52,8 @@ function ScholarshipPageContent() {
             setSettings(data);
             const now = new Date();
 
-            const appStartDate = data.startDate?.toDate();
-            const appEndDate = data.endDate?.toDate();
+            const appStartDate = data.applicationStartDate?.toDate();
+            const appEndDate = data.applicationEndDate?.toDate();
             if (appStartDate && appEndDate) {
                 if (now < appStartDate) setApplicationStatus('upcoming');
                 else if (now >= appStartDate && now <= appEndDate) setApplicationStatus('open');
@@ -85,7 +83,6 @@ function ScholarshipPageContent() {
     { id: 'admit-card', label: 'Admit Card', icon: Ticket },
     { id: 'result', label: 'View Result', icon: Eye },
     { id: 'scrutiny', label: 'Check OMR', icon: Search },
-    { id: 'history', label: 'My Applications', icon: FileSignature },
 ];
 
   const renderContent = () => {
@@ -94,12 +91,12 @@ function ScholarshipPageContent() {
     }
 
     const renderApplicationContent = () => {
-        if (applicationStatus === 'upcoming' && settings?.startDate) {
+        if (applicationStatus === 'upcoming' && settings?.applicationStartDate) {
             return (
                 <Card className="text-center">
                     <CardHeader><CardTitle>Applications Open Soon!</CardTitle></CardHeader>
                     <CardContent>
-                        <p className="mb-4">Applications will open on {settings.startDate.toDate().toLocaleString()}.</p>
+                        <p className="mb-4">Applications will open on {settings.applicationStartDate.toDate().toLocaleString()}.</p>
                     </CardContent>
                 </Card>
             );
@@ -120,10 +117,9 @@ function ScholarshipPageContent() {
 
     switch (activeTab) {
         case 'apply': return renderApplicationContent();
-        case 'admit-card': return <div>Admit Card functionality will be implemented here.</div>;
+        case 'admit-card': return <p className="text-center text-muted-foreground p-8">Admit cards will be available for download here once released.</p>;
         case 'result': return <ViewResult />;
         case 'scrutiny': return <ScrutinyForm />;
-        case 'history': return <ScholarshipHistory key={historyKey} />;
         default: return null;
     }
   }
@@ -132,11 +128,11 @@ function ScholarshipPageContent() {
     <div className="max-w-4xl mx-auto space-y-8 p-4 md:p-6">
       <div className="text-center">
         <Award className="mx-auto h-12 w-12 text-yellow-500 mb-4" />
-        <h1 className="text-3xl md:text-4xl font-bold font-headline">Learn with Munedra Scholarship Test</h1>
-        <p className="text-muted-foreground mt-2">Apply for scholarships and view your results.</p>
+        <h1 className="text-3xl md:text-4xl font-bold font-headline">Go Swami National Scholarship Test</h1>
+        <p className="text-muted-foreground mt-2">(GSNST)</p>
       </div>
       
-       <div className="grid grid-cols-3 md:grid-cols-5 gap-2 sm:gap-4">
+       <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-4">
         {tabItems.map(item => (
             <Button
                 key={item.id}
