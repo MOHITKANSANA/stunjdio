@@ -1,4 +1,3 @@
-
 'use client';
 import React, { useEffect, useState, useCallback, Suspense } from 'react';
 import {
@@ -257,11 +256,11 @@ const AppHeader = () => {
                     <SidebarTrigger />
                 </div>
                 <div className='hidden md:flex items-center gap-2'>
-                    <h1 className="text-2xl font-bold text-white">Hello, {user?.displayName?.split(' ')[0] || 'Student'}!</h1>
+                    <h1 className="text-2xl font-bold text-foreground">Hello, {user?.displayName?.split(' ')[0] || 'Student'}!</h1>
                 </div>
             </div>
              <div className="flex items-center gap-4">
-                <Button asChild variant="ghost" size="icon" className="relative text-white hover:text-white hover:bg-white/10">
+                <Button asChild variant="ghost" size="icon" className="relative text-foreground hover:text-foreground hover:bg-foreground/10">
                     <Link href="/dashboard/orders">
                         <ShoppingCart />
                         <span className="sr-only">Shopping Cart</span>
@@ -452,7 +451,7 @@ function DashboardLayoutContent({
       <div className="flex h-screen w-full flex-col bg-background">
          {isScreenLocked && <ScreenTimeLock />}
          <div 
-             className="fixed top-0 left-0 right-0 h-[30vh] bg-gradient-to-b from-yellow-500 via-yellow-400 to-yellow-300 -z-10" 
+             className="fixed top-0 left-0 right-0 h-[30vh] bg-gradient-to-b from-primary/80 to-primary/60 -z-10" 
              style={{clipPath: 'polygon(0 0, 100% 0, 100% 80%, 0 100%)'}}
         />
          {!isVideoPlaybackPage && <AppHeader />}

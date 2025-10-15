@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -8,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Heart, Film, GalleryHorizontal, Video } from 'lucide-react';
 import Image from 'next/image';
 import { useCollection } from 'react-firebase-hooks/firestore';
-import { collection, query, orderBy, where } from 'firebase/firestore';
+import { collection, query, orderBy } from 'firebase/firestore';
 import { firestore } from '@/lib/firebase';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -21,9 +20,11 @@ const motivationalLines = [
 ];
 
 const ShortsTab = () => {
-    const [videos, loading, error] = useCollection(
-        query(collection(firestore, 'motivationVideos'), where('type', '==', 'short_video'), orderBy('createdAt', 'desc'))
+    const [videosCollection, loading, error] = useCollection(
+        query(collection(firestore, 'motivationVideos'), orderBy('createdAt', 'desc'))
     );
+
+    const videos = videosCollection?.docs.filter(doc => doc.data().type === 'short_video');
 
     if (loading) {
         return (
@@ -39,7 +40,7 @@ const ShortsTab = () => {
         return <p className="text-center text-destructive">Could not load videos.</p>
     }
 
-    if (!videos || videos.empty) {
+    if (!videos || videos.length === 0) {
         return (
             <div className="text-center text-muted-foreground p-8">
                 <Film className="h-16 w-16 mx-auto mb-4" />
@@ -51,7 +52,7 @@ const ShortsTab = () => {
     
     return (
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-            {videos.docs.map(doc => {
+            {videos.map(doc => {
                 const video = doc.data();
                 return (
                     <a key={doc.id} href={video.url} target="_blank" rel="noopener noreferrer">
@@ -72,9 +73,11 @@ const ShortsTab = () => {
 };
 
 const FullVideosTab = () => {
-     const [videos, loading, error] = useCollection(
-        query(collection(firestore, 'motivationVideos'), where('type', '==', 'full_video'), orderBy('createdAt', 'desc'))
+     const [videosCollection, loading, error] = useCollection(
+        query(collection(firestore, 'motivationVideos'), orderBy('createdAt', 'desc'))
     );
+
+    const videos = videosCollection?.docs.filter(doc => doc.data().type === 'full_video');
 
      if (loading) {
         return (
@@ -90,7 +93,7 @@ const FullVideosTab = () => {
         return <p className="text-center text-destructive">Could not load videos.</p>
     }
 
-    if (!videos || videos.empty) {
+    if (!videos || videos.length === 0) {
         return (
             <div className="text-center text-muted-foreground p-8">
                 <Video className="h-16 w-16 mx-auto mb-4" />
@@ -102,7 +105,7 @@ const FullVideosTab = () => {
 
      return (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {videos.docs.map(doc => {
+            {videos.map(doc => {
                 const video = doc.data();
                 return (
                     <a key={doc.id} href={video.url} target="_blank" rel="noopener noreferrer">
