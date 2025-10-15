@@ -1,6 +1,6 @@
 
 'use client';
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, Suspense } from 'react';
 import {
   Book,
   Home,
@@ -42,7 +42,7 @@ import {
 } from 'lucide-react';
 
 import { useAuth, updateUserInFirestore } from '@/hooks/use-auth';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import {
   Sidebar,
   SidebarProvider,
@@ -58,7 +58,6 @@ import {
   SidebarSeparator,
 } from '@/components/ui/sidebar';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { useLanguage } from '@/hooks/use-language';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -76,6 +75,7 @@ const sidebarNavItems = [
     { href: '/dashboard/my-learning', icon: Library, label: 'My Library' },
     { href: '/dashboard/mindsphere', icon: BrainCircuit, label: 'Mind Sphere' },
     { href: '/dashboard/ebooks', icon: BookCopy, label: 'E-Books' },
+    { href: '/dashboard/social', icon: Users, label: 'Social Media' },
     { href: '/dashboard/profile', icon: User, label: 'profile' },
     { href: '/dashboard/courses', icon: Book, label: 'courses' },
     { href: '/dashboard/live-classes', icon: Clapperboard, label: 'Live Classes' },
@@ -196,13 +196,6 @@ const AppSidebar = ({ isKidsMode, isMindSphereMode, appLogoUrl }: { isKidsMode: 
                             closeSidebar={closeSidebar}
                         />
 
-                        <SidebarMenuItemWithHandler
-                            href="/dashboard/social"
-                            icon={Users}
-                            label="Social Media"
-                            closeSidebar={closeSidebar}
-                        />
-
                         {userData?.isAdmin && (
                             <>
                             <SidebarSeparator />
@@ -299,7 +292,7 @@ const ScreenTimeLock = () => (
     </div>
 )
 
-export default function DashboardLayout({
+function DashboardLayoutContent({
   children,
 }: {
   children: React.ReactNode;
@@ -465,26 +458,37 @@ export default function DashboardLayout({
 
 
   return (
-      <SidebarProvider>
-          <div className="flex h-screen w-full flex-col bg-background">
-             {isScreenLocked && <ScreenTimeLock />}
-             <div 
-                 className="fixed top-0 left-0 right-0 h-[30vh] bg-gradient-to-b from-yellow-500 via-yellow-400 to-yellow-300 -z-10" 
-                 style={{clipPath: 'polygon(0 0, 100% 0, 100% 80%, 0 100%)'}}
-            />
-             {!isVideoPlaybackPage && <AppHeader appLogoUrl={appLogoUrl} />}
-             <div className={cn("flex flex-col md:flex-row w-full h-full overflow-hidden")}>
-                {!isVideoPlaybackPage && <AppSidebar isKidsMode={isKidsMode} isMindSphereMode={isMindSphereMode} appLogoUrl={appLogoUrl} />}
-                 <main className="flex-1 overflow-y-auto h-full" onClick={() => isMobile && setOpenMobile(false)}>
-                    <SidebarInset>
-                        <div className={cn(!isVideoPlaybackPage && 'p-4 md:p-6')}>
-                            {children}
-                        </div>
-                    </SidebarInset>
-                </main>
-             </div>
-             {!isVideoPlaybackPage && <AppBottomNav isKidsMode={isKidsMode} isMindSphereMode={isMindSphereMode} />}
-          </div>
-      </SidebarProvider>
+      <div className="flex h-screen w-full flex-col bg-background">
+         {isScreenLocked && <ScreenTimeLock />}
+         <div 
+             className="fixed top-0 left-0 right-0 h-[30vh] bg-gradient-to-b from-yellow-500 via-yellow-400 to-yellow-300 -z-10" 
+             style={{clipPath: 'polygon(0 0, 100% 0, 100% 80%, 0 100%)'}}
+        />
+         {!isVideoPlaybackPage && <AppHeader appLogoUrl={appLogoUrl} />}
+         <div className={cn("flex flex-col md:flex-row w-full h-full overflow-hidden")}>
+            {!isVideoPlaybackPage && <AppSidebar isKidsMode={isKidsMode} isMindSphereMode={isMindSphereMode} appLogoUrl={appLogoUrl} />}
+             <main className="flex-1 overflow-y-auto h-full" onClick={() => isMobile && setOpenMobile(false)}>
+                <SidebarInset>
+                    <div className={cn(!isVideoPlaybackPage && 'p-4 md:p-6')}>
+                        {children}
+                    </div>
+                </SidebarInset>
+            </main>
+         </div>
+         {!isVideoPlaybackPage && <AppBottomNav isKidsMode={isKidsMode} isMindSphereMode={isMindSphereMode} />}
+      </div>
   );
+}
+
+
+export default function DashboardLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+    return (
+        <SidebarProvider>
+            <DashboardLayoutContent>{children}</DashboardLayoutContent>
+        </SidebarProvider>
+    )
 }
