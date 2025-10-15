@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useCallback, Suspense } from 'react';
@@ -16,6 +17,7 @@ import { ScrutinyForm } from './_components/scrutiny-form';
 import { useCollection } from 'react-firebase-hooks/firestore';
 import { useAuth } from '@/hooks/use-auth';
 import Image from 'next/image';
+import { Input } from '@/components/ui/input';
 
 
 type ActiveTab = 'apply' | 'admit-card' | 'result' | 'scrutiny' | 'my-application';
