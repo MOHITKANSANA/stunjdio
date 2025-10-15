@@ -206,8 +206,8 @@ export default function AdminPage() {
                 <p className="text-muted-foreground mt-2">Manage your application content and users.</p>
             </div>
             
-             <Tabs defaultValue="revenue" className="w-full flex flex-col md:flex-row gap-8" orientation="vertical">
-                <TabsList className="grid grid-cols-2 sm:grid-cols-3 md:flex md:flex-col md:w-1/4 lg:w-1/5 shrink-0">
+             <Tabs defaultValue="revenue" className="w-full">
+                <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
                     <TabsTrigger value="revenue">Revenue</TabsTrigger>
                     <TabsTrigger value="content">Add Content</TabsTrigger>
                     <TabsTrigger value="manage_content">Manage Content</TabsTrigger>
@@ -228,7 +228,7 @@ export default function AdminPage() {
                     <TabsTrigger value="settings">App Settings</TabsTrigger>
                 </TabsList>
                 
-                <div className="flex-grow">
+                <div className="mt-6">
                  <TabsContent value="revenue">
                    <RevenueDashboard />
                 </TabsContent>

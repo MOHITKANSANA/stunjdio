@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useAuth } from '@/hooks/use-auth';
@@ -9,15 +10,25 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 
 export function MyApplicationTab() {
     const { user } = useAuth();
-    const [applications, loading, error] = useCollection(user ? query(collection(firestore, 'scholarshipApplications'), where('userId', '==', user.uid), orderBy('appliedAt', 'desc')) : null);
+    // Fetch all applications for the user, then sort client-side
+    const [applications, loading, error] = useCollection(
+        user ? query(collection(firestore, 'scholarshipApplications'), where('userId', '==', user.uid)) : null
+    );
+
+    // Client-side sorting
+    const sortedApplications = applications?.docs.sort((a, b) => {
+        const dateA = a.data().appliedAt?.toDate() || 0;
+        const dateB = b.data().appliedAt?.toDate() || 0;
+        return dateB - dateA;
+    });
 
     if (loading) return <Skeleton className="h-48 w-full" />
-    if (error) return <p className="text-destructive">Could not load your applications.</p>
-    if (!applications || applications.empty) return <p className="text-muted-foreground text-center p-8">You have not applied for any scholarships yet.</p>
+    if (error) return <p className="text-destructive">Could not load your applications. The database may require an index. Please contact support.</p>
+    if (!sortedApplications || sortedApplications.length === 0) return <p className="text-muted-foreground text-center p-8">You have not applied for any scholarships yet.</p>
 
     return (
         <div className="space-y-4">
-            {applications.docs.map(doc => {
+            {sortedApplications.map(doc => {
                 const app = doc.data();
                 return (
                     <Card key={doc.id}>

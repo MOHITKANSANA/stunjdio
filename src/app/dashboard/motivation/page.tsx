@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -21,10 +22,13 @@ const motivationalLines = [
 
 const ShortsTab = () => {
     const [videosCollection, loading, error] = useCollection(
-        query(collection(firestore, 'motivationVideos'), orderBy('createdAt', 'desc'))
+        query(collection(firestore, 'motivationVideos'))
     );
 
-    const videos = videosCollection?.docs.filter(doc => doc.data().type === 'short_video');
+    const videos = videosCollection?.docs
+        .filter(doc => doc.data().type === 'short_video')
+        .sort((a, b) => b.data().createdAt?.toDate() - a.data().createdAt?.toDate());
+
 
     if (loading) {
         return (
@@ -74,10 +78,13 @@ const ShortsTab = () => {
 
 const FullVideosTab = () => {
      const [videosCollection, loading, error] = useCollection(
-        query(collection(firestore, 'motivationVideos'), orderBy('createdAt', 'desc'))
+        query(collection(firestore, 'motivationVideos'))
     );
 
-    const videos = videosCollection?.docs.filter(doc => doc.data().type === 'full_video');
+    const videos = videosCollection?.docs
+        .filter(doc => doc.data().type === 'full_video')
+        .sort((a, b) => b.data().createdAt?.toDate() - a.data().createdAt?.toDate());
+
 
      if (loading) {
         return (
