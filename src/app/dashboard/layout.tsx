@@ -39,6 +39,7 @@ import {
   Facebook,
   MessageCircle,
   BrainCircuit,
+  FileSignature,
 } from 'lucide-react';
 
 import { useAuth, updateUserInFirestore } from '@/hooks/use-auth';
@@ -68,7 +69,9 @@ import { AppBottomNav } from './bottom-nav';
 import { onMessage, getToken } from 'firebase/messaging';
 import { useToast } from '@/hooks/use-toast';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
+import { Badge } from '@/components/ui/badge';
+import { useCollection } from 'react-firebase-hooks/firestore';
 
 const sidebarNavItems = [
     { href: '/dashboard', icon: Home, label: 'home' },
@@ -87,6 +90,7 @@ const sidebarNavItems = [
     { href: '/dashboard/tutor', icon: Bot, label: 'AI Tutor' },
     { href: '/dashboard/golingua', icon: Languages, label: 'GoLingua' },
     { href: '/dashboard/feed', icon: Rss, label: 'Feed' },
+    { href: '/dashboard/mindsphere', icon: BrainCircuit, label: 'Mind Sphere' }
 ];
 
 const kidsSidebarNavItems = [
@@ -114,7 +118,7 @@ const SidebarMenuItemWithHandler = ({ href, icon: Icon, label, closeSidebar }: {
 }
 
 
-const AppSidebar = ({ isKidsMode, appLogoUrl }: { isKidsMode: boolean, appLogoUrl: string | null }) => {
+const AppSidebar = ({ isKidsMode, appLogoUrl }: { isKidsMode: boolean; appLogoUrl: string | null }) => {
     const { isMobile, setOpenMobile } = useSidebar();
     const { t } = useLanguage();
     const { user, logout } = useAuth();
@@ -241,11 +245,94 @@ const AppSidebar = ({ isKidsMode, appLogoUrl }: { isKidsMode: boolean, appLogoUr
     )
 }
 
+const NotificationsPanel = ({ open, onOpenChange }: { open: boolean, onOpenChange: (open: boolean) => void }) => {
+    const { user } = useAuth();
+    
+    const [doubtNotifications, doubtNotificationsLoading] = useCollection(
+        user ? query(collection(firestore, 'users', user.uid, 'notifications'), where('read', '==', false), orderBy('createdAt', 'desc')) : null
+    );
+
+    const [generalNotifications, generalNotificationsLoading] = useCollection(
+        query(collection(firestore, 'general_notifications'), orderBy('createdAt', 'desc'), where('createdAt', '>', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000))) // last 30 days
+    );
+
+    const loading = doubtNotificationsLoading || generalNotificationsLoading;
+
+    return (
+        <Sheet open={open} onOpenChange={onOpenChange}>
+            <SheetContent>
+                <SheetHeader>
+                    <SheetTitle>Notifications</SheetTitle>
+                    <SheetDescription>Recent announcements and updates.</SheetDescription>
+                </SheetHeader>
+                <div className="py-4 space-y-6">
+                    {loading && <Loader2 className="animate-spin mx-auto" />}
+
+                     {doubtNotifications && !doubtNotifications.empty && (
+                        <div className="space-y-4">
+                            <h3 className="font-semibold text-lg">Doubt Replies</h3>
+                            {doubtNotifications.docs.map(doc => {
+                                const notif = doc.data();
+                                return (
+                                    <Link href={`/dashboard/courses/${notif.courseId}?tab=doubts`} key={doc.id} onClick={() => onOpenChange(false)}>
+                                        <div className="p-3 border rounded-lg hover:bg-muted">
+                                            <p><span className="font-bold">{notif.replierName}</span> replied to your doubt:</p>
+                                            <p className="text-sm text-muted-foreground italic">"{notif.doubtText}"</p>
+                                            <p className="text-xs text-muted-foreground mt-1">{notif.createdAt?.toDate().toLocaleString()}</p>
+                                        </div>
+                                    </Link>
+                                )
+                            })}
+                        </div>
+                    )}
+                    
+                    {generalNotifications && !generalNotifications.empty && (
+                        <div className="space-y-4">
+                            <SidebarSeparator />
+                            <h3 className="font-semibold text-lg">Announcements</h3>
+                            {generalNotifications.docs.map(doc => {
+                                const notif = doc.data();
+                                return (
+                                    <div key={doc.id} className="p-3 border rounded-lg bg-muted/50">
+                                            <div className="flex items-center gap-2 mb-1">
+                                            <Bell className="h-4 w-4 text-primary"/>
+                                            <p className="font-bold">{notif.title}</p>
+                                            </div>
+                                        <p className="text-sm">{notif.message}</p>
+                                        <p className="text-xs text-muted-foreground mt-2">{notif.createdAt?.toDate().toLocaleString()}</p>
+                                    </div>
+                                )
+                            })}
+                        </div>
+                    )}
+
+                    {!loading && (!doubtNotifications || doubtNotifications.empty) && (!generalNotifications || generalNotifications.empty) && (
+                        <div className="text-center py-12">
+                            <Bell className="mx-auto h-12 w-12 text-muted-foreground" />
+                            <h3 className="mt-4 text-lg font-semibold">No New Notifications</h3>
+                        </div>
+                    )}
+                </div>
+            </SheetContent>
+        </Sheet>
+    )
+}
+
 
 const AppHeader = ({ appLogoUrl }: { appLogoUrl: string | null }) => {
-  const { user } = useAuth();
-  return (
-      <header className={cn("flex h-16 shrink-0 items-center justify-between gap-4 px-4 md:px-6 bg-transparent sticky top-0 z-20")}>
+    const { user } = useAuth();
+    const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+    
+    const [doubtNotifications, doubtNotificationsLoading] = useCollection(
+        user ? query(collection(firestore, 'users', user.uid, 'notifications'), where('read', '==', false)) : null
+    );
+    
+    const hasNewReplies = doubtNotifications && !doubtNotifications.empty;
+
+    return (
+        <>
+        <NotificationsPanel open={isNotificationsOpen} onOpenChange={setIsNotificationsOpen} />
+        <header className={cn("flex h-16 shrink-0 items-center justify-between gap-4 px-4 md:px-6 bg-transparent sticky top-0 z-20")}>
             <div className='flex items-center gap-4'>
                 <div className='md:hidden'>
                     <SidebarTrigger />
@@ -255,15 +342,20 @@ const AppHeader = ({ appLogoUrl }: { appLogoUrl: string | null }) => {
                 </div>
             </div>
             <div className="flex items-center gap-2">
-                <Button variant="ghost" size="icon" className="rounded-full" asChild>
-                    <Link href="/dashboard/my-learning?tab=notifications">
-                       <Bell className='text-white' />
-                       <span className="sr-only">Notifications</span>
-                    </Link>
+                <Button variant="ghost" size="icon" className="rounded-full relative" onClick={() => setIsNotificationsOpen(true)}>
+                   {hasNewReplies && (
+                        <span className="absolute top-1 right-1 flex h-3 w-3">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+                        </span>
+                   )}
+                   <Bell className='text-white' />
+                   <span className="sr-only">Notifications</span>
                 </Button>
             </div>
         </header>
-  )
+        </>
+    )
 }
 
 const LoadingScreen = () => (
@@ -290,6 +382,7 @@ function DashboardLayoutContent({
   const pathname = usePathname();
   const { isMobile, setOpenMobile } = useSidebar();
   const [isKidsMode, setIsKidsMode] = useState(false);
+  const [isMindSphereMode, setIsMindSphereMode] = useState(false);
   const [isScreenLocked, setIsScreenLocked] = useState(false);
   const [timeUsed, setTimeUsed] = useState(0); // in seconds
   const [appLogoUrl, setAppLogoUrl] = useState<string | null>(null);
@@ -419,6 +512,7 @@ function DashboardLayoutContent({
         if (userDoc.exists()) {
             const userData = userDoc.data();
             setIsKidsMode(userData.ageGroup === 'Age 1-5');
+            setIsMindSphereMode(userData.learningMode === 'mindsphere');
              setIsProfileChecked(true); // Mark as checked
         } else if (pathname !== '/dashboard/complete-profile') {
              router.replace('/dashboard/complete-profile');
