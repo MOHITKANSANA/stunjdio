@@ -307,6 +307,7 @@ export default function DashboardLayout({
   const { user, loading } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
+  const { isMobile, setOpenMobile } = useSidebar();
   const [isKidsMode, setIsKidsMode] = useState(false);
   const [isScreenLocked, setIsScreenLocked] = useState(false);
   const [timeUsed, setTimeUsed] = useState(0); // in seconds
