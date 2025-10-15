@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState } from "react";
@@ -216,7 +215,7 @@ export default function AdminPage() {
             </div>
             
              <Tabs defaultValue="revenue" className="w-full">
-                <TabsList className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-9 gap-2 h-auto">
+                <TabsList className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-9 gap-2 h-auto">
                     <TabsTrigger value="revenue">Revenue</TabsTrigger>
                     <TabsTrigger value="content">Add Content</TabsTrigger>
                     <TabsTrigger value="manage_content">Manage Content</TabsTrigger>
