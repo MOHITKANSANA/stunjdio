@@ -26,12 +26,12 @@ export const InstallPwaPrompt = () => {
 
         const checkInstalledStatus = () => {
              // For standalone PWAs
-            if (window.matchMedia('(display-mode: standalone)').matches) {
+            if (typeof window !== 'undefined' && window.matchMedia('(display-mode: standalone)').matches) {
                 setIsAppInstalled(true);
                 return;
             }
             // For iOS
-            if ((window.navigator as any).standalone) {
+            if (typeof window !== 'undefined' && (window.navigator as any).standalone) {
                  setIsAppInstalled(true);
                  return;
             }
@@ -82,15 +82,7 @@ export const InstallPwaPrompt = () => {
     }, [toast, isAppInstalled]);
     
     if (isAppInstalled) {
-        return (
-             <Alert variant="default" className="border-green-500">
-                <AlertTriangle className="h-4 w-4 !text-green-500" />
-                <AlertTitle>App Installed</AlertTitle>
-                <AlertDescription>
-                   The app is already installed on your device. Open it from your home screen for the best experience.
-                </AlertDescription>
-            </Alert>
-        )
+        return null;
     }
     
     return (
