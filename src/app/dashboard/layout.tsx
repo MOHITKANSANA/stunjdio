@@ -90,7 +90,6 @@ const sidebarNavItems = [
     { href: '/dashboard/tutor', icon: Bot, label: 'AI Tutor' },
     { href: '/dashboard/golingua', icon: Languages, label: 'GoLingua' },
     { href: '/dashboard/feed', icon: Rss, label: 'Feed' },
-    { href: '/dashboard/mindsphere', icon: BrainCircuit, label: 'Mind Sphere' }
 ];
 
 const kidsSidebarNavItems = [
@@ -319,19 +318,16 @@ const NotificationsPanel = ({ open, onOpenChange }: { open: boolean, onOpenChang
 }
 
 
-const AppHeader = ({ appLogoUrl }: { appLogoUrl: string | null }) => {
+const AppHeader = ({ onNotificationClick }: { onNotificationClick: () => void }) => {
     const { user } = useAuth();
-    const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
     
-    const [doubtNotifications, doubtNotificationsLoading] = useCollection(
+    const [doubtNotifications] = useCollection(
         user ? query(collection(firestore, 'users', user.uid, 'notifications'), where('read', '==', false)) : null
     );
     
     const hasNewReplies = doubtNotifications && !doubtNotifications.empty;
 
     return (
-        <>
-        <NotificationsPanel open={isNotificationsOpen} onOpenChange={setIsNotificationsOpen} />
         <header className={cn("flex h-16 shrink-0 items-center justify-between gap-4 px-4 md:px-6 bg-transparent sticky top-0 z-20")}>
             <div className='flex items-center gap-4'>
                 <div className='md:hidden'>
@@ -342,7 +338,7 @@ const AppHeader = ({ appLogoUrl }: { appLogoUrl: string | null }) => {
                 </div>
             </div>
             <div className="flex items-center gap-2">
-                <Button variant="ghost" size="icon" className="rounded-full relative" onClick={() => setIsNotificationsOpen(true)}>
+                <Button variant="ghost" size="icon" className="rounded-full relative" onClick={onNotificationClick}>
                    {hasNewReplies && (
                         <span className="absolute top-1 right-1 flex h-3 w-3">
                             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
@@ -354,7 +350,6 @@ const AppHeader = ({ appLogoUrl }: { appLogoUrl: string | null }) => {
                 </Button>
             </div>
         </header>
-        </>
     )
 }
 
@@ -382,12 +377,12 @@ function DashboardLayoutContent({
   const pathname = usePathname();
   const { isMobile, setOpenMobile } = useSidebar();
   const [isKidsMode, setIsKidsMode] = useState(false);
-  const [isMindSphereMode, setIsMindSphereMode] = useState(false);
   const [isScreenLocked, setIsScreenLocked] = useState(false);
   const [timeUsed, setTimeUsed] = useState(0); // in seconds
   const [appLogoUrl, setAppLogoUrl] = useState<string | null>(null);
   const { toast } = useToast();
   const [isProfileChecked, setIsProfileChecked] = useState(false);
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   
   const isVideoPlaybackPage = pathname.includes('/video/') || pathname.includes('/live-class/');
 
@@ -512,7 +507,6 @@ function DashboardLayoutContent({
         if (userDoc.exists()) {
             const userData = userDoc.data();
             setIsKidsMode(userData.ageGroup === 'Age 1-5');
-            setIsMindSphereMode(userData.learningMode === 'mindsphere');
              setIsProfileChecked(true); // Mark as checked
         } else if (pathname !== '/dashboard/complete-profile') {
              router.replace('/dashboard/complete-profile');
@@ -541,11 +535,12 @@ function DashboardLayoutContent({
   return (
       <div className="flex h-screen w-full flex-col bg-background">
          {isScreenLocked && <ScreenTimeLock />}
+         <NotificationsPanel open={isNotificationsOpen} onOpenChange={setIsNotificationsOpen} />
          <div 
              className="fixed top-0 left-0 right-0 h-[30vh] bg-gradient-to-b from-yellow-500 via-yellow-400 to-yellow-300 -z-10" 
              style={{clipPath: 'polygon(0 0, 100% 0, 100% 80%, 0 100%)'}}
         />
-         {!isVideoPlaybackPage && <AppHeader appLogoUrl={appLogoUrl} />}
+         {!isVideoPlaybackPage && <AppHeader onNotificationClick={() => setIsNotificationsOpen(true)} />}
          <div className={cn("flex flex-col md:flex-row w-full h-full overflow-hidden")}>
             {!isVideoPlaybackPage && <AppSidebar isKidsMode={isKidsMode} appLogoUrl={appLogoUrl} />}
              <main className="flex-1 overflow-y-auto h-full" onClick={() => isMobile && setOpenMobile(false)}>
