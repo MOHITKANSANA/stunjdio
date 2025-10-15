@@ -41,6 +41,8 @@ import {
   BrainCircuit,
   FileSignature,
   Heart,
+  ShoppingCart,
+  BookHeart,
 } from 'lucide-react';
 
 import { useAuth, updateUserInFirestore } from '@/hooks/use-auth';
@@ -76,6 +78,7 @@ const sidebarNavItems = [
     { href: '/dashboard', icon: Home, label: 'home' },
     { href: '/dashboard/my-learning', icon: Library, label: 'My Library' },
     { href: '/dashboard/social', icon: Users, label: 'Social Media' },
+    { href: '/dashboard/book-shala', icon: BookHeart, label: 'Book Shala' },
     { href: '/dashboard/motivation', icon: Heart, label: 'Motivation' },
     { href: '/dashboard/ebooks', icon: BookCopy, label: 'E-Books' },
     { href: '/dashboard/profile', icon: User, label: 'profile' },
@@ -257,7 +260,11 @@ const AppHeader = () => {
                     <h1 className="text-2xl font-bold text-white">Hello, {user?.displayName?.split(' ')[0] || 'Student'}!</h1>
                 </div>
             </div>
-             <div className="flex items-center gap-2">
+             <div className="flex items-center gap-4">
+                <Button variant="ghost" size="icon" className="relative text-white hover:text-white hover:bg-white/10">
+                    <ShoppingCart />
+                    <span className="sr-only">Shopping Cart</span>
+                </Button>
                 <UserNav />
             </div>
         </header>
@@ -296,7 +303,6 @@ function DashboardLayoutContent({
   
   const isVideoPlaybackPage = pathname.includes('/video/') || pathname.includes('/live-class/');
 
-  // Handle foreground messages
   useEffect(() => {
     let unsubscribe: () => void;
     if (typeof window !== 'undefined' && 'serviceWorker' in navigator && window.Worker && messaging) {
@@ -315,7 +321,6 @@ function DashboardLayoutContent({
     };
   }, [toast]);
 
-  // Request permission and register service worker
   useEffect(() => {
     const requestNotificationPermission = async () => {
       if (!user || !messaging || !('serviceWorker' in navigator)) return;
@@ -354,9 +359,8 @@ function DashboardLayoutContent({
             try {
                 const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
                 console.log('Service Worker registered with scope:', registration.scope);
-                // After successful registration, request permission
                 if(user) {
-                    setTimeout(requestNotificationPermission, 2000); // Add a small delay
+                    setTimeout(requestNotificationPermission, 2000); 
                 }
             } catch (err) {
                 console.error('Service Worker registration failed:', err);
@@ -416,7 +420,7 @@ function DashboardLayoutContent({
         const userDoc = await getDoc(userDocRef);
         if (userDoc.exists()) {
             const userData = userDoc.data();
-            setIsKidsMode(userData.ageGroup === 'Age 1-5');
+            setIsKidsMode(userData.ageGroup === '1-9');
              setIsProfileChecked(true); // Mark as checked
         } else if (pathname !== '/dashboard/complete-profile') {
              router.replace('/dashboard/complete-profile');

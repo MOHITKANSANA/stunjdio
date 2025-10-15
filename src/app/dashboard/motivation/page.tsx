@@ -5,10 +5,10 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Heart, Film, GalleryHorizontal } from 'lucide-react';
+import { Heart, Film, GalleryHorizontal, Video } from 'lucide-react';
 import Image from 'next/image';
 import { useCollection } from 'react-firebase-hooks/firestore';
-import { collection, query, orderBy } from 'firebase/firestore';
+import { collection, query, orderBy, where } from 'firebase/firestore';
 import { firestore } from '@/lib/firebase';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -21,21 +21,98 @@ const motivationalLines = [
 ];
 
 const ShortsTab = () => {
-    // This would fetch short video data from Firestore in a real app
-    const shortVideos = [
-        { id: 1, url: 'https://youtube.com/shorts/your_short_id_1' },
-        { id: 2, url: 'https://youtube.com/shorts/your_short_id_2' },
-        { id: 3, url: 'https://youtube.com/shorts/your_short_id_3' },
-    ];
+    const [videos, loading, error] = useCollection(
+        query(collection(firestore, 'motivationVideos'), where('type', '==', 'short_video'), orderBy('createdAt', 'desc'))
+    );
 
+    if (loading) {
+        return (
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                {[...Array(3)].map((_, i) => (
+                    <Skeleton key={i} className="w-full aspect-[9/16] rounded-lg" />
+                ))}
+            </div>
+        )
+    }
+
+    if (!videos || videos.empty) {
+        return (
+            <div className="text-center text-muted-foreground p-8">
+                <Film className="h-16 w-16 mx-auto mb-4" />
+                <h3 className="text-lg font-semibold">No Motivational Shorts</h3>
+                <p>Short videos will be added here soon.</p>
+            </div>
+        );
+    }
+    
     return (
-        <div className="text-center text-muted-foreground p-8">
-            <Film className="h-16 w-16 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold">Motivational Shorts</h3>
-            <p>This feature is coming soon!</p>
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+            {videos.docs.map(doc => {
+                const video = doc.data();
+                return (
+                    <a key={doc.id} href={video.url} target="_blank" rel="noopener noreferrer">
+                        <div className="relative aspect-[9/16] w-full rounded-lg overflow-hidden shadow-lg bg-muted">
+                            <Image src={video.thumbnailUrl || '/placeholder.jpg'} alt={video.title} fill style={{objectFit: 'cover'}}/>
+                            <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                                <Video className="h-8 w-8 text-white" />
+                            </div>
+                             <p className="absolute bottom-2 left-2 right-2 text-white text-xs font-semibold truncate text-center bg-black/50 p-1 rounded">
+                                {video.title}
+                            </p>
+                        </div>
+                    </a>
+                )
+            })}
         </div>
     );
 };
+
+const FullVideosTab = () => {
+     const [videos, loading, error] = useCollection(
+        query(collection(firestore, 'motivationVideos'), where('type', '==', 'full_video'), orderBy('createdAt', 'desc'))
+    );
+
+     if (loading) {
+        return (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {[...Array(2)].map((_, i) => (
+                    <Skeleton key={i} className="w-full aspect-video rounded-lg" />
+                ))}
+            </div>
+        )
+    }
+
+    if (!videos || videos.empty) {
+        return (
+            <div className="text-center text-muted-foreground p-8">
+                <Video className="h-16 w-16 mx-auto mb-4" />
+                <h3 className="text-lg font-semibold">No Full Videos</h3>
+                <p>Full-length motivational videos will be added here.</p>
+            </div>
+        );
+    }
+
+     return (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {videos.docs.map(doc => {
+                const video = doc.data();
+                return (
+                    <a key={doc.id} href={video.url} target="_blank" rel="noopener noreferrer">
+                         <div className="relative aspect-video w-full rounded-lg overflow-hidden shadow-lg bg-muted">
+                            <Image src={video.thumbnailUrl || '/placeholder.jpg'} alt={video.title} fill style={{objectFit: 'cover'}}/>
+                            <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                                <Video className="h-12 w-12 text-white" />
+                            </div>
+                             <p className="absolute bottom-2 left-2 right-2 text-white font-semibold truncate text-center bg-black/50 p-2 rounded">
+                                {video.title}
+                            </p>
+                        </div>
+                    </a>
+                )
+            })}
+        </div>
+    );
+}
 
 const GalleryTab = () => {
     const [images, loading, error] = useCollection(
@@ -65,6 +142,7 @@ const GalleryTab = () => {
                     return (
                         <div key={doc.id} className="relative aspect-square w-full rounded-lg overflow-hidden shadow-lg">
                             <Image src={image.url} alt={image.title || 'Gallery Image'} fill style={{ objectFit: 'cover' }} />
+                             {image.title && <p className="absolute bottom-0 left-0 right-0 bg-black/50 text-white text-xs p-1 text-center truncate">{image.title}</p>}
                         </div>
                     );
                 })}
@@ -109,12 +187,16 @@ export default function MotivationPage() {
             </Card>
 
             <Tabs defaultValue="shorts" className="w-full">
-                <TabsList className="grid w-full grid-cols-2">
+                <TabsList className="grid w-full grid-cols-3">
                     <TabsTrigger value="shorts"><Film className="mr-2" /> Shorts</TabsTrigger>
-                    <TabsTrigger value="gallery"><GalleryHorizontal className="mr-2" /> Our Gallery</TabsTrigger>
+                    <TabsTrigger value="full_videos"><Video className="mr-2" /> Videos</TabsTrigger>
+                    <TabsTrigger value="gallery"><GalleryHorizontal className="mr-2" /> Gallery</TabsTrigger>
                 </TabsList>
                 <TabsContent value="shorts" className="mt-6">
                     <ShortsTab />
+                </TabsContent>
+                <TabsContent value="full_videos" className="mt-6">
+                    <FullVideosTab />
                 </TabsContent>
                 <TabsContent value="gallery" className="mt-6">
                     <GalleryTab />

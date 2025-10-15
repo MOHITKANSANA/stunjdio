@@ -35,7 +35,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { EditContentForm } from "./_components/edit-content-form";
 import { RevenueDashboard } from "./_components/revenue-dashboard";
 import { ManagePaperEnrollments } from "./_components/manage-paper-enrollments";
-import { AddGalleryImageForm } from "./_components/add-gallery-image-form";
 import { AddBookShalaForm } from "./_components/add-book-shala-form";
 import { ManageBookShalaOrders } from "./_components/manage-book-shala";
 import { AddMotivationItemForm } from "./_components/add-motivation-item-form";
@@ -200,32 +199,34 @@ const ManageAllContent = () => {
 
 export default function AdminPage() {
     return (
-        <div className="space-y-8 p-4 md:p-8 bg-green-50 dark:bg-green-900/10">
+        <div className="space-y-8 p-4 md:p-8 bg-background">
             <div>
-                <h1 className="text-3xl md:text-4xl font-bold font-headline text-green-800 dark:text-green-300">Admin Dashboard</h1>
-                <p className="text-green-600 dark:text-green-400/80 mt-2">Manage your application content and users.</p>
+                <h1 className="text-3xl md:text-4xl font-bold font-headline text-foreground">Admin Dashboard</h1>
+                <p className="text-muted-foreground mt-2">Manage your application content and users.</p>
             </div>
             
              <Tabs defaultValue="revenue" className="w-full" orientation="vertical">
-                <TabsList className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-1 md:w-48 lg:w-56 shrink-0 h-max">
-                    <TabsTrigger value="revenue">Revenue</TabsTrigger>
-                    <TabsTrigger value="content">Add Content</TabsTrigger>
-                    <TabsTrigger value="manage_content">Manage Content</TabsTrigger>
-                    <TabsTrigger value="users">Manage Users</TabsTrigger>
-                    <TabsTrigger value="book_shala">Book Shala</TabsTrigger>
-                    <TabsTrigger value="motivation">Motivation</TabsTrigger>
-                    <TabsTrigger value="course_enrollments">Course Enrollments</TabsTrigger>
-                    <TabsTrigger value="test_enrollments">Test Enrollments</TabsTrigger>
-                    <TabsTrigger value="ebook_enrollments">E-Book Enrollments</TabsTrigger>
-                    <TabsTrigger value="paper_enrollments">Paper Enrollments</TabsTrigger>
-                    <TabsTrigger value="scholarships">Scholarships</TabsTrigger>
-                    <TabsTrigger value="kids_tube">Kids Tube</TabsTrigger>
-                    <TabsTrigger value="coupons">Coupons</TabsTrigger>
-                    <TabsTrigger value="promotions">Promotions</TabsTrigger>
-                    <TabsTrigger value="pwa">PWA Installations</TabsTrigger>
-                    <TabsTrigger value="html_editor">HTML Editor</TabsTrigger>
-                    <TabsTrigger value="settings">App Settings</TabsTrigger>
-                </TabsList>
+                <div className="overflow-x-auto pb-2">
+                    <TabsList className="grid grid-flow-col auto-cols-max gap-4 md:grid-cols-1 md:w-48 lg:w-56 shrink-0 h-max">
+                        <TabsTrigger value="revenue">Revenue</TabsTrigger>
+                        <TabsTrigger value="content">Add Content</TabsTrigger>
+                        <TabsTrigger value="manage_content">Manage Content</TabsTrigger>
+                        <TabsTrigger value="users">Manage Users</TabsTrigger>
+                        <TabsTrigger value="book_shala">Book Shala</TabsTrigger>
+                        <TabsTrigger value="motivation">Motivation</TabsTrigger>
+                        <TabsTrigger value="course_enrollments">Course Enrollments</TabsTrigger>
+                        <TabsTrigger value="test_enrollments">Test Enrollments</TabsTrigger>
+                        <TabsTrigger value="ebook_enrollments">E-Book Enrollments</TabsTrigger>
+                        <TabsTrigger value="paper_enrollments">Paper Enrollments</TabsTrigger>
+                        <TabsTrigger value="scholarships">Scholarships</TabsTrigger>
+                        <TabsTrigger value="kids_tube">Kids Tube</TabsTrigger>
+                        <TabsTrigger value="coupons">Coupons</TabsTrigger>
+                        <TabsTrigger value="promotions">Promotions</TabsTrigger>
+                        <TabsTrigger value="pwa">PWA Installations</TabsTrigger>
+                        <TabsTrigger value="html_editor">HTML Editor</TabsTrigger>
+                        <TabsTrigger value="settings">App Settings</TabsTrigger>
+                    </TabsList>
+                </div>
                 
                  <TabsContent value="revenue" className="mt-6 md:mt-0">
                    <RevenueDashboard />
@@ -263,6 +264,10 @@ export default function AdminPage() {
                             <Card>
                                 <CardHeader><CardTitle>Add Previous Paper</CardTitle></CardHeader>
                                 <CardContent><AddPaperForm /></CardContent>
+                            </Card>
+                             <Card>
+                                <CardHeader><CardTitle>Add Gallery Image</CardTitle></CardHeader>
+                                <CardContent><AddMotivationItemForm /></CardContent>
                             </Card>
                         </div>
                     </div>

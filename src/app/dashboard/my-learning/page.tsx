@@ -209,10 +209,10 @@ export default function MyLearningPage() {
         );
     };
 
-    const renderTestGrid = (tests: any[] | undefined, isLoading: boolean, error: any) => {
+    const renderTestGrid = (tests: any[] | undefined, isLoading: boolean, error: any, type: string) => {
         if(isLoading) return <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">{[...Array(3)].map((_,i) => <Skeleton key={i} className="h-48" />)}</div>
-        if(error) return <p className="text-destructive">Error loading tests.</p>
-        if(!tests || tests.length === 0) return <div className="text-center py-12"><FileText className="mx-auto h-12 w-12 text-muted-foreground" /><h3 className="mt-4 text-lg font-semibold">No Tests Found</h3></div>
+        if(error) return <p className="text-destructive">Error loading {type}.</p>
+        if(!tests || tests.length === 0) return <div className="text-center py-12"><FileText className="mx-auto h-12 w-12 text-muted-foreground" /><h3 className="mt-4 text-lg font-semibold">No {type} Found</h3></div>
 
         return (
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
@@ -220,10 +220,14 @@ export default function MyLearningPage() {
                      <Card key={doc.id} className="flex flex-col overflow-hidden shadow-lg hover:shadow-xl">
                         <CardHeader>
                             <CardTitle>{doc.data().title}</CardTitle>
-                            <CardDescription>{doc.data().subject}</CardDescription>
+                            <CardDescription>{doc.data().subject || `Year: ${doc.data().year}`}</CardDescription>
                         </CardHeader>
                         <CardFooter className="mt-auto">
-                            <Button asChild className="w-full"><Link href={`/dashboard/test-series/${doc.id}`}>Start Test</Link></Button>
+                            {type === 'Tests' ? (
+                                <Button asChild className="w-full"><Link href={`/dashboard/test-series/${doc.id}`}>Start Test</Link></Button>
+                            ) : (
+                                 <Button asChild className="w-full"><Link href={doc.data().fileUrl} target="_blank">View Paper</Link></Button>
+                            )}
                         </CardFooter>
                      </Card>
                 ))}
@@ -257,14 +261,12 @@ export default function MyLearningPage() {
                     {renderEbookGrid()}
                 </TabsContent>
                 <TabsContent value="tests" className="mt-6">
-                    {renderTestGrid(myTests?.docs, myTestsLoading, myTestsError)}
+                    {renderTestGrid(myTests?.docs, myTestsLoading, myTestsError, "Tests")}
                 </TabsContent>
                  <TabsContent value="papers" className="mt-6">
-                    {renderTestGrid(myPapers?.docs, myPapersLoading, myPapersError)}
+                    {renderTestGrid(myPapers?.docs, myPapersLoading, myPapersError, "Papers")}
                 </TabsContent>
             </Tabs>
         </div>
     );
 }
-
-    

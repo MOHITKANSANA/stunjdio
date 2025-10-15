@@ -13,21 +13,23 @@ import { firestore } from '@/lib/firebase';
 import { Loader2, Upload } from 'lucide-react';
 import Image from 'next/image';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
 
 const motivationItemSchema = z.object({
   type: z.enum(['gallery', 'short_video', 'full_video']),
   title: z.string().min(1, 'Title is required.'),
-  fileUrl: z.string().url('A valid URL is required for videos.'),
-  thumbnailFile: z.any().optional(), // Optional for videos, required for gallery
+  fileUrl: z.string().optional(),
+  thumbnailFile: z.any().optional(),
 }).refine(data => {
     if (data.type === 'gallery' && !data.thumbnailFile) {
-        return false;
+        return false; // thumbnail is required for gallery
+    }
+    if ((data.type === 'short_video' || data.type === 'full_video') && !data.fileUrl) {
+        return false; // fileUrl is required for videos
     }
     return true;
 }, {
-    message: 'An image file is required for gallery items.',
-    path: ['thumbnailFile'],
+    message: 'A file URL is required for videos, and an image is required for gallery items.',
+    path: ['fileUrl'], // Point error to one field for simplicity
 });
 
 type MotivationFormValues = z.infer<typeof motivationItemSchema>;
@@ -69,8 +71,12 @@ export function AddMotivationItemForm() {
   const onSubmit = async (data: MotivationFormValues) => {
     setIsLoading(true);
     try {
+      let finalUrl = data.fileUrl;
       let thumbnailUrl = '';
-      if (data.thumbnailFile) {
+
+      if (data.type === 'gallery' && data.thumbnailFile) {
+        finalUrl = await fileToDataUrl(data.thumbnailFile);
+      } else if (data.thumbnailFile) {
         thumbnailUrl = await fileToDataUrl(data.thumbnailFile);
       }
       
@@ -78,9 +84,9 @@ export function AddMotivationItemForm() {
       
       await addDoc(collection(firestore, collectionName), {
         title: data.title,
-        url: data.type === 'gallery' ? thumbnailUrl : data.fileUrl,
-        thumbnailUrl: data.type !== 'gallery' ? thumbnailUrl : '', // For videos, store thumb separately
-        type: data.type,
+        url: finalUrl,
+        thumbnailUrl: thumbnailUrl, // For videos, store thumb separately
+        type: data.type, // 'short_video', 'full_video'
         createdAt: serverTimestamp(),
       });
 
@@ -135,7 +141,7 @@ export function AddMotivationItemForm() {
           name="thumbnailFile"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>{type === 'gallery' ? 'Image' : 'Thumbnail (Optional)'}</FormLabel>
+              <FormLabel>{type === 'gallery' ? 'Image File' : 'Thumbnail (Optional for Videos)'}</FormLabel>
               <FormControl>
                 <div>
                   <Button type="button" variant="outline" className="w-full" onClick={() => fileInputRef.current?.click()}>
