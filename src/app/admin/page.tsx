@@ -38,6 +38,7 @@ import { ManagePaperEnrollments } from "./_components/manage-paper-enrollments";
 import { AddBookShalaForm } from "./_components/add-book-shala-form";
 import { ManageBookShalaOrders } from "./_components/manage-book-shala";
 import { AddMotivationItemForm } from "./_components/add-motivation-item-form";
+import { AddGalleryImageForm } from "./_components/add-gallery-image-form";
 
 
 const PwaInstallations = () => {
@@ -205,14 +206,15 @@ export default function AdminPage() {
                 <p className="text-muted-foreground mt-2">Manage your application content and users.</p>
             </div>
             
-             <Tabs defaultValue="revenue" className="w-full">
-                <TabsList className="grid w-full grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
+             <Tabs defaultValue="revenue" className="w-full flex flex-col md:flex-row gap-8" orientation="vertical">
+                <TabsList className="grid grid-cols-2 sm:grid-cols-3 md:flex md:flex-col md:w-1/4 lg:w-1/5 shrink-0">
                     <TabsTrigger value="revenue">Revenue</TabsTrigger>
                     <TabsTrigger value="content">Add Content</TabsTrigger>
                     <TabsTrigger value="manage_content">Manage Content</TabsTrigger>
                     <TabsTrigger value="users">Manage Users</TabsTrigger>
                     <TabsTrigger value="book_shala">Book Shala</TabsTrigger>
                     <TabsTrigger value="motivation">Motivation</TabsTrigger>
+                    <TabsTrigger value="gallery">Gallery</TabsTrigger>
                     <TabsTrigger value="course_enrollments">Course Enrollments</TabsTrigger>
                     <TabsTrigger value="test_enrollments">Test Enrollments</TabsTrigger>
                     <TabsTrigger value="ebook_enrollments">E-Book Enrollments</TabsTrigger>
@@ -226,11 +228,12 @@ export default function AdminPage() {
                     <TabsTrigger value="settings">App Settings</TabsTrigger>
                 </TabsList>
                 
-                 <TabsContent value="revenue" className="mt-6">
+                <div className="flex-grow">
+                 <TabsContent value="revenue">
                    <RevenueDashboard />
                 </TabsContent>
 
-                <TabsContent value="content" className="mt-6">
+                <TabsContent value="content">
                     <div className="grid gap-8 lg:grid-cols-2">
                         <div className="space-y-8">
                             <Card>
@@ -267,11 +270,11 @@ export default function AdminPage() {
                     </div>
                 </TabsContent>
 
-                <TabsContent value="manage_content" className="mt-6">
+                <TabsContent value="manage_content">
                     <ManageAllContent />
                 </TabsContent>
                 
-                <TabsContent value="book_shala" className="mt-6">
+                <TabsContent value="book_shala">
                     <div className="grid lg:grid-cols-2 gap-8">
                         <Card>
                             <CardHeader><CardTitle>Add New Book to Shala</CardTitle></CardHeader>
@@ -281,18 +284,25 @@ export default function AdminPage() {
                     </div>
                 </TabsContent>
                 
-                <TabsContent value="motivation" className="mt-6">
+                <TabsContent value="motivation">
                     <Card>
                         <CardHeader><CardTitle>Add Motivational Content</CardTitle></CardHeader>
                         <CardContent><AddMotivationItemForm/></CardContent>
                     </Card>
                 </TabsContent>
 
-                <TabsContent value="users" className="mt-6">
+                <TabsContent value="gallery">
+                    <Card>
+                        <CardHeader><CardTitle>Add Image to Gallery</CardTitle></CardHeader>
+                        <CardContent><AddGalleryImageForm /></CardContent>
+                    </Card>
+                </TabsContent>
+
+                <TabsContent value="users">
                     <ManageUsers />
                 </TabsContent>
 
-                <TabsContent value="course_enrollments" className="mt-6">
+                <TabsContent value="course_enrollments">
                     <Card>
                         <CardHeader>
                             <CardTitle>Manage Course Enrollments</CardTitle>
@@ -304,7 +314,7 @@ export default function AdminPage() {
                     </Card>
                 </TabsContent>
 
-                <TabsContent value="test_enrollments" className="mt-6">
+                <TabsContent value="test_enrollments">
                      <Card>
                         <CardHeader>
                             <CardTitle>Manage Test Series Enrollments</CardTitle>
@@ -316,7 +326,7 @@ export default function AdminPage() {
                     </Card>
                 </TabsContent>
 
-                <TabsContent value="ebook_enrollments" className="mt-6">
+                <TabsContent value="ebook_enrollments">
                      <Card>
                         <CardHeader>
                             <CardTitle>Manage E-Book Enrollments</CardTitle>
@@ -328,7 +338,7 @@ export default function AdminPage() {
                     </Card>
                 </TabsContent>
                 
-                <TabsContent value="paper_enrollments" className="mt-6">
+                <TabsContent value="paper_enrollments">
                      <Card>
                         <CardHeader>
                             <CardTitle>Manage Paper Enrollments</CardTitle>
@@ -341,11 +351,11 @@ export default function AdminPage() {
                 </TabsContent>
 
 
-                <TabsContent value="scholarships" className="mt-6">
+                <TabsContent value="scholarships">
                     <ManageScholarships />
                 </TabsContent>
 
-                <TabsContent value="kids_tube" className="mt-6">
+                <TabsContent value="kids_tube">
                      <div className="grid gap-8 lg:grid-cols-2">
                         <Card>
                             <CardHeader>
@@ -368,26 +378,26 @@ export default function AdminPage() {
                     </div>
                 </TabsContent>
 
-                <TabsContent value="coupons" className="mt-6">
+                <TabsContent value="coupons">
                     <ManageCoupons />
                 </TabsContent>
 
-                 <TabsContent value="promotions" className="mt-6">
+                 <TabsContent value="promotions">
                     <ManagePromotions />
                 </TabsContent>
 
-                <TabsContent value="pwa" className="mt-6">
+                <TabsContent value="pwa">
                     <PwaInstallations />
                 </TabsContent>
 
-                <TabsContent value="html_editor" className="mt-6">
+                <TabsContent value="html_editor">
                     <HtmlEditor />
                 </TabsContent>
 
-                <TabsContent value="settings" className="mt-6">
+                <TabsContent value="settings">
                     <AppSettingsForm />
                 </TabsContent>
-
+                </div>
             </Tabs>
         </div>
     );
