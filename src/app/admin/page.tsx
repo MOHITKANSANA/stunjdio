@@ -38,7 +38,6 @@ import { ManagePaperEnrollments } from "./_components/manage-paper-enrollments";
 import { AddBookShalaForm } from "./_components/add-book-shala-form";
 import { ManageBookShalaOrders } from "./_components/manage-book-shala";
 import { AddMotivationItemForm } from "./_components/add-motivation-item-form";
-import { ManageCenters } from "./_components/manage-centers";
 
 
 const PwaInstallations = () => {
@@ -219,7 +218,6 @@ export default function AdminPage() {
                     <TabsTrigger value="ebook_enrollments">E-Book Enrollments</TabsTrigger>
                     <TabsTrigger value="paper_enrollments">Paper Enrollments</TabsTrigger>
                     <TabsTrigger value="scholarships">Scholarships</TabsTrigger>
-                    <TabsTrigger value="centers">Center Management</TabsTrigger>
                     <TabsTrigger value="kids_tube">Kids Tube</TabsTrigger>
                     <TabsTrigger value="coupons">Coupons</TabsTrigger>
                     <TabsTrigger value="promotions">Promotions</TabsTrigger>
@@ -346,10 +344,6 @@ export default function AdminPage() {
                 <TabsContent value="scholarships" className="mt-6 md:mt-0">
                     <ManageScholarships />
                 </TabsContent>
-                <TabsContent value="centers" className="mt-6 md:mt-0">
-                    <ManageCenters />
-                </TabsContent>
-
 
                 <TabsContent value="kids_tube" className="mt-6 md:mt-0">
                      <div className="grid gap-8 lg:grid-cols-2">
