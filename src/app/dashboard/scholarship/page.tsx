@@ -27,7 +27,7 @@ const AdmitCard = ({ applicant }: { applicant: any }) => {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Admit Card - GSNST</CardTitle>
+          <CardTitle>Admit Card - Learn with Munedra Scholarship</CardTitle>
           <CardDescription>
             Application Number: {applicant.applicationNumber}
           </CardDescription>
@@ -266,8 +266,7 @@ function ScholarshipPageContent() {
     <div className="max-w-4xl mx-auto space-y-8 p-4 md:p-6">
       <div className="text-center">
         <Award className="mx-auto h-12 w-12 text-yellow-500 mb-4" />
-        <h1 className="text-3xl md:text-4xl font-bold font-headline">Go Swami National Scholarship Test</h1>
-        <p className="text-muted-foreground mt-2">(GSNST)</p>
+        <h1 className="text-3xl md:text-4xl font-bold font-headline">Learn with Munedra Scholarship</h1>
       </div>
       
        <div className="grid grid-cols-2 md:grid-cols-5 gap-2 sm:gap-4">
