@@ -1,7 +1,7 @@
 
 'use client';
 
-import { BookOpenCheck, Library, Trash2, Eye, FileText, Newspaper } from "lucide-react";
+import { BookOpenCheck, Library, Trash2, Eye, FileText, Newspaper, BellDot, Bell } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from '@/hooks/use-auth';
@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import type { DocumentData, QueryDocumentSnapshot } from 'firebase/firestore';
 import { useEffect, useState } from "react";
+import { Separator } from "@/components/ui/separator";
 
 const CourseCard = ({ course, courseId, enrollmentId, onUnenroll }: { course: any, courseId: string, enrollmentId: string, onUnenroll: (id: string, title: string) => void }) => {
     return (
@@ -47,6 +48,14 @@ export default function MyLearningPage() {
     
     const [enrollments, setEnrollments] = useState<QueryDocumentSnapshot<DocumentData>[]>([]);
     const [enrollmentsLoading, setEnrollmentsLoading] = useState(true);
+
+    const [doubtNotifications, doubtNotificationsLoading] = useCollection(
+        user ? query(collection(firestore, 'users', user.uid, 'notifications'), where('read', '==', false), orderBy('createdAt', 'desc')) : null
+    );
+
+    const [generalNotifications, generalNotificationsLoading] = useCollection(
+        query(collection(firestore, 'general_notifications'), orderBy('createdAt', 'desc'))
+    );
 
     useEffect(() => {
         if (user) {
@@ -243,11 +252,12 @@ export default function MyLearningPage() {
                 <p className="text-muted-foreground mt-2">All your enrolled materials in one place.</p>
             </div>
              <Tabs defaultValue="courses" className="w-full">
-                <TabsList className="grid w-full grid-cols-4 max-w-xl">
+                <TabsList className="grid w-full grid-cols-5 max-w-xl">
                     <TabsTrigger value="courses">Courses</TabsTrigger>
                     <TabsTrigger value="ebooks">E-Books</TabsTrigger>
                     <TabsTrigger value="tests">Tests</TabsTrigger>
                     <TabsTrigger value="papers">Papers</TabsTrigger>
+                    <TabsTrigger value="notifications">Notifications</TabsTrigger>
                 </TabsList>
                 <TabsContent value="courses" className="mt-6">
                     {renderCourseGrid(myCourses?.docs, myCoursesLoading || enrollmentsLoading || authLoading, myCoursesError)}
@@ -260,6 +270,66 @@ export default function MyLearningPage() {
                 </TabsContent>
                  <TabsContent value="papers" className="mt-6">
                     {renderTestGrid(myPapers?.docs, myPapersLoading, myPapersError)}
+                </TabsContent>
+                 <TabsContent value="notifications" className="mt-6">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Notifications</CardTitle>
+                            <CardDescription>Updates about your doubts and general announcements.</CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            {doubtNotificationsLoading || generalNotificationsLoading ? (
+                                <Skeleton className="h-24 w-full" />
+                            ) : (
+                                <>
+                                    {doubtNotifications && !doubtNotifications.empty && (
+                                        <div className="space-y-4">
+                                            <h3 className="font-semibold text-lg">Doubt Replies</h3>
+                                            {doubtNotifications.docs.map(doc => {
+                                                const notif = doc.data();
+                                                return (
+                                                    <Link href={`/dashboard/courses/${notif.courseId}?tab=doubts`} key={doc.id}>
+                                                        <div className="p-3 border rounded-lg hover:bg-muted">
+                                                            <p><span className="font-bold">{notif.replierName}</span> replied to your doubt:</p>
+                                                            <p className="text-sm text-muted-foreground italic">"{notif.doubtText}"</p>
+                                                            <p className="text-xs text-muted-foreground mt-1">{notif.createdAt?.toDate().toLocaleString()}</p>
+                                                        </div>
+                                                    </Link>
+                                                )
+                                            })}
+                                        </div>
+                                    )}
+
+                                    {generalNotifications && !generalNotifications.empty && (
+                                         <div className="space-y-4">
+                                             <Separator />
+                                             <h3 className="font-semibold text-lg">Announcements</h3>
+                                             {generalNotifications.docs.map(doc => {
+                                                 const notif = doc.data();
+                                                 return (
+                                                     <div key={doc.id} className="p-3 border rounded-lg bg-muted/50">
+                                                          <div className="flex items-center gap-2 mb-1">
+                                                            <Bell className="h-4 w-4 text-primary"/>
+                                                            <p className="font-bold">{notif.title}</p>
+                                                          </div>
+                                                         <p className="text-sm">{notif.message}</p>
+                                                         <p className="text-xs text-muted-foreground mt-2">{notif.createdAt?.toDate().toLocaleString()}</p>
+                                                     </div>
+                                                 )
+                                             })}
+                                         </div>
+                                    )}
+                                    
+                                    {(!doubtNotifications || doubtNotifications.empty) && (!generalNotifications || generalNotifications.empty) && (
+                                         <div className="text-center py-12">
+                                            <BellDot className="mx-auto h-12 w-12 text-muted-foreground" />
+                                            <h3 className="mt-4 text-lg font-semibold">No New Notifications</h3>
+                                        </div>
+                                    )}
+                                </>
+                            )}
+                        </CardContent>
+                    </Card>
                 </TabsContent>
             </Tabs>
         </div>

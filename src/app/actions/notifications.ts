@@ -2,6 +2,7 @@
 'use server';
 
 import { admin, messaging } from '@/lib/firebase-admin';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 
 export async function sendNotificationsAction(
   title: string,
@@ -10,12 +11,17 @@ export async function sendNotificationsAction(
   try {
     if (!admin.apps.length) {
         console.error("Firebase Admin SDK is not initialized correctly.");
-        // Attempt to re-initialize or handle the error gracefully.
-        // For now, we'll throw an error that the client can catch.
         throw new Error("Firebase Admin SDK is not initialized on the server.");
     }
+
+    // 1. Save notification to a general collection for all users to see
+    await admin.firestore().collection('general_notifications').add({
+        title,
+        message,
+        createdAt: serverTimestamp(),
+    });
     
-    // Use admin firestore instance
+    // 2. Send push notifications to all subscribed devices
     const usersSnapshot = await admin.firestore().collection('users').get();
     const allTokens: string[] = [];
 
@@ -27,7 +33,7 @@ export async function sendNotificationsAction(
     });
 
     if (allTokens.length === 0) {
-      return { success: true, successCount: 0, error: "No registered devices found to send notifications." };
+      return { success: true, successCount: 0, error: "No registered devices found to send notifications, but message was saved." };
     }
 
     const uniqueTokens = [...new Set(allTokens)];
