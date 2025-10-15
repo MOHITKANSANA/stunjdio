@@ -73,9 +73,8 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 const sidebarNavItems = [
     { href: '/dashboard', icon: Home, label: 'home' },
     { href: '/dashboard/my-learning', icon: Library, label: 'My Library' },
-    { href: '/dashboard/mindsphere', icon: BrainCircuit, label: 'Mind Sphere' },
-    { href: '/dashboard/ebooks', icon: BookCopy, label: 'E-Books' },
     { href: '/dashboard/social', icon: Users, label: 'Social Media' },
+    { href: '/dashboard/ebooks', icon: BookCopy, label: 'E-Books' },
     { href: '/dashboard/profile', icon: User, label: 'profile' },
     { href: '/dashboard/courses', icon: Book, label: 'courses' },
     { href: '/dashboard/live-classes', icon: Clapperboard, label: 'Live Classes' },
@@ -97,15 +96,6 @@ const kidsSidebarNavItems = [
     { href: '/dashboard/kids/doubts', icon: HelpCircle, label: 'My Doubts' },
 ]
 
-const mindSphereSidebarNavItems = [
-    { href: '/dashboard/mindsphere', icon: Home, label: 'Home' },
-    { href: '/dashboard/mindsphere/library', icon: Library, label: 'Library' },
-    { href: '/dashboard/mindsphere/community', icon: Users, label: 'Community' },
-    { href: '/dashboard/mindsphere/planner', icon: Calendar, label: 'Planner' },
-    { href: '/dashboard/profile', icon: User, label: 'Profile' },
-];
-
-
 const SidebarMenuItemWithHandler = ({ href, icon: Icon, label, closeSidebar }: { href: string; icon: React.ElementType; label: string; closeSidebar: () => void; }) => {
     const pathname = usePathname();
     const { t } = useLanguage();
@@ -124,7 +114,7 @@ const SidebarMenuItemWithHandler = ({ href, icon: Icon, label, closeSidebar }: {
 }
 
 
-const AppSidebar = ({ isKidsMode, isMindSphereMode, appLogoUrl }: { isKidsMode: boolean, isMindSphereMode: boolean, appLogoUrl: string | null }) => {
+const AppSidebar = ({ isKidsMode, appLogoUrl }: { isKidsMode: boolean, appLogoUrl: string | null }) => {
     const { isMobile, setOpenMobile } = useSidebar();
     const { t } = useLanguage();
     const { user, logout } = useAuth();
@@ -157,8 +147,6 @@ const AppSidebar = ({ isKidsMode, isMindSphereMode, appLogoUrl }: { isKidsMode: 
     
     const navItems = isKidsMode 
         ? kidsSidebarNavItems 
-        : isMindSphereMode 
-        ? mindSphereSidebarNavItems
         : sidebarNavItems;
 
     return (
@@ -309,7 +297,6 @@ function DashboardLayoutContent({
   const [isProfileChecked, setIsProfileChecked] = useState(false);
   
   const isVideoPlaybackPage = pathname.includes('/video/') || pathname.includes('/live-class/');
-  const isMindSphereMode = pathname.startsWith('/dashboard/mindsphere');
 
   // Handle foreground messages
   useEffect(() => {
@@ -466,7 +453,7 @@ function DashboardLayoutContent({
         />
          {!isVideoPlaybackPage && <AppHeader appLogoUrl={appLogoUrl} />}
          <div className={cn("flex flex-col md:flex-row w-full h-full overflow-hidden")}>
-            {!isVideoPlaybackPage && <AppSidebar isKidsMode={isKidsMode} isMindSphereMode={isMindSphereMode} appLogoUrl={appLogoUrl} />}
+            {!isVideoPlaybackPage && <AppSidebar isKidsMode={isKidsMode} appLogoUrl={appLogoUrl} />}
              <main className="flex-1 overflow-y-auto h-full" onClick={() => isMobile && setOpenMobile(false)}>
                 <SidebarInset>
                     <div className={cn(!isVideoPlaybackPage && 'p-4 md:p-6')}>
@@ -475,7 +462,7 @@ function DashboardLayoutContent({
                 </SidebarInset>
             </main>
          </div>
-         {!isVideoPlaybackPage && <AppBottomNav isKidsMode={isKidsMode} isMindSphereMode={isMindSphereMode} />}
+         {!isVideoPlaybackPage && <AppBottomNav isKidsMode={isKidsMode} />}
       </div>
   );
 }

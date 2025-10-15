@@ -25,6 +25,7 @@ const getYoutubeVideoId = (url: string): string | null => {
         const patterns = [
             /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/|v\/|live\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/,
             /youtube\.com\/shorts\/([a-zA-Z0-9_-]{11})/,
+             /youtu\.be\/([a-zA-Z0-9_-]{11})/,
         ];
 
         for (const pattern of patterns) {

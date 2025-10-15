@@ -6,7 +6,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { firestore } from '@/lib/firebase';
 import { doc, collection, query, orderBy, onSnapshot, where, getDoc, addDoc, serverTimestamp, deleteDoc, limit } from 'firebase/firestore';
 import { useDocument } from 'react-firebase-hooks/firestore';
-import { notFound, useParams } from 'next/navigation';
+import { notFound, useParams, useRouter } from 'next/navigation';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -25,6 +25,7 @@ const getYoutubeVideoId = (url: string): string | null => {
         const patterns = [
             /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/|v\/|live\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/,
             /youtube\.com\/shorts\/([a-zA-Z0-9_-]{11})/,
+            /youtu\.be\/([a-zA-Z0-9_-]{11})/,
         ];
 
         for (const pattern of patterns) {
@@ -104,7 +105,7 @@ const getRumbleEmbedUrl = (url: string): string | null => {
 }
 
 
-const VideoPlayer = ({ videoUrl }: { videoUrl: string }) => {
+const VideoPlayer = ({ videoUrl, onEnded }: { videoUrl: string; onEnded: () => void; }) => {
     let embedUrl;
     let playerType = 'iframe'; // Default to iframe
 
@@ -139,6 +140,10 @@ const VideoPlayer = ({ videoUrl }: { videoUrl: string }) => {
             </div>
         );
     }
+
+    const handleVideoEnd = () => {
+        onEnded();
+    };
 
     return (
         <div className="w-full aspect-video bg-black rounded-lg">
@@ -388,7 +393,7 @@ export default function VideoPlaybackPage() {
     return (
         <div className="flex flex-col h-screen bg-background overflow-hidden">
              <div className="w-full">
-                <VideoPlayer videoUrl={content.url} />
+                <VideoPlayer videoUrl={content.url} onEnded={() => {}} />
             </div>
             <div className="flex-grow min-h-0 flex flex-col">
                 <div className="p-4 border-b">

@@ -21,20 +21,11 @@ const kidsBottomNavItems = [
     { href: '/dashboard/profile', icon: User, label: 'Profile' },
 ];
 
-const mindSphereBottomNavItems = [
-    { href: '/dashboard/mindsphere', icon: Home, label: 'Home' },
-    { href: '/dashboard/mindsphere/library', icon: Library, label: 'Library' },
-    { href: '/dashboard/mindsphere/community', icon: Users, label: 'Community' },
-    { href: '/dashboard/mindsphere/planner', icon: Calendar, label: 'Planner' },
-    { href: '/dashboard/profile', icon: User, label: 'Profile' },
-];
 
-export const AppBottomNav = ({ isKidsMode, isMindSphereMode }: { isKidsMode: boolean, isMindSphereMode: boolean }) => {
+export const AppBottomNav = ({ isKidsMode }: { isKidsMode: boolean }) => {
     const pathname = usePathname();
     const items = isKidsMode 
         ? kidsBottomNavItems 
-        : isMindSphereMode
-        ? mindSphereBottomNavItems
         : mainBottomNavItems;
 
     return (
