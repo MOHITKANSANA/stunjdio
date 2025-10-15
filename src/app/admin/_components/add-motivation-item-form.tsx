@@ -18,7 +18,16 @@ import { Textarea } from '@/components/ui/textarea';
 const motivationItemSchema = z.object({
   type: z.enum(['gallery', 'short_video', 'full_video']),
   title: z.string().min(1, 'Title is required.'),
-  file: z.any().refine(file => file, 'An image or video file is required.'),
+  fileUrl: z.string().url('A valid URL is required for videos.'),
+  thumbnailFile: z.any().optional(), // Optional for videos, required for gallery
+}).refine(data => {
+    if (data.type === 'gallery' && !data.thumbnailFile) {
+        return false;
+    }
+    return true;
+}, {
+    message: 'An image file is required for gallery items.',
+    path: ['thumbnailFile'],
 });
 
 type MotivationFormValues = z.infer<typeof motivationItemSchema>;
@@ -43,6 +52,7 @@ export function AddMotivationItemForm() {
     defaultValues: {
       type: 'gallery',
       title: '',
+      fileUrl: '',
     },
   });
 
@@ -51,7 +61,7 @@ export function AddMotivationItemForm() {
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
-      form.setValue('file', file);
+      form.setValue('thumbnailFile', file);
       setPreview(URL.createObjectURL(file));
     }
   };
@@ -59,13 +69,17 @@ export function AddMotivationItemForm() {
   const onSubmit = async (data: MotivationFormValues) => {
     setIsLoading(true);
     try {
-      const fileUrl = await fileToDataUrl(data.file);
+      let thumbnailUrl = '';
+      if (data.thumbnailFile) {
+        thumbnailUrl = await fileToDataUrl(data.thumbnailFile);
+      }
       
       const collectionName = data.type === 'gallery' ? 'galleryImages' : 'motivationVideos';
       
       await addDoc(collection(firestore, collectionName), {
         title: data.title,
-        url: fileUrl,
+        url: data.type === 'gallery' ? thumbnailUrl : data.fileUrl,
+        thumbnailUrl: data.type !== 'gallery' ? thumbnailUrl : '', // For videos, store thumb separately
         type: data.type,
         createdAt: serverTimestamp(),
       });
@@ -110,12 +124,18 @@ export function AddMotivationItemForm() {
           <FormItem><FormLabel>Title</FormLabel><FormControl><Input placeholder="e.g., Annual Function 2023" {...field} /></FormControl><FormMessage /></FormItem>
         )} />
         
+        {type !== 'gallery' && (
+             <FormField control={form.control} name="fileUrl" render={({ field }) => (
+                <FormItem><FormLabel>Video URL</FormLabel><FormControl><Input placeholder="https://youtube.com/..." {...field} /></FormControl><FormMessage /></FormItem>
+            )} />
+        )}
+        
         <FormField
           control={form.control}
-          name="file"
+          name="thumbnailFile"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>{type === 'gallery' ? 'Image' : 'Video'}</FormLabel>
+              <FormLabel>{type === 'gallery' ? 'Image' : 'Thumbnail (Optional)'}</FormLabel>
               <FormControl>
                 <div>
                   <Button type="button" variant="outline" className="w-full" onClick={() => fileInputRef.current?.click()}>
@@ -127,15 +147,12 @@ export function AddMotivationItemForm() {
                     ref={fileInputRef}
                     onChange={handleFileChange}
                     className="hidden"
-                    accept={type === 'gallery' ? 'image/*' : 'video/*'}
+                    accept="image/*"
                   />
                 </div>
               </FormControl>
-              {preview && type === 'gallery' && (
+              {preview && (
                   <Image src={preview} alt="Image preview" width={100} height={100} className="mt-2 rounded-md" />
-              )}
-              {preview && type !== 'gallery' && (
-                  <video src={preview} controls className="mt-2 rounded-md w-full" />
               )}
               <FormMessage />
             </FormItem>

@@ -19,7 +19,6 @@ import { ManageTestSeriesEnrollments } from "./_components/manage-test-series-en
 import { AppSettingsForm } from "./_components/app-settings-form";
 import { ManageUsers } from "./_components/manage-users";
 import { ManagePromotions } from "./_components/manage-promotions";
-import { SendNotificationsForm } from "./_components/send-notifications-form";
 import { useCollection } from "react-firebase-hooks/firestore";
 import { collection, query, where, doc, deleteDoc } from "firebase/firestore";
 import { firestore } from "@/lib/firebase";
@@ -37,6 +36,9 @@ import { EditContentForm } from "./_components/edit-content-form";
 import { RevenueDashboard } from "./_components/revenue-dashboard";
 import { ManagePaperEnrollments } from "./_components/manage-paper-enrollments";
 import { AddGalleryImageForm } from "./_components/add-gallery-image-form";
+import { AddBookShalaForm } from "./_components/add-book-shala-form";
+import { ManageBookShalaOrders } from "./_components/manage-book-shala";
+import { AddMotivationItemForm } from "./_components/add-motivation-item-form";
 
 
 const PwaInstallations = () => {
@@ -145,7 +147,7 @@ const ManageAllContent = () => {
                                 <TableRow key={d.id}>
                                     <TableCell>{d.data().title}</TableCell>
                                     <TableCell className="text-right space-x-2">
-                                        {['courses', 'ebooks', 'testSeries', 'previousPapers'].includes(collectionName) && (
+                                        {['courses', 'ebooks', 'testSeries', 'previousPapers', 'bookShala'].includes(collectionName) && (
                                             <Button variant="outline" size="icon" onClick={() => setEditItem({ id: d.id, collection: collectionName })}>
                                                 <Edit className="h-4 w-4" />
                                             </Button>
@@ -188,10 +190,8 @@ const ManageAllContent = () => {
                 {renderTable("Manage E-Books", ebooks, ebooksLoading, 'ebooks')}
                 {renderTable("Manage Test Series", testSeries, testSeriesLoading, 'testSeries')}
                 {renderTable("Manage Previous Year Papers", previousPapers, previousPapersLoading, 'previousPapers')}
-                <Card>
-                    <CardHeader><CardTitle>Manage Gallery</CardTitle></CardHeader>
-                    <CardContent><AddGalleryImageForm /></CardContent>
-                </Card>
+                {renderTable("Manage Book Shala Items", useCollection(collection(firestore, 'bookShala'))[0], useCollection(collection(firestore, 'bookShala'))[1], 'bookShala')}
+
             </div>
         </div>
     );
@@ -200,10 +200,10 @@ const ManageAllContent = () => {
 
 export default function AdminPage() {
     return (
-        <div className="space-y-8 p-4 md:p-8">
+        <div className="space-y-8 p-4 md:p-8 bg-green-50 dark:bg-green-900/10">
             <div>
-                <h1 className="text-3xl md:text-4xl font-bold font-headline">Admin Dashboard</h1>
-                <p className="text-muted-foreground mt-2">Manage your application content and users.</p>
+                <h1 className="text-3xl md:text-4xl font-bold font-headline text-green-800 dark:text-green-300">Admin Dashboard</h1>
+                <p className="text-green-600 dark:text-green-400/80 mt-2">Manage your application content and users.</p>
             </div>
             
              <Tabs defaultValue="revenue" className="w-full" orientation="vertical">
@@ -212,7 +212,8 @@ export default function AdminPage() {
                     <TabsTrigger value="content">Add Content</TabsTrigger>
                     <TabsTrigger value="manage_content">Manage Content</TabsTrigger>
                     <TabsTrigger value="users">Manage Users</TabsTrigger>
-                    <TabsTrigger value="notifications">Notifications</TabsTrigger>
+                    <TabsTrigger value="book_shala">Book Shala</TabsTrigger>
+                    <TabsTrigger value="motivation">Motivation</TabsTrigger>
                     <TabsTrigger value="course_enrollments">Course Enrollments</TabsTrigger>
                     <TabsTrigger value="test_enrollments">Test Enrollments</TabsTrigger>
                     <TabsTrigger value="ebook_enrollments">E-Book Enrollments</TabsTrigger>
@@ -270,21 +271,26 @@ export default function AdminPage() {
                 <TabsContent value="manage_content" className="mt-6 md:mt-0">
                     <ManageAllContent />
                 </TabsContent>
+                
+                <TabsContent value="book_shala" className="mt-6 md:mt-0">
+                    <div className="grid lg:grid-cols-2 gap-8">
+                        <Card>
+                            <CardHeader><CardTitle>Add New Book to Shala</CardTitle></CardHeader>
+                            <CardContent><AddBookShalaForm /></CardContent>
+                        </Card>
+                        <ManageBookShalaOrders />
+                    </div>
+                </TabsContent>
+                
+                <TabsContent value="motivation" className="mt-6 md:mt-0">
+                    <Card>
+                        <CardHeader><CardTitle>Add Motivational Content</CardTitle></CardHeader>
+                        <CardContent><AddMotivationItemForm/></CardContent>
+                    </Card>
+                </TabsContent>
 
                 <TabsContent value="users" className="mt-6 md:mt-0">
                     <ManageUsers />
-                </TabsContent>
-
-                 <TabsContent value="notifications" className="mt-6 md:mt-0">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Send Push Notifications</CardTitle>
-                            <CardDescription>Send a notification to all subscribed users.</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <SendNotificationsForm />
-                        </CardContent>
-                    </Card>
                 </TabsContent>
 
                 <TabsContent value="course_enrollments" className="mt-6 md:mt-0">
@@ -387,5 +393,3 @@ export default function AdminPage() {
         </div>
     );
 }
-
-    

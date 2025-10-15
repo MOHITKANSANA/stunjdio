@@ -265,7 +265,7 @@ function ScholarshipPageContent() {
   const tabItems: { id: ActiveTab; label: string; icon: React.ElementType }[] = [
     { id: 'apply', label: 'Apply', icon: PenSquare },
     { id: 'admit-card', label: 'Admit Card', icon: Ticket },
-    { id: 'test', label: 'Online Test', icon: FileText },
+    { id: 'test', label: 'Take Online Test', icon: FileText },
     { id: 'result', label: 'View Result', icon: Eye },
     { id: 'review', label: 'Scrutiny', icon: Search },
     { id: 'history', label: 'My Applications', icon: FileSignature },

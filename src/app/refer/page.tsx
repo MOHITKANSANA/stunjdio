@@ -1,4 +1,3 @@
-
 'use client';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
@@ -36,7 +35,7 @@ export default function ReferPage() {
         return () => unsub();
     }, [user]);
 
-    const referralCode = user?.referralCode || 'LOGINTOSEE';
+    const referralCode = "LEARN5";
     const referralMessage = `Join me on Learn with Munedra! Use my referral code ${referralCode} to get a special discount. Download the app here: ${appLink}`;
 
     const copyToClipboard = () => {
