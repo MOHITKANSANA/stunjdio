@@ -13,6 +13,7 @@ import {
   Bot,
   Users,
   Info,
+  Heart,
 } from 'lucide-react';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -37,7 +38,7 @@ const quickAccessItems = [
   { label: "AI Tests", icon: ShieldQuestion, href: "/dashboard/tests", color: "from-purple-500 to-violet-500" },
   { label: "My Library", icon: Library, href: "/dashboard/my-learning", color: "from-fuchsia-500 to-pink-500" },
   { label: "Live Classes", icon: Clapperboard, href: "/dashboard/live-classes", color: "from-red-500 to-rose-500" },
-  { label: "Why Us", icon: Info, href: "/p/why-us", color: "from-orange-500 to-amber-500" },
+  { label: "Motivation", icon: Heart, href: "/dashboard/motivation", color: "from-pink-500 to-rose-500" },
   { label: "Scholarship", icon: Award, href: "/dashboard/scholarship", color: "from-yellow-500 to-lime-500" },
   { label: "Profile", icon: User, href: "/dashboard/profile", color: "from-slate-500 to-gray-500" },
 ];
@@ -135,7 +136,12 @@ const MainDashboard = () => {
                 <OurEducators />
                 <StudentReviews />
                 <TopStudentsSection />
-                <SocialMediaLinks />
+                <div className="text-center">
+                    <Button asChild variant="outline">
+                        <Link href="/dashboard/social">Join Our Social Media</Link>
+                    </Button>
+                </div>
+
             </div>
         </div>
     );
@@ -175,3 +181,5 @@ export default function DashboardPage() {
 
     return (<MainDashboard />);
 }
+
+    

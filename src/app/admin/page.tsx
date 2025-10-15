@@ -35,6 +35,7 @@ import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { EditContentForm } from "./_components/edit-content-form";
 import { RevenueDashboard } from "./_components/revenue-dashboard";
+import { ManagePaperEnrollments } from "./_components/manage-paper-enrollments";
 
 
 const PwaInstallations = () => {
@@ -322,8 +323,7 @@ export default function AdminPage() {
                             <CardDescription>Approve or reject student paper purchase requests.</CardDescription>
                         </CardHeader>
                         <CardContent>
-                            {/* This component will need to be created */}
-                            <p>Previous Year Paper Enrollments Management coming soon.</p>
+                            <ManagePaperEnrollments />
                         </CardContent>
                     </Card>
                 </TabsContent>
@@ -380,3 +380,5 @@ export default function AdminPage() {
         </div>
     );
 }
+
+    

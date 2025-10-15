@@ -40,6 +40,7 @@ import {
   MessageCircle,
   BrainCircuit,
   FileSignature,
+  Heart,
 } from 'lucide-react';
 
 import { useAuth, updateUserInFirestore } from '@/hooks/use-auth';
@@ -77,6 +78,7 @@ const sidebarNavItems = [
     { href: '/dashboard', icon: Home, label: 'home' },
     { href: '/dashboard/my-learning', icon: Library, label: 'My Library' },
     { href: '/dashboard/social', icon: Users, label: 'Social Media' },
+    { href: '/dashboard/motivation', icon: Heart, label: 'Motivation' },
     { href: '/dashboard/ebooks', icon: BookCopy, label: 'E-Books' },
     { href: '/dashboard/profile', icon: User, label: 'profile' },
     { href: '/dashboard/courses', icon: Book, label: 'courses' },
@@ -255,7 +257,12 @@ const NotificationsPanel = ({ open, onOpenChange }: { open: boolean, onOpenChang
         query(collection(firestore, 'general_notifications'), orderBy('createdAt', 'desc'), where('createdAt', '>', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000))) // last 30 days
     );
 
-    const loading = doubtNotificationsLoading || generalNotificationsLoading;
+    const [liveClassNotifications, liveClassNotificationsLoading] = useCollection(
+        query(collection(firestore, 'live_classes'), where('startTime', '>', new Date()), orderBy('startTime', 'asc'))
+    );
+
+
+    const loading = doubtNotificationsLoading || generalNotificationsLoading || liveClassNotificationsLoading;
 
     return (
         <Sheet open={open} onOpenChange={onOpenChange}>
@@ -266,6 +273,34 @@ const NotificationsPanel = ({ open, onOpenChange }: { open: boolean, onOpenChang
                 </SheetHeader>
                 <div className="py-4 space-y-6">
                     {loading && <Loader2 className="animate-spin mx-auto" />}
+
+                    {!loading && (!doubtNotifications || doubtNotifications.empty) && (!generalNotifications || generalNotifications.empty) && (!liveClassNotifications || liveClassNotifications.empty) && (
+                        <div className="text-center py-12">
+                            <Bell className="mx-auto h-12 w-12 text-muted-foreground" />
+                            <h3 className="mt-4 text-lg font-semibold">No New Notifications</h3>
+                        </div>
+                    )}
+                    
+                    {liveClassNotifications && !liveClassNotifications.empty && (
+                         <div className="space-y-4">
+                            {liveClassNotifications.docs.map(doc => {
+                                const notif = doc.data();
+                                return (
+                                    <Link href={`/dashboard/live-classes`} key={doc.id} onClick={() => onOpenChange(false)}>
+                                        <div className="p-3 border rounded-lg hover:bg-muted">
+                                            <div className="flex items-center gap-3">
+                                                <Clapperboard className="h-5 w-5 text-primary" />
+                                                <div>
+                                                    <p className="font-bold">New Live Class: {notif.title}</p>
+                                                    <p className="text-xs text-muted-foreground mt-1">{notif.startTime?.toDate().toLocaleString()}</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </Link>
+                                )
+                            })}
+                        </div>
+                    )}
 
                      {doubtNotifications && !doubtNotifications.empty && (
                         <div className="space-y-4">
@@ -294,7 +329,7 @@ const NotificationsPanel = ({ open, onOpenChange }: { open: boolean, onOpenChang
                                 return (
                                     <div key={doc.id} className="p-3 border rounded-lg bg-muted/50">
                                             <div className="flex items-center gap-2 mb-1">
-                                            <Bell className="h-4 w-4 text-primary"/>
+                                            <Newspaper className="h-4 w-4 text-primary"/>
                                             <p className="font-bold">{notif.title}</p>
                                             </div>
                                         <p className="text-sm">{notif.message}</p>
@@ -305,12 +340,6 @@ const NotificationsPanel = ({ open, onOpenChange }: { open: boolean, onOpenChang
                         </div>
                     )}
 
-                    {!loading && (!doubtNotifications || doubtNotifications.empty) && (!generalNotifications || generalNotifications.empty) && (
-                        <div className="text-center py-12">
-                            <Bell className="mx-auto h-12 w-12 text-muted-foreground" />
-                            <h3 className="mt-4 text-lg font-semibold">No New Notifications</h3>
-                        </div>
-                    )}
                 </div>
             </SheetContent>
         </Sheet>
@@ -568,3 +597,5 @@ export default function DashboardLayout({
         </SidebarProvider>
     )
 }
+
+    

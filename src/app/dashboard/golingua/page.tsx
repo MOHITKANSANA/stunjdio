@@ -17,7 +17,6 @@ const languages = [
     { value: "german", label: "German" },
 ];
 
-// Simplified lesson data with text-only exercises
 const lessonData: Record<string, { type: string, word?: string, phrase?: string, options: string[], answer: string, prompt: string }[]> = {
     english: Array.from({ length: 25 }, (_, i) => [
         { type: 'vocab', word: `Hello ${i+1}`, options: [`नमस्ते ${i+1}`, 'धन्यवाद', 'माफ़ कीजिए', 'अलविदा'], answer: `नमस्ते ${i+1}`, prompt: "Translate this word:" },
@@ -103,48 +102,43 @@ export default function GoLinguaPage() {
     );
 
     const renderLearningScreen = () => {
-        if (!exercise) return null;
-        
-        let exerciseContent;
-
-        switch(exercise.type) {
-            case 'vocab':
-                exerciseContent = (
-                    <div className="space-y-4">
-                        <Card className="text-center p-8 text-3xl font-bold">{exercise.word}</Card>
-                        <div className="grid grid-cols-2 gap-2">
-                           {exercise.options.map(option => {
-                                const isSelected = selectedOption === option;
-                                const isCorrectAnswer = option === exercise.answer;
-                                let buttonVariant: "default" | "destructive" | "outline" | "secondary" = "outline";
-                                if (isCorrect !== null) { // an answer has been checked
-                                    if(isCorrectAnswer) buttonVariant = "default";
-                                    else if(isSelected && !isCorrectAnswer) buttonVariant = "destructive";
-                                    else buttonVariant = "secondary";
-                                } else if (isSelected) {
-                                    buttonVariant = "secondary";
-                                }
-
-                               return (
-                                   <Button
-                                     key={option}
-                                     variant={buttonVariant}
-                                     onClick={() => isCorrect === null && setSelectedOption(option)}
-                                     className={`h-auto py-3 text-base`}
-                                   >
-                                       {option}
-                                   </Button>
-                               )
-                           })}
-                        </div>
-                    </div>
-                );
-                break;
-            default:
-                // This will skip any non-vocab exercises
+        if (!exercise || exercise.type !== 'vocab') {
+             if (exercise && exercise.type !== 'vocab') {
                 handleNext();
-                return null;
+            }
+            return null;
         }
+        
+        let exerciseContent = (
+            <div className="space-y-4">
+                <Card className="text-center p-8 text-3xl font-bold">{exercise.word}</Card>
+                <div className="grid grid-cols-2 gap-2">
+                    {exercise.options.map(option => {
+                        const isSelected = selectedOption === option;
+                        const isCorrectAnswer = option === exercise.answer;
+                        let buttonVariant: "default" | "destructive" | "outline" | "secondary" = "outline";
+                        if (isCorrect !== null) {
+                            if(isCorrectAnswer) buttonVariant = "default";
+                            else if(isSelected && !isCorrectAnswer) buttonVariant = "destructive";
+                            else buttonVariant = "secondary";
+                        } else if (isSelected) {
+                            buttonVariant = "secondary";
+                        }
+
+                       return (
+                           <Button
+                             key={option}
+                             variant={buttonVariant}
+                             onClick={() => isCorrect === null && setSelectedOption(option)}
+                             className={`h-auto py-3 text-base`}
+                           >
+                               {option}
+                           </Button>
+                       )
+                   })}
+                </div>
+            </div>
+        );
 
         return (
             <div>
@@ -199,3 +193,5 @@ export default function GoLinguaPage() {
         </div>
     )
 }
+
+    

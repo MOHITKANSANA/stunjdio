@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -59,7 +60,6 @@ export default function SocialMediaPage() {
 
     useEffect(() => {
         if (socialLinksDoc?.socialMediaLinks) {
-            // Combine hardcoded and Firestore links, avoiding duplicates by URL
             const firestoreLinks = socialLinksDoc.socialMediaLinks.filter(
                 (dbLink: any) => !hardcodedLinks.some(hl => hl.url === dbLink.url)
             );
@@ -98,3 +98,5 @@ export default function SocialMediaPage() {
         </div>
     )
 }
+
+    
