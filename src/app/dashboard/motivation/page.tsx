@@ -34,6 +34,10 @@ const ShortsTab = () => {
             </div>
         )
     }
+    
+    if (error) {
+        return <p className="text-center text-destructive">Could not load videos.</p>
+    }
 
     if (!videos || videos.empty) {
         return (
@@ -82,6 +86,10 @@ const FullVideosTab = () => {
         )
     }
 
+    if (error) {
+        return <p className="text-center text-destructive">Could not load videos.</p>
+    }
+
     if (!videos || videos.empty) {
         return (
             <div className="text-center text-muted-foreground p-8">
@@ -119,34 +127,39 @@ const GalleryTab = () => {
         query(collection(firestore, 'galleryImages'), orderBy('createdAt', 'desc'))
     );
 
-    return (
-        <div>
-            {loading && (
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                    {[...Array(6)].map((_, i) => (
-                        <Skeleton key={i} className="w-full aspect-square rounded-lg" />
-                    ))}
-                </div>
-            )}
-            {error && <p className="text-destructive text-center">Could not load gallery images.</p>}
-            {!loading && images && images.empty && (
-                 <div className="text-center text-muted-foreground p-8">
-                    <GalleryHorizontal className="h-16 w-16 mx-auto mb-4" />
-                    <h3 className="text-lg font-semibold">Our Gallery</h3>
-                    <p>No images have been added yet.</p>
-                </div>
-            )}
+    if (loading) {
+        return (
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                {images?.docs.map(doc => {
-                    const image = doc.data();
-                    return (
-                        <div key={doc.id} className="relative aspect-square w-full rounded-lg overflow-hidden shadow-lg">
-                            <Image src={image.url} alt={image.title || 'Gallery Image'} fill style={{ objectFit: 'cover' }} />
-                             {image.title && <p className="absolute bottom-0 left-0 right-0 bg-black/50 text-white text-xs p-1 text-center truncate">{image.title}</p>}
-                        </div>
-                    );
-                })}
+                {[...Array(6)].map((_, i) => (
+                    <Skeleton key={i} className="w-full aspect-square rounded-lg" />
+                ))}
             </div>
+        )
+    }
+    if (error) {
+        return <p className="text-center text-destructive">Could not load gallery.</p>
+    }
+    if (!images || images.empty) {
+         return (
+             <div className="text-center text-muted-foreground p-8">
+                <GalleryHorizontal className="h-16 w-16 mx-auto mb-4" />
+                <h3 className="text-lg font-semibold">Our Gallery</h3>
+                <p>No images have been added yet.</p>
+            </div>
+        );
+    }
+
+    return (
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+            {images?.docs.map(doc => {
+                const image = doc.data();
+                return (
+                    <div key={doc.id} className="relative aspect-square w-full rounded-lg overflow-hidden shadow-lg">
+                        <Image src={image.url} alt={image.title || 'Gallery Image'} fill style={{ objectFit: 'cover' }} />
+                         {image.title && <p className="absolute bottom-0 left-0 right-0 bg-black/50 text-white text-xs p-1 text-center truncate">{image.title}</p>}
+                    </div>
+                );
+            })}
         </div>
     );
 };

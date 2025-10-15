@@ -261,9 +261,11 @@ const AppHeader = () => {
                 </div>
             </div>
              <div className="flex items-center gap-4">
-                <Button variant="ghost" size="icon" className="relative text-white hover:text-white hover:bg-white/10">
-                    <ShoppingCart />
-                    <span className="sr-only">Shopping Cart</span>
+                <Button asChild variant="ghost" size="icon" className="relative text-white hover:text-white hover:bg-white/10">
+                    <Link href="/dashboard/orders">
+                        <ShoppingCart />
+                        <span className="sr-only">Shopping Cart</span>
+                    </Link>
                 </Button>
                 <UserNav />
             </div>
