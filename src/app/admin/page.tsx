@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from "react";
@@ -208,14 +209,14 @@ const ManageAllContent = () => {
 
 export default function AdminPage() {
     return (
-        <div className="space-y-8 p-4 md:p-8 bg-background">
+        <div className="space-y-8 p-4 md:p-8">
             <div>
-                <h1 className="text-3xl md:text-4xl font-bold font-headline text-foreground">Admin Dashboard</h1>
+                <h1 className="text-3xl md:text-4xl font-bold font-headline">Admin Dashboard</h1>
                 <p className="text-muted-foreground mt-2">Manage your application content and users.</p>
             </div>
             
              <Tabs defaultValue="revenue" className="w-full">
-                <TabsList className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-9 gap-2 h-auto">
+                <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 h-auto">
                     <TabsTrigger value="revenue">Revenue</TabsTrigger>
                     <TabsTrigger value="content">Add Content</TabsTrigger>
                     <TabsTrigger value="manage_content">Manage Content</TabsTrigger>
