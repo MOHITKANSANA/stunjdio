@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState } from 'react';
@@ -13,6 +12,7 @@ import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import { firestore } from '@/lib/firebase';
 import { Loader2, PlusCircle, Trash2 } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
+import { AddMotivationItemForm } from './add-motivation-item-form';
 
 const questionSchema = z.object({
   text: z.string().min(1, 'Question text is required.'),
