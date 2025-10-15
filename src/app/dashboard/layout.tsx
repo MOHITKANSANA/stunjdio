@@ -35,6 +35,9 @@ import {
   Rss,
   Swords,
   Download,
+  Instagram,
+  Facebook,
+  MessageCircle as WhatsAppIcon,
 } from 'lucide-react';
 
 import { useAuth, updateUserInFirestore } from '@/hooks/use-auth';
@@ -125,14 +128,25 @@ const AppSidebar = ({ isKidsMode, isMindSphereMode, appLogoUrl }: { isKidsMode: 
     const { user, logout } = useAuth();
     const router = useRouter();
     const [customPages, setCustomPages] = useState<any[]>([]);
-     const [userData, setUserData] = useState<any>(null);
+    const [userData, setUserData] = useState<any>(null);
+    const [socialLinks, setSocialLinks] = useState<any[]>([]);
 
     useEffect(() => {
         const q = query(collection(firestore, "htmlPages"), orderBy("slug"));
-        const unsubscribe = onSnapshot(q, (snapshot) => {
+        const unsub = onSnapshot(q, (snapshot) => {
             setCustomPages(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
         });
-        return () => unsubscribe();
+        
+        const socialUnsub = onSnapshot(doc(firestore, 'settings', 'appConfig'), (doc) => {
+            if (doc.exists()) {
+                setSocialLinks(doc.data().socialMediaLinks || []);
+            }
+        });
+
+        return () => {
+          unsub();
+          socialUnsub();
+        };
     }, []);
     
      useEffect(() => {
@@ -163,6 +177,16 @@ const AppSidebar = ({ isKidsMode, isMindSphereMode, appLogoUrl }: { isKidsMode: 
         : isMindSphereMode 
         ? mindSphereSidebarNavItems
         : sidebarNavItems;
+
+    const SocialIcon = ({ iconName }: { iconName?: string }) => {
+        switch (iconName) {
+            case 'youtube': return <Youtube />;
+            case 'facebook': return <Facebook />;
+            case 'instagram': return <Instagram />;
+            case 'whatsapp': return <WhatsAppIcon />;
+            default: return <Info />;
+        }
+    };
 
     return (
         <Sidebar>
@@ -199,18 +223,17 @@ const AppSidebar = ({ isKidsMode, isMindSphereMode, appLogoUrl }: { isKidsMode: 
                             closeSidebar={closeSidebar}
                         />
 
-                        {customPages.map((page) => {
-                            if (page.id === 'why-us') return null; // Avoid duplicating "Why Us"
-                            return (
-                                <SidebarMenuItemWithHandler
-                                    key={page.id}
-                                    href={`/p/${page.slug}`}
-                                    icon={FileCode}
-                                    label={page.slug.replace(/-/g, ' ')}
-                                    closeSidebar={closeSidebar}
-                                />
-                            )
-                        })}
+                        {socialLinks.map((link) => (
+                             <SidebarMenuItem key={link.name}>
+                                <a href={link.url} target="_blank" rel="noopener noreferrer" onClick={closeSidebar}>
+                                    <SidebarMenuButton>
+                                        <SocialIcon iconName={link.iconName} />
+                                        <span>{link.name}</span>
+                                    </SidebarMenuButton>
+                                </a>
+                            </SidebarMenuItem>
+                        ))}
+
                         {userData?.isAdmin && (
                             <>
                             <SidebarSeparator />

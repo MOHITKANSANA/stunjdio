@@ -7,7 +7,7 @@ import { AlertTriangle, MessageCircle } from "lucide-react";
 import Link from "next/link";
 
 export default function UploadErrorPage() {
-    const supportNumber = '8949814095';
+    const supportNumber = '918949814095'; // Added country code
     const message = "Hello, I'm having trouble uploading a screenshot because the file size is too large. Can you please help?";
     const whatsappUrl = `https://wa.me/${supportNumber}?text=${encodeURIComponent(message)}`;
 
@@ -22,10 +22,7 @@ export default function UploadErrorPage() {
                 <CardContent className="space-y-4">
                     <p>To continue, please either compress the image to a smaller size or contact our support team on WhatsApp for manual verification.</p>
                 </CardContent>
-                <CardFooter className="flex flex-col sm:flex-row gap-4">
-                    <Button asChild className="w-full" variant="outline">
-                       <Link href="/dashboard/payment-verification">Try Again</Link>
-                    </Button>
+                <CardFooter>
                      <Button asChild className="w-full">
                         <a href={whatsappUrl} target="_blank" rel="noopener noreferrer">
                            <MessageCircle className="mr-2" /> WhatsApp Support

@@ -29,7 +29,6 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Trash2, Edit } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { AddBattleQuizForm } from "./_components/add-battle-quiz-form";
 import { ManageCoupons } from "./_components/manage-coupons";
 import { ManageEbookEnrollments } from "./_components/manage-ebook-enrollments";
 import { useState } from "react";
@@ -211,7 +210,6 @@ export default function AdminPage() {
                     <TabsTrigger value="ebook_enrollments">E-Book Enrollments</TabsTrigger>
                     <TabsTrigger value="paper_enrollments">Paper Enrollments</TabsTrigger>
                     <TabsTrigger value="scholarships">Scholarships</TabsTrigger>
-                    <TabsTrigger value="battle_quiz">Battle Quiz</TabsTrigger>
                     <TabsTrigger value="kids_tube">Kids Tube</TabsTrigger>
                     <TabsTrigger value="coupons">Coupons</TabsTrigger>
                     <TabsTrigger value="promotions">Promotions</TabsTrigger>
@@ -297,7 +295,7 @@ export default function AdminPage() {
                      <Card>
                         <CardHeader>
                             <CardTitle>Manage Test Series Enrollments</CardTitle>
-                            <CardDescription>Approve or reject student test series enrollment requests.</CardHeader>
+                            <CardDescription>Approve or reject student test series enrollment requests.</CardDescription>
                         </CardHeader>
                         <CardContent>
                             <ManageTestSeriesEnrollments />
@@ -309,7 +307,7 @@ export default function AdminPage() {
                      <Card>
                         <CardHeader>
                             <CardTitle>Manage E-Book Enrollments</CardTitle>
-                            <CardDescription>Approve or reject student E-Book purchase requests.</CardHeader>
+                            <CardDescription>Approve or reject student E-Book purchase requests.</CardDescription>
                         </CardHeader>
                         <CardContent>
                             <ManageEbookEnrollments />
@@ -333,18 +331,6 @@ export default function AdminPage() {
 
                 <TabsContent value="scholarships" className="mt-6 md:mt-0">
                     <ManageScholarships />
-                </TabsContent>
-
-                 <TabsContent value="battle_quiz" className="mt-6 md:mt-0">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Manage Battle Quizzes</CardTitle>
-                            <CardDescription>Create and manage battle quizzes.</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                           <AddBattleQuizForm />
-                        </CardContent>
-                    </Card>
                 </TabsContent>
 
                 <TabsContent value="kids_tube" className="mt-6 md:mt-0">

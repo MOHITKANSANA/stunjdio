@@ -60,7 +60,7 @@ export default function GoLinguaPage() {
     }
 
     const handleCheckAnswer = () => {
-        if (!exercise) return;
+        if (!exercise || !selectedOption) return;
         
         const correct = selectedOption === exercise.answer;
         setIsCorrect(correct);
@@ -106,7 +106,6 @@ export default function GoLinguaPage() {
         if (!exercise) return null;
         
         let exerciseContent;
-        const answerState = selectedOption ? (selectedOption === exercise.answer ? 'correct' : 'incorrect') : 'default';
 
         switch(exercise.type) {
             case 'vocab':
@@ -114,16 +113,29 @@ export default function GoLinguaPage() {
                     <div className="space-y-4">
                         <Card className="text-center p-8 text-3xl font-bold">{exercise.word}</Card>
                         <div className="grid grid-cols-2 gap-2">
-                           {exercise.options.map(option => (
-                               <Button
-                                 key={option}
-                                 variant={selectedOption === option ? (isCorrect ? 'default' : 'destructive') : 'outline'}
-                                 onClick={() => !isCorrect && setSelectedOption(option)}
-                                 className={`h-auto py-3 text-base ${isCorrect !== null && option !== exercise.answer && 'opacity-50'}`}
-                               >
-                                   {option}
-                               </Button>
-                           ))}
+                           {exercise.options.map(option => {
+                                const isSelected = selectedOption === option;
+                                const isCorrectAnswer = option === exercise.answer;
+                                let buttonVariant: "default" | "destructive" | "outline" | "secondary" = "outline";
+                                if (isCorrect !== null) { // an answer has been checked
+                                    if(isCorrectAnswer) buttonVariant = "default";
+                                    else if(isSelected && !isCorrectAnswer) buttonVariant = "destructive";
+                                    else buttonVariant = "secondary";
+                                } else if (isSelected) {
+                                    buttonVariant = "secondary";
+                                }
+
+                               return (
+                                   <Button
+                                     key={option}
+                                     variant={buttonVariant}
+                                     onClick={() => isCorrect === null && setSelectedOption(option)}
+                                     className={`h-auto py-3 text-base`}
+                                   >
+                                       {option}
+                                   </Button>
+                               )
+                           })}
                         </div>
                     </div>
                 );
@@ -135,8 +147,8 @@ export default function GoLinguaPage() {
         }
 
         return (
-            <div className="relative">
-                <Card className="flex flex-col justify-between min-h-[50vh] overflow-hidden">
+            <div>
+                <Card className="flex flex-col justify-between min-h-[50vh]">
                     <div>
                         <CardHeader>
                             <Progress value={progress} className="mb-4" />
@@ -144,18 +156,17 @@ export default function GoLinguaPage() {
                         </CardHeader>
                         <CardContent>{exerciseContent}</CardContent>
                     </div>
+                     <CardContent>
+                        {isCorrect === null ? (
+                            <Button className="w-full" onClick={handleCheckAnswer} disabled={!selectedOption}>Check</Button>
+                        ) : (
+                             <div className={`w-full p-4 text-white font-bold text-lg text-center rounded-lg ${isCorrect ? 'bg-green-500' : 'bg-red-500'}`}>
+                                <p>{isCorrect ? 'Correct!' : `Correct Answer: ${exercise.answer}`}</p>
+                                <Button className="w-full mt-4" variant="secondary" onClick={handleNext}>Next <ChevronRight/></Button>
+                            </div>
+                        )}
+                    </CardContent>
                 </Card>
-                {isCorrect !== null && (
-                     <div className={`absolute bottom-0 w-full p-4 text-white font-bold text-lg text-center rounded-b-lg ${isCorrect ? 'bg-green-500' : 'bg-red-500'}`}>
-                        <p>{isCorrect ? 'Correct!' : `Correct Answer: ${exercise.answer}`}</p>
-                        <Button className="w-full mt-4" onClick={handleNext}>Next <ChevronRight/></Button>
-                    </div>
-                )}
-                {isCorrect === null && (
-                    <div className="p-4 border-t mt-auto">
-                        <Button className="w-full" onClick={handleCheckAnswer} disabled={!selectedOption}>Check</Button>
-                    </div>
-                )}
             </div>
         )
     };
