@@ -116,10 +116,10 @@ const ManageAllContent = () => {
     const [editItem, setEditItem] = useState<{ id: string; collection: string; } | null>(null);
 
     const handleDelete = async (collectionName: string, docId: string, title: string) => {
-        if (window.confirm(`Are you sure you want to delete "${title}"? This cannot be undone.`)) {
+        if (window.confirm('Are you sure you want to delete "' + title + '"? This cannot be undone.')) {
             try {
                 await deleteDoc(doc(firestore, collectionName, docId));
-                toast({ description: `"${title}" has been deleted.` });
+                toast({ description: '"' + title + '" has been deleted.' });
             } catch (error: any) {
                 toast({ variant: 'destructive', description: `Failed to delete: ${error.message}` });
             }
