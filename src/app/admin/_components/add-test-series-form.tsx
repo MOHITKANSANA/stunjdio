@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -150,7 +151,7 @@ export function AddTestSeriesForm() {
               </FormControl>
               <SelectContent>
                 {coursesLoading && <p className="p-2">Loading...</p>}
-                <SelectItem value="">None</SelectItem>
+                <SelectItem value="none">None</SelectItem>
                 {coursesCollection?.docs.map(doc => (
                   <SelectItem key={doc.id} value={doc.id}>{doc.data().title}</SelectItem>
                 ))}
