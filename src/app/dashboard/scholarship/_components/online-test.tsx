@@ -45,7 +45,12 @@ export function OnlineTest({ settings }: { settings: any }) {
     const qrCodeUrl = qrCodeDoc?.data()?.paymentQrCodeUrl;
 
     const regForm = useForm<RegFormValues>({ resolver: zodResolver(regSchema) });
-    const answeringForm = useForm<TestAnsweringValues>({ resolver: zodResolver(testAnsweringSchema) });
+    const answeringForm = useForm<TestAnsweringValues>({ 
+        resolver: zodResolver(testAnsweringSchema),
+        defaultValues: {
+            answers: []
+        }
+    });
     const { fields, replace } = useFieldArray({ control: answeringForm.control, name: "answers" });
     const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
 
