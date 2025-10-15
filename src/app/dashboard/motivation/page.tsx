@@ -7,10 +7,12 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Heart, Film, GalleryHorizontal, Video, AlertTriangle } from 'lucide-react';
 import Image from 'next/image';
-import { useCollection } from 'react-firebase-hooks/firestore';
-import { collection, query, orderBy } from 'firebase/firestore';
+import { useCollectionData } from 'react-firebase-hooks/firestore';
+import { collection, query, orderBy, where } from 'firebase/firestore';
 import { firestore } from '@/lib/firebase';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+
 
 const motivationalLines = [
     "विश्वास करो कि तुम कर सकते हो और तुम आधा रास्ता तय कर चुके हो।",
@@ -21,14 +23,8 @@ const motivationalLines = [
 ];
 
 const ShortsTab = () => {
-    const [videosCollection, loading, error] = useCollection(
-        query(collection(firestore, 'motivationVideos'))
-    );
-
-    const videos = videosCollection?.docs
-        .filter(doc => doc.data().type === 'short_video')
-        .sort((a, b) => (b.data().createdAt?.toDate() || 0) - (a.data().createdAt?.toDate() || 0));
-
+    const q = query(collection(firestore, 'motivationVideos'), where('type', '==', 'short_video'), orderBy('createdAt', 'desc'));
+    const [videos, loading, error] = useCollectionData(q);
 
     if (loading) {
         return (
@@ -41,11 +37,11 @@ const ShortsTab = () => {
     }
     
     if (error) {
-        return <div className="text-center text-destructive p-4 border border-destructive/50 rounded-lg">
-            <AlertTriangle className="mx-auto mb-2" />
-            <p className="font-semibold">Could not load videos</p>
-            <p className="text-xs">{error.message}</p>
-        </div>
+        return <Alert variant="destructive">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertTitle>Could not load videos</AlertTitle>
+            <AlertDescription className="text-xs">{error.message}</AlertDescription>
+        </Alert>
     }
 
     if (!videos || videos.length === 0) {
@@ -60,35 +56,26 @@ const ShortsTab = () => {
     
     return (
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-            {videos.map(doc => {
-                const video = doc.data();
-                return (
-                    <a key={doc.id} href={video.url} target="_blank" rel="noopener noreferrer">
-                        <div className="relative aspect-[9/16] w-full rounded-lg overflow-hidden shadow-lg bg-muted">
-                            <Image src={video.thumbnailUrl || '/placeholder.jpg'} alt={video.title} fill style={{objectFit: 'cover'}}/>
-                            <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-                                <Video className="h-8 w-8 text-white" />
-                            </div>
-                             <p className="absolute bottom-2 left-2 right-2 text-white text-xs font-semibold truncate text-center bg-black/50 p-1 rounded">
-                                {video.title}
-                            </p>
+            {videos.map((video, index) => (
+                <a key={index} href={video.url} target="_blank" rel="noopener noreferrer">
+                    <div className="relative aspect-[9/16] w-full rounded-lg overflow-hidden shadow-lg bg-muted">
+                        <Image src={video.thumbnailUrl || '/placeholder.jpg'} alt={video.title} fill style={{objectFit: 'cover'}}/>
+                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                            <Video className="h-8 w-8 text-white" />
                         </div>
-                    </a>
-                )
-            })}
+                         <p className="absolute bottom-2 left-2 right-2 text-white text-xs font-semibold truncate text-center bg-black/50 p-1 rounded">
+                            {video.title}
+                        </p>
+                    </div>
+                </a>
+            ))}
         </div>
     );
 };
 
 const FullVideosTab = () => {
-     const [videosCollection, loading, error] = useCollection(
-        query(collection(firestore, 'motivationVideos'))
-    );
-
-    const videos = videosCollection?.docs
-        .filter(doc => doc.data().type === 'full_video')
-        .sort((a, b) => (b.data().createdAt?.toDate() || 0) - (a.data().createdAt?.toDate() || 0));
-
+    const q = query(collection(firestore, 'motivationVideos'), where('type', '==', 'full_video'), orderBy('createdAt', 'desc'));
+    const [videos, loading, error] = useCollectionData(q);
 
      if (loading) {
         return (
@@ -101,11 +88,11 @@ const FullVideosTab = () => {
     }
 
     if (error) {
-        return <div className="text-center text-destructive p-4 border border-destructive/50 rounded-lg">
-            <AlertTriangle className="mx-auto mb-2" />
-            <p className="font-semibold">Could not load videos</p>
-            <p className="text-xs">{error.message}</p>
-        </div>
+        return <Alert variant="destructive">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertTitle>Could not load videos</AlertTitle>
+            <AlertDescription className="text-xs">{error.message}</AlertDescription>
+        </Alert>
     }
 
     if (!videos || videos.length === 0) {
@@ -120,29 +107,26 @@ const FullVideosTab = () => {
 
      return (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {videos.map(doc => {
-                const video = doc.data();
-                return (
-                    <a key={doc.id} href={video.url} target="_blank" rel="noopener noreferrer">
-                         <div className="relative aspect-video w-full rounded-lg overflow-hidden shadow-lg bg-muted">
-                            <Image src={video.thumbnailUrl || '/placeholder.jpg'} alt={video.title} fill style={{objectFit: 'cover'}}/>
-                            <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-                                <Video className="h-12 w-12 text-white" />
-                            </div>
-                             <p className="absolute bottom-2 left-2 right-2 text-white font-semibold truncate text-center bg-black/50 p-2 rounded">
-                                {video.title}
-                            </p>
+            {videos.map((video, index) => (
+                <a key={index} href={video.url} target="_blank" rel="noopener noreferrer">
+                     <div className="relative aspect-video w-full rounded-lg overflow-hidden shadow-lg bg-muted">
+                        <Image src={video.thumbnailUrl || '/placeholder.jpg'} alt={video.title} fill style={{objectFit: 'cover'}}/>
+                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                            <Video className="h-12 w-12 text-white" />
                         </div>
-                    </a>
-                )
-            })}
+                         <p className="absolute bottom-2 left-2 right-2 text-white font-semibold truncate text-center bg-black/50 p-2 rounded">
+                            {video.title}
+                        </p>
+                    </div>
+                </a>
+            ))}
         </div>
     );
 }
 
 const GalleryTab = () => {
     const [images, loading, error] = useCollection(
-        query(collection(firestore, 'galleryImages'))
+        query(collection(firestore, 'galleryImages'), orderBy('createdAt', 'desc'))
     );
 
     if (loading) {
@@ -155,11 +139,11 @@ const GalleryTab = () => {
         )
     }
     if (error) {
-        return <div className="text-center text-destructive p-4 border border-destructive/50 rounded-lg">
-            <AlertTriangle className="mx-auto mb-2" />
-            <p className="font-semibold">Could not load gallery</p>
-            <p className="text-xs">{error.message}</p>
-        </div>
+         return <Alert variant="destructive">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertTitle>Could not load gallery</AlertTitle>
+            <AlertDescription className="text-xs">{error.message}</AlertDescription>
+        </Alert>
     }
     if (!images || images.empty) {
          return (
@@ -171,12 +155,9 @@ const GalleryTab = () => {
         );
     }
     
-    // Client-side sorting
-    const sortedImages = images.docs.sort((a, b) => (b.data().createdAt?.toDate() || 0) - (a.data().createdAt?.toDate() || 0));
-
     return (
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-            {sortedImages.map(doc => {
+            {images.docs.map(doc => {
                 const image = doc.data();
                 return (
                     <div key={doc.id} className="relative aspect-square w-full rounded-lg overflow-hidden shadow-lg">

@@ -39,6 +39,8 @@ import { AddBookShalaForm } from "./_components/add-book-shala-form";
 import { ManageBookShalaOrders } from "./_components/manage-book-shala";
 import { AddMotivationItemForm } from "./_components/add-motivation-item-form";
 import { AddGalleryImageForm } from "./_components/add-gallery-image-form";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import { AlertTriangle } from "lucide-react";
 
 
 const PwaInstallations = () => {
@@ -103,12 +105,12 @@ const PwaInstallations = () => {
 
 const ManageAllContent = () => {
     const { toast } = useToast();
-    const [courses, coursesLoading] = useCollection(collection(firestore, 'courses'));
-    const [liveClasses, liveClassesLoading] = useCollection(collection(firestore, 'live_classes'));
-    const [ebooks, ebooksLoading] = useCollection(collection(firestore, 'ebooks'));
-    const [testSeries, testSeriesLoading] = useCollection(collection(firestore, 'testSeries'));
-    const [previousPapers, previousPapersLoading] = useCollection(collection(firestore, 'previousPapers'));
-    const [bookShalaItems, bookShalaLoading] = useCollection(collection(firestore, 'bookShala'));
+    const [courses, coursesLoading, coursesError] = useCollection(collection(firestore, 'courses'));
+    const [liveClasses, liveClassesLoading, liveClassesError] = useCollection(collection(firestore, 'live_classes'));
+    const [ebooks, ebooksLoading, ebooksError] = useCollection(collection(firestore, 'ebooks'));
+    const [testSeries, testSeriesLoading, testSeriesError] = useCollection(collection(firestore, 'testSeries'));
+    const [previousPapers, previousPapersLoading, previousPapersError] = useCollection(collection(firestore, 'previousPapers'));
+    const [bookShalaItems, bookShalaLoading, bookShalaError] = useCollection(collection(firestore, 'bookShala'));
 
 
     const [editItem, setEditItem] = useState<{ id: string; collection: string; } | null>(null);
@@ -131,12 +133,19 @@ const ManageAllContent = () => {
         setEditItem(null);
     }
 
-    const renderTable = (title: string, data: any, loading: boolean, collectionName: string) => (
+    const renderTable = (title: string, data: any, loading: boolean, error: any, collectionName: string) => (
         <Card>
             <CardHeader><CardTitle>{title}</CardTitle></CardHeader>
             <CardContent>
+                 {error && (
+                    <Alert variant="destructive">
+                        <AlertTriangle className="h-4 w-4" />
+                        <AlertTitle>Could not load content</AlertTitle>
+                        <AlertDescription className="text-xs">{error.message}</AlertDescription>
+                    </Alert>
+                )}
                 {loading && <Skeleton className="h-24 w-full" />}
-                {!loading && (
+                {!loading && !error && (
                     <Table>
                         <TableHeader>
                             <TableRow><TableHead>Title</TableHead><TableHead className="text-right">Actions</TableHead></TableRow>
@@ -186,12 +195,12 @@ const ManageAllContent = () => {
                 </Dialog>
             )}
             <div className="grid gap-6 md:grid-cols-2">
-                {renderTable("Manage Courses", courses, coursesLoading, 'courses')}
-                {renderTable("Manage Live Classes", liveClasses, liveClassesLoading, 'live_classes')}
-                {renderTable("Manage E-Books", ebooks, ebooksLoading, 'ebooks')}
-                {renderTable("Manage Test Series", testSeries, testSeriesLoading, 'testSeries')}
-                {renderTable("Manage Previous Year Papers", previousPapers, previousPapersLoading, 'previousPapers')}
-                {renderTable("Manage Book Shala Items", bookShalaItems, bookShalaLoading, 'bookShala')}
+                {renderTable("Manage Courses", courses, coursesLoading, coursesError, 'courses')}
+                {renderTable("Manage Live Classes", liveClasses, liveClassesLoading, liveClassesError, 'live_classes')}
+                {renderTable("Manage E-Books", ebooks, ebooksLoading, ebooksError, 'ebooks')}
+                {renderTable("Manage Test Series", testSeries, testSeriesLoading, testSeriesError, 'testSeries')}
+                {renderTable("Manage Previous Year Papers", previousPapers, previousPapersLoading, previousPapersError, 'previousPapers')}
+                {renderTable("Manage Book Shala Items", bookShalaItems, bookShalaLoading, bookShalaError, 'bookShala')}
             </div>
         </div>
     );
@@ -207,7 +216,7 @@ export default function AdminPage() {
             </div>
             
              <Tabs defaultValue="revenue" className="w-full">
-                <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8">
+                <TabsList className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-9 gap-2 h-auto">
                     <TabsTrigger value="revenue">Revenue</TabsTrigger>
                     <TabsTrigger value="content">Add Content</TabsTrigger>
                     <TabsTrigger value="manage_content">Manage Content</TabsTrigger>
