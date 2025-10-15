@@ -36,6 +36,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { EditContentForm } from "./_components/edit-content-form";
 import { RevenueDashboard } from "./_components/revenue-dashboard";
 import { ManagePaperEnrollments } from "./_components/manage-paper-enrollments";
+import { AddGalleryImageForm } from "./_components/add-gallery-image-form";
 
 
 const PwaInstallations = () => {
@@ -181,11 +182,17 @@ const ManageAllContent = () => {
                     </DialogContent>
                 </Dialog>
             )}
-            {renderTable("Manage Courses", courses, coursesLoading, 'courses')}
-            {renderTable("Manage Live Classes", liveClasses, liveClassesLoading, 'live_classes')}
-            {renderTable("Manage E-Books", ebooks, ebooksLoading, 'ebooks')}
-            {renderTable("Manage Test Series", testSeries, testSeriesLoading, 'testSeries')}
-            {renderTable("Manage Previous Year Papers", previousPapers, previousPapersLoading, 'previousPapers')}
+            <div className="grid gap-6 md:grid-cols-2">
+                {renderTable("Manage Courses", courses, coursesLoading, 'courses')}
+                {renderTable("Manage Live Classes", liveClasses, liveClassesLoading, 'live_classes')}
+                {renderTable("Manage E-Books", ebooks, ebooksLoading, 'ebooks')}
+                {renderTable("Manage Test Series", testSeries, testSeriesLoading, 'testSeries')}
+                {renderTable("Manage Previous Year Papers", previousPapers, previousPapersLoading, 'previousPapers')}
+                <Card>
+                    <CardHeader><CardTitle>Manage Gallery</CardTitle></CardHeader>
+                    <CardContent><AddGalleryImageForm /></CardContent>
+                </Card>
+            </div>
         </div>
     );
 };
@@ -202,7 +209,7 @@ export default function AdminPage() {
              <Tabs defaultValue="revenue" className="w-full" orientation="vertical">
                 <TabsList className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-1 md:w-48 lg:w-56 shrink-0 h-max">
                     <TabsTrigger value="revenue">Revenue</TabsTrigger>
-                    <TabsTrigger value="content">Content</TabsTrigger>
+                    <TabsTrigger value="content">Add Content</TabsTrigger>
                     <TabsTrigger value="manage_content">Manage Content</TabsTrigger>
                     <TabsTrigger value="users">Manage Users</TabsTrigger>
                     <TabsTrigger value="notifications">Notifications</TabsTrigger>

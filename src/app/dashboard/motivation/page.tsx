@@ -13,11 +13,11 @@ import { firestore } from '@/lib/firebase';
 import { Skeleton } from '@/components/ui/skeleton';
 
 const motivationalLines = [
-    "Believe you can and you're halfway there.",
-    "The only way to do great work is to love what you do.",
-    "Success is not the key to happiness. Happiness is the key to success.",
-    "Don't watch the clock; do what it does. Keep going.",
-    "The future belongs to those who believe in the beauty of their dreams."
+    "विश्वास करो कि तुम कर सकते हो और तुम आधा रास्ता तय कर चुके हो।",
+    "महान कार्य करने का एकमात्र तरीका यह है कि आप जो करते हैं उससे प्यार करें।",
+    "सफलता खुशी की कुंजी नहीं है। खुशी सफलता की कुंजी है।",
+    "घड़ी मत देखो; वह करो जो वह करती है। चलते रहो।",
+    "भविष्य उनका है जो अपने सपनों की सुंदरता में विश्वास करते हैं।"
 ];
 
 const ShortsTab = () => {
@@ -123,5 +123,3 @@ export default function MotivationPage() {
         </div>
     );
 }
-
-    
