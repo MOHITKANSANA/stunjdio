@@ -73,6 +73,8 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { Badge } from '@/components/ui/badge';
 import { useCollection } from 'react-firebase-hooks/firestore';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+
 
 const sidebarNavItems = [
     { href: '/dashboard', icon: Home, label: 'home' },
@@ -271,19 +273,46 @@ const NotificationsPanel = ({ open, onOpenChange }: { open: boolean, onOpenChang
                     <SheetTitle>Notifications</SheetTitle>
                     <SheetDescription>Recent announcements and updates.</SheetDescription>
                 </SheetHeader>
-                <div className="py-4 space-y-6">
+                <div className="py-4">
                     {loading && <Loader2 className="animate-spin mx-auto" />}
 
-                    {!loading && (!doubtNotifications || doubtNotifications.empty) && (!generalNotifications || generalNotifications.empty) && (!liveClassNotifications || liveClassNotifications.empty) && (
-                        <div className="text-center py-12">
-                            <Bell className="mx-auto h-12 w-12 text-muted-foreground" />
-                            <h3 className="mt-4 text-lg font-semibold">No New Notifications</h3>
-                        </div>
-                    )}
-                    
-                    {liveClassNotifications && !liveClassNotifications.empty && (
-                         <div className="space-y-4">
-                            {liveClassNotifications.docs.map(doc => {
+                    <Tabs defaultValue="replies" className="w-full">
+                        <TabsList className="grid w-full grid-cols-3">
+                            <TabsTrigger value="replies">Replies</TabsTrigger>
+                            <TabsTrigger value="announcements">Announcements</TabsTrigger>
+                            <TabsTrigger value="live">Live Classes</TabsTrigger>
+                        </TabsList>
+                        <TabsContent value="replies" className="mt-4 space-y-4">
+                             {doubtNotifications && !doubtNotifications.empty ? doubtNotifications.docs.map(doc => {
+                                const notif = doc.data();
+                                return (
+                                    <Link href={`/dashboard/courses/${notif.courseId}?tab=doubts`} key={doc.id} onClick={() => onOpenChange(false)}>
+                                        <div className="p-3 border rounded-lg hover:bg-muted">
+                                            <p><span className="font-bold">{notif.replierName}</span> replied to your doubt:</p>
+                                            <p className="text-sm text-muted-foreground italic">"{notif.doubtText}"</p>
+                                            <p className="text-xs text-muted-foreground mt-1">{notif.createdAt?.toDate().toLocaleString()}</p>
+                                        </div>
+                                    </Link>
+                                )
+                            }) : <p className="text-center text-muted-foreground pt-8">No new replies.</p>}
+                        </TabsContent>
+                        <TabsContent value="announcements" className="mt-4 space-y-4">
+                             {generalNotifications && !generalNotifications.empty ? generalNotifications.docs.map(doc => {
+                                const notif = doc.data();
+                                return (
+                                    <div key={doc.id} className="p-3 border rounded-lg bg-muted/50">
+                                            <div className="flex items-center gap-2 mb-1">
+                                            <Newspaper className="h-4 w-4 text-primary"/>
+                                            <p className="font-bold">{notif.title}</p>
+                                            </div>
+                                        <p className="text-sm">{notif.message}</p>
+                                        <p className="text-xs text-muted-foreground mt-2">{notif.createdAt?.toDate().toLocaleString()}</p>
+                                    </div>
+                                )
+                            }) : <p className="text-center text-muted-foreground pt-8">No new announcements.</p>}
+                        </TabsContent>
+                        <TabsContent value="live" className="mt-4 space-y-4">
+                            {liveClassNotifications && !liveClassNotifications.empty ? liveClassNotifications.docs.map(doc => {
                                 const notif = doc.data();
                                 return (
                                     <Link href={`/dashboard/live-classes`} key={doc.id} onClick={() => onOpenChange(false)}>
@@ -298,48 +327,9 @@ const NotificationsPanel = ({ open, onOpenChange }: { open: boolean, onOpenChang
                                         </div>
                                     </Link>
                                 )
-                            })}
-                        </div>
-                    )}
-
-                     {doubtNotifications && !doubtNotifications.empty && (
-                        <div className="space-y-4">
-                            <h3 className="font-semibold text-lg">Doubt Replies</h3>
-                            {doubtNotifications.docs.map(doc => {
-                                const notif = doc.data();
-                                return (
-                                    <Link href={`/dashboard/courses/${notif.courseId}?tab=doubts`} key={doc.id} onClick={() => onOpenChange(false)}>
-                                        <div className="p-3 border rounded-lg hover:bg-muted">
-                                            <p><span className="font-bold">{notif.replierName}</span> replied to your doubt:</p>
-                                            <p className="text-sm text-muted-foreground italic">"{notif.doubtText}"</p>
-                                            <p className="text-xs text-muted-foreground mt-1">{notif.createdAt?.toDate().toLocaleString()}</p>
-                                        </div>
-                                    </Link>
-                                )
-                            })}
-                        </div>
-                    )}
-                    
-                    {generalNotifications && !generalNotifications.empty && (
-                        <div className="space-y-4">
-                            <SidebarSeparator />
-                            <h3 className="font-semibold text-lg">Announcements</h3>
-                            {generalNotifications.docs.map(doc => {
-                                const notif = doc.data();
-                                return (
-                                    <div key={doc.id} className="p-3 border rounded-lg bg-muted/50">
-                                            <div className="flex items-center gap-2 mb-1">
-                                            <Newspaper className="h-4 w-4 text-primary"/>
-                                            <p className="font-bold">{notif.title}</p>
-                                            </div>
-                                        <p className="text-sm">{notif.message}</p>
-                                        <p className="text-xs text-muted-foreground mt-2">{notif.createdAt?.toDate().toLocaleString()}</p>
-                                    </div>
-                                )
-                            })}
-                        </div>
-                    )}
-
+                            }) : <p className="text-center text-muted-foreground pt-8">No upcoming live classes.</p>}
+                        </TabsContent>
+                    </Tabs>
                 </div>
             </SheetContent>
         </Sheet>
@@ -597,5 +587,3 @@ export default function DashboardLayout({
         </SidebarProvider>
     )
 }
-
-    
