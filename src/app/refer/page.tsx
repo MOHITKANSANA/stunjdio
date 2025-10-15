@@ -114,12 +114,12 @@ export default function ReferPage() {
                     <div className="mt-4">
                         <Progress value={(points / 200) * 100} />
                         <p className="text-center text-sm text-muted-foreground mt-2">
-                           {points < 200 ? `${200 - points} points needed to redeem a free course.` : "You can redeem a free course!"}
+                           {points < 200 ? `${200 - points} points needed to redeem a free e-book.` : "You can redeem a free e-book!"}
                         </p>
                     </div>
                 </CardContent>
                 <CardFooter>
-                    <Button disabled={points < 200} className="w-full">Redeem Free Course</Button>
+                    <Button disabled={points < 200} className="w-full">Redeem Free E-Book</Button>
                 </CardFooter>
             </Card>
 
@@ -129,9 +129,9 @@ export default function ReferPage() {
                 </CardHeader>
                 <CardContent className="space-y-4 text-muted-foreground">
                     <p>1. Share your unique referral code and app link with your friends.</p>
-                    <p>2. Your friend gets a 10% discount on their first course purchase using your code.</p>
+                    <p>2. Your friend gets a 10% discount on their first purchase using your code.</p>
                     <p>3. You receive 10 reward points in your account once their purchase is complete.</p>
-                    <p>4. Collect 200 points to redeem any course for free!</p>
+                    <p>4. Collect 200 points to redeem any e-book for free!</p>
                 </CardContent>
             </Card>
         </div>

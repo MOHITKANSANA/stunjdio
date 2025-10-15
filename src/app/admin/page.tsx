@@ -104,6 +104,8 @@ const ManageAllContent = () => {
     const [liveClasses, liveClassesLoading] = useCollection(collection(firestore, 'live_classes'));
     const [ebooks, ebooksLoading] = useCollection(collection(firestore, 'ebooks'));
     const [testSeries, testSeriesLoading] = useCollection(collection(firestore, 'testSeries'));
+    const [previousPapers, previousPapersLoading] = useCollection(collection(firestore, 'previousPapers'));
+
 
     const [editItem, setEditItem] = useState<{ id: string; collection: string; } | null>(null);
 
@@ -142,7 +144,7 @@ const ManageAllContent = () => {
                                 <TableRow key={d.id}>
                                     <TableCell>{d.data().title}</TableCell>
                                     <TableCell className="text-right space-x-2">
-                                        {['courses', 'ebooks', 'testSeries'].includes(collectionName) && (
+                                        {['courses', 'ebooks', 'testSeries', 'previousPapers'].includes(collectionName) && (
                                             <Button variant="outline" size="icon" onClick={() => setEditItem({ id: d.id, collection: collectionName })}>
                                                 <Edit className="h-4 w-4" />
                                             </Button>
@@ -183,6 +185,7 @@ const ManageAllContent = () => {
             {renderTable("Manage Live Classes", liveClasses, liveClassesLoading, 'live_classes')}
             {renderTable("Manage E-Books", ebooks, ebooksLoading, 'ebooks')}
             {renderTable("Manage Test Series", testSeries, testSeriesLoading, 'testSeries')}
+            {renderTable("Manage Previous Year Papers", previousPapers, previousPapersLoading, 'previousPapers')}
         </div>
     );
 };
@@ -206,6 +209,7 @@ export default function AdminPage() {
                     <TabsTrigger value="course_enrollments">Course Enrollments</TabsTrigger>
                     <TabsTrigger value="test_enrollments">Test Enrollments</TabsTrigger>
                     <TabsTrigger value="ebook_enrollments">E-Book Enrollments</TabsTrigger>
+                    <TabsTrigger value="paper_enrollments">Paper Enrollments</TabsTrigger>
                     <TabsTrigger value="scholarships">Scholarships</TabsTrigger>
                     <TabsTrigger value="battle_quiz">Battle Quiz</TabsTrigger>
                     <TabsTrigger value="kids_tube">Kids Tube</TabsTrigger>
@@ -293,7 +297,7 @@ export default function AdminPage() {
                      <Card>
                         <CardHeader>
                             <CardTitle>Manage Test Series Enrollments</CardTitle>
-                            <CardDescription>Approve or reject student test series enrollment requests.</CardDescription>
+                            <CardDescription>Approve or reject student test series enrollment requests.</CardHeader>
                         </CardHeader>
                         <CardContent>
                             <ManageTestSeriesEnrollments />
@@ -305,13 +309,27 @@ export default function AdminPage() {
                      <Card>
                         <CardHeader>
                             <CardTitle>Manage E-Book Enrollments</CardTitle>
-                            <CardDescription>Approve or reject student E-Book purchase requests.</CardDescription>
+                            <CardDescription>Approve or reject student E-Book purchase requests.</CardHeader>
                         </CardHeader>
                         <CardContent>
                             <ManageEbookEnrollments />
                         </CardContent>
                     </Card>
                 </TabsContent>
+                
+                <TabsContent value="paper_enrollments" className="mt-6 md:mt-0">
+                     <Card>
+                        <CardHeader>
+                            <CardTitle>Manage Paper Enrollments</CardTitle>
+                            <CardDescription>Approve or reject student paper purchase requests.</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            {/* This component will need to be created */}
+                            <p>Previous Year Paper Enrollments Management coming soon.</p>
+                        </CardContent>
+                    </Card>
+                </TabsContent>
+
 
                 <TabsContent value="scholarships" className="mt-6 md:mt-0">
                     <ManageScholarships />

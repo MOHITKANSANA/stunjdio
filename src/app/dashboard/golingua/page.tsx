@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Languages, ArrowRight, BookOpen, Volume2, Mic, ChevronRight } from "lucide-react";
+import { Languages, ArrowRight, BookOpen, ChevronRight } from "lucide-react";
 import { useLanguage } from '@/hooks/use-language';
 import { Progress } from '@/components/ui/progress';
 

@@ -445,7 +445,7 @@ export default function DashboardLayout({
         const userDoc = await getDoc(userDocRef);
         if (userDoc.exists()) {
             const userData = userDoc.data();
-            setIsKidsMode(userData.ageGroup === '1-9');
+            setIsKidsMode(userData.ageGroup === 'Age 1-5');
              setIsProfileChecked(true); // Mark as checked
         } else if (pathname !== '/dashboard/complete-profile') {
              router.replace('/dashboard/complete-profile');
@@ -495,5 +495,3 @@ export default function DashboardLayout({
       </SidebarProvider>
   );
 }
-
-    
