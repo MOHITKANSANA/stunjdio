@@ -11,7 +11,7 @@ const mainBottomNavItems = [
     { href: '/dashboard/my-learning', icon: Library, label: 'My Library' },
     { href: '/dashboard/feed', icon: Rss, label: 'Feed' },
     { href: '/dashboard/live-classes', icon: Calendar, label: 'Live Class' },
-    { href: '/dashboard/profile', icon: User, label: 'Profile' },
+    { href: '/dashboard/tutor', icon: Bot, label: 'AI Tutor' },
 ];
 
 const kidsBottomNavItems = [

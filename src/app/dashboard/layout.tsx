@@ -70,11 +70,7 @@ import { AppBottomNav } from './bottom-nav';
 import { onMessage, getToken } from 'firebase/messaging';
 import { useToast } from '@/hooks/use-toast';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
-import { Badge } from '@/components/ui/badge';
-import { useCollection } from 'react-firebase-hooks/firestore';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-
+import { UserNav } from '@/components/user-nav';
 
 const sidebarNavItems = [
     { href: '/dashboard', icon: Home, label: 'home' },
@@ -248,147 +244,22 @@ const AppSidebar = ({ isKidsMode, appLogoUrl }: { isKidsMode: boolean; appLogoUr
     )
 }
 
-const NotificationsPanel = ({ open, onOpenChange }: { open: boolean, onOpenChange: (open: boolean) => void }) => {
-    const { user } = useAuth();
-    
-    const [doubtNotifications, doubtNotificationsLoading] = useCollection(
-        user ? query(collection(firestore, 'users', user.uid, 'notifications'), where('read', '==', false), orderBy('createdAt', 'desc')) : null
-    );
-
-    const [generalNotifications, generalNotificationsLoading] = useCollection(
-        query(collection(firestore, 'general_notifications'), orderBy('createdAt', 'desc'), where('createdAt', '>', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000))) // last 30 days
-    );
-
-    const [liveClassNotifications, liveClassNotificationsLoading] = useCollection(
-        query(collection(firestore, 'live_classes'), where('startTime', '>', new Date()), orderBy('startTime', 'asc'))
-    );
-
-
-    const loading = doubtNotificationsLoading || generalNotificationsLoading || liveClassNotificationsLoading;
-
-    return (
-        <Sheet open={open} onOpenChange={onOpenChange}>
-            <SheetContent>
-                <SheetHeader>
-                    <SheetTitle>Notifications</SheetTitle>
-                    <SheetDescription>Recent announcements and updates.</SheetDescription>
-                </SheetHeader>
-                <div className="py-4">
-                    {loading && <Loader2 className="animate-spin mx-auto" />}
-
-                    <Tabs defaultValue="replies" className="w-full">
-                        <TabsList className="grid w-full grid-cols-3">
-                            <TabsTrigger value="replies">Replies</TabsTrigger>
-                            <TabsTrigger value="announcements">Announcements</TabsTrigger>
-                            <TabsTrigger value="live">Live Classes</TabsTrigger>
-                        </TabsList>
-                        <TabsContent value="replies" className="mt-4 space-y-4">
-                             {doubtNotifications && !doubtNotifications.empty ? doubtNotifications.docs.map(doc => {
-                                const notif = doc.data();
-                                return (
-                                    <Link href={`/dashboard/courses/${notif.courseId}?tab=doubts`} key={doc.id} onClick={() => onOpenChange(false)}>
-                                        <div className="p-3 border rounded-lg hover:bg-muted">
-                                            <p><span className="font-bold">{notif.replierName}</span> replied to your doubt:</p>
-                                            <p className="text-sm text-muted-foreground italic">"{notif.doubtText}"</p>
-                                            <p className="text-xs text-muted-foreground mt-1">{notif.createdAt?.toDate().toLocaleString()}</p>
-                                        </div>
-                                    </Link>
-                                )
-                            }) : <p className="text-center text-muted-foreground pt-8">No new replies.</p>}
-                        </TabsContent>
-                        <TabsContent value="announcements" className="mt-4 space-y-4">
-                             {generalNotifications && !generalNotifications.empty ? generalNotifications.docs.map(doc => {
-                                const notif = doc.data();
-                                return (
-                                    <div key={doc.id} className="p-3 border rounded-lg bg-muted/50">
-                                            <div className="flex items-center gap-2 mb-1">
-                                            <Newspaper className="h-4 w-4 text-primary"/>
-                                            <p className="font-bold">{notif.title}</p>
-                                            </div>
-                                        <p className="text-sm">{notif.message}</p>
-                                        <p className="text-xs text-muted-foreground mt-2">{notif.createdAt?.toDate().toLocaleString()}</p>
-                                    </div>
-                                )
-                            }) : <p className="text-center text-muted-foreground pt-8">No new announcements.</p>}
-                        </TabsContent>
-                        <TabsContent value="live" className="mt-4 space-y-4">
-                            {liveClassNotifications && !liveClassNotifications.empty ? liveClassNotifications.docs.map(doc => {
-                                const notif = doc.data();
-                                return (
-                                    <Link href={`/dashboard/live-classes`} key={doc.id} onClick={() => onOpenChange(false)}>
-                                        <div className="p-3 border rounded-lg hover:bg-muted">
-                                            <div className="flex items-center gap-3">
-                                                <Clapperboard className="h-5 w-5 text-primary" />
-                                                <div>
-                                                    <p className="font-bold">New Live Class: {notif.title}</p>
-                                                    <p className="text-xs text-muted-foreground mt-1">{notif.startTime?.toDate().toLocaleString()}</p>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </Link>
-                                )
-                            }) : <p className="text-center text-muted-foreground pt-8">No upcoming live classes.</p>}
-                        </TabsContent>
-                    </Tabs>
-                </div>
-            </SheetContent>
-        </Sheet>
-    )
-}
-
-const HeaderWithNotifications = () => {
-    const { user } = useAuth();
-    const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
-    
-    const [doubtNotifications] = useCollection(
-        user ? query(collection(firestore, 'users', user.uid, 'notifications'), where('read', '==', false)) : null
-    );
-    
-    const hasNewReplies = doubtNotifications && !doubtNotifications.empty;
-
-    return (
-        <>
-            <NotificationsPanel open={isNotificationsOpen} onOpenChange={setIsNotificationsOpen} />
-            <header className={cn("flex h-16 shrink-0 items-center justify-between gap-4 px-4 md:px-6 bg-transparent sticky top-0 z-20")}>
-                <div className='flex items-center gap-4'>
-                    <div className='md:hidden'>
-                        <SidebarTrigger />
-                    </div>
-                     <div className='hidden md:flex items-center gap-2'>
-                        <h1 className="text-2xl font-bold text-white">Hello, {user?.displayName?.split(' ')[0] || 'Student'}!</h1>
-                    </div>
-                </div>
-                <div className="flex items-center gap-2">
-                    <Button variant="ghost" size="icon" className="rounded-full relative" onClick={() => setIsNotificationsOpen(true)}>
-                       {hasNewReplies && (
-                            <span className="absolute top-1 right-1 flex h-3 w-3">
-                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                                <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
-                            </span>
-                       )}
-                       <Bell className='text-white' />
-                       <span className="sr-only">Notifications</span>
-                    </Button>
-                </div>
-            </header>
-        </>
-    );
-}
-
 const AppHeader = () => {
     const { user } = useAuth();
-
+    
     return (
         <header className={cn("flex h-16 shrink-0 items-center justify-between gap-4 px-4 md:px-6 bg-transparent sticky top-0 z-20")}>
             <div className='flex items-center gap-4'>
                 <div className='md:hidden'>
                     <SidebarTrigger />
                 </div>
-                 <div className='hidden md:flex items-center gap-2'>
+                <div className='hidden md:flex items-center gap-2'>
                     <h1 className="text-2xl font-bold text-white">Hello, {user?.displayName?.split(' ')[0] || 'Student'}!</h1>
                 </div>
             </div>
-            {/* Notification button removed from here to prevent state issues */}
+             <div className="flex items-center gap-2">
+                <UserNav />
+            </div>
         </header>
     )
 }
@@ -578,7 +449,7 @@ function DashboardLayoutContent({
              className="fixed top-0 left-0 right-0 h-[30vh] bg-gradient-to-b from-yellow-500 via-yellow-400 to-yellow-300 -z-10" 
              style={{clipPath: 'polygon(0 0, 100% 0, 100% 80%, 0 100%)'}}
         />
-         {!isVideoPlaybackPage && <HeaderWithNotifications />}
+         {!isVideoPlaybackPage && <AppHeader />}
          <div className={cn("flex flex-col md:flex-row w-full h-full overflow-hidden")}>
             {!isVideoPlaybackPage && <AppSidebar isKidsMode={isKidsMode} appLogoUrl={appLogoUrl} />}
              <main className="flex-1 overflow-y-auto h-full" onClick={() => isMobile && setOpenMobile(false)}>
