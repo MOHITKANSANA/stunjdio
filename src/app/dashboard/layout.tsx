@@ -255,12 +255,12 @@ const AppHeader = () => {
                 <div className='md:hidden'>
                     <SidebarTrigger />
                 </div>
-                <div className='hidden md:flex items-center gap-2'>
-                    <h1 className="text-2xl font-bold text-foreground">Hello, {user?.displayName?.split(' ')[0] || 'Student'}!</h1>
+                 <div className='hidden md:flex items-center gap-2'>
+                    <h1 className="text-2xl font-bold text-white">Hello, {user?.displayName?.split(' ')[0] || 'Student'}!</h1>
                 </div>
             </div>
              <div className="flex items-center gap-4">
-                <Button asChild variant="ghost" size="icon" className="relative text-foreground hover:text-foreground hover:bg-foreground/10">
+                <Button asChild variant="ghost" size="icon" className="relative text-white hover:text-white hover:bg-white/10">
                     <Link href="/dashboard/orders">
                         <ShoppingCart />
                         <span className="sr-only">Shopping Cart</span>
@@ -457,7 +457,7 @@ function DashboardLayoutContent({
          {!isVideoPlaybackPage && <AppHeader />}
          <div className={cn("flex flex-col md:flex-row w-full h-full overflow-hidden")}>
             {!isVideoPlaybackPage && <AppSidebar isKidsMode={isKidsMode} appLogoUrl={appLogoUrl} />}
-             <main className="flex-1 overflow-y-auto h-full" onClick={() => isMobile && setOpenMobile(false)}>
+             <main className="flex-1 overflow-y-auto h-full bg-background" onClick={() => isMobile && setOpenMobile(false)}>
                 <SidebarInset>
                     <div className={cn(!isVideoPlaybackPage && 'p-4 md:p-6')}>
                         {children}
