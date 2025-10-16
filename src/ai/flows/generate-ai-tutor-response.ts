@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * @fileOverview Provides AI Tutor responses including an answer and follow-up questions.
@@ -20,8 +21,8 @@ const GenerateAiTutorResponseInputSchema = z.object({
 export type GenerateAiTutorResponseInput = z.infer<typeof GenerateAiTutorResponseInputSchema>;
 
 const GenerateAiTutorResponseOutputSchema = z.object({
-  answer: z.string().describe("The AI's answer to the user's question, in the requested language."),
-  followUpQuestions: z.array(z.string()).describe('Three related follow-up questions to encourage further learning.'),
+  answer: z.string().describe("The AI's answer to the user's question, in the requested language. This should be a clear, concise, and helpful response."),
+  followUpQuestions: z.array(z.string()).length(3).describe('An array of exactly three relevant follow-up questions to encourage further learning.'),
 });
 export type GenerateAiTutorResponseOutput = z.infer<typeof GenerateAiTutorResponseOutputSchema>;
 
@@ -37,7 +38,7 @@ const prompt = ai.definePrompt({
   output: { schema: GenerateAiTutorResponseOutputSchema },
   prompt: `You are an expert AI Tutor. Your role is to provide a clear, concise, and helpful answer to the user's question. If the user only provides an image, describe the image or answer the implied question. If there is text and an image, use both to provide the best answer. After answering, you must also provide exactly three relevant follow-up questions to help the user test their understanding and explore the topic further.
 
-Generate the response in the following language: {{{language}}}.
+Generate the response, including the answer and follow-up questions, in the following language: {{{language}}}.
 
 User's Question: {{{question}}}
 {{#if imageDataUri}}
@@ -55,6 +56,9 @@ const generateAiTutorResponseFlow = ai.defineFlow(
   },
   async (input) => {
     const { output } = await prompt(input);
-    return output!;
+    if (!output) {
+      throw new Error("The AI failed to generate a response. Please try again with a different query.");
+    }
+    return output;
   }
 );
