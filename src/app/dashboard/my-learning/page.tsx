@@ -17,7 +17,7 @@ import type { DocumentData, QueryDocumentSnapshot } from 'firebase/firestore';
 import { useEffect, useState } from "react";
 import { Separator } from "@/components/ui/separator";
 
-const CourseCard = ({ course, courseId, enrollmentId, onUnenroll }: { course: any, courseId: string, enrollmentId: string, onUnenroll: (id: string, title: string) => void }) => {
+const CourseCard = ({ course, courseId }: { course: any, courseId: string }) => {
     return (
         <Card className="flex flex-col overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300">
             <div className="relative h-48 w-full">
@@ -33,9 +33,6 @@ const CourseCard = ({ course, courseId, enrollmentId, onUnenroll }: { course: an
                     <Link href={`/dashboard/courses/${courseId}`}>
                        <Eye className="mr-2 h-4 w-4" /> View Course
                     </Link>
-                </Button>
-                <Button variant="destructive" className="w-full active:scale-95 transition-transform" onClick={() => onUnenroll(enrollmentId, course.title)}>
-                    <Trash2 className="mr-2 h-4 w-4" /> Un-enroll
                 </Button>
             </CardFooter>
         </Card>
@@ -113,26 +110,7 @@ export default function MyLearningPage() {
     const papersQuery = user && enrolledPaperIds.length > 0
         ? query(collection(firestore, 'previousPapers'), where('__name__', 'in', enrolledPaperIds)) : null;
     const [myPapers, myPapersLoading, myPapersError] = useCollection(papersQuery);
-
     
-    const handleUnenroll = async (enrollmentId: string, title: string) => {
-        if (window.confirm(`Are you sure you want to un-enroll from "${title}"?`)) {
-            try {
-                await deleteDoc(doc(firestore, 'enrollments', enrollmentId));
-                toast({
-                    title: "Un-enrolled successfully",
-                    description: `You have been removed from ${title}.`,
-                });
-            } catch (error) {
-                 toast({
-                    variant: "destructive",
-                    title: "Un-enrollment failed",
-                    description: "Could not remove you from the item. Please try again.",
-                });
-            }
-        }
-    };
-
     const createIdMap = (enrollments: QueryDocumentSnapshot<DocumentData>[]) => {
         return enrollments.reduce((acc: Record<string, string>, doc: QueryDocumentSnapshot<DocumentData>) => {
             const data = doc.data();
@@ -171,10 +149,8 @@ export default function MyLearningPage() {
         return (
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                 {courses.map(doc => {
-                    const enrollmentId = courseIdToEnrollmentIdMap?.[doc.id];
-                    if (!enrollmentId) return null;
                     return (
-                        <CourseCard key={doc.id} course={doc.data()} courseId={doc.id} enrollmentId={enrollmentId} onUnenroll={handleUnenroll}/>
+                        <CourseCard key={doc.id} course={doc.data()} courseId={doc.id}/>
                     )
                 })}
             </div>
@@ -199,9 +175,11 @@ export default function MyLearningPage() {
                             </CardHeader>
                         </Link>
                          <CardFooter>
-                              <Button variant="destructive" className="w-full" onClick={() => handleUnenroll(courseIdToEnrollmentIdMap?.[doc.id] || '', doc.data().title)}>
-                                <Trash2 className="mr-2 h-4 w-4"/> Remove
-                            </Button>
+                              <Button asChild className="w-full">
+                                <Link href={doc.data().fileUrl} target="_blank">
+                                    <Eye className="mr-2 h-4 w-4" /> Read Now
+                                </Link>
+                              </Button>
                          </CardFooter>
                     </Card>
                 ))}
@@ -222,6 +200,7 @@ export default function MyLearningPage() {
                             <CardTitle>{doc.data().title}</CardTitle>
                             <CardDescription>{doc.data().subject || `Year: ${doc.data().year}`}</CardDescription>
                         </CardHeader>
+                        <CardContent className="flex-grow"></CardContent>
                         <CardFooter className="mt-auto">
                             {type === 'Tests' ? (
                                 <Button asChild className="w-full"><Link href={`/dashboard/test-series/${doc.id}`}>Start Test</Link></Button>
