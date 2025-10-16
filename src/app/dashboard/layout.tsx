@@ -419,22 +419,23 @@ function DashboardLayoutContent({
         return;
     }
     
-    if (user && !isProfileChecked) {
-      const checkUserProfile = async () => {
-        const userDocRef = doc(firestore, 'users', user.uid);
-        const userDoc = await getDoc(userDocRef);
-        if (userDoc.exists()) {
-            const userData = userDoc.data();
-            setIsKidsMode(userData.ageGroup === '1-9');
-             setIsProfileChecked(true); // Mark as checked
-        } else if (pathname !== '/dashboard/complete-profile') {
-             router.replace('/dashboard/complete-profile');
+    const checkUserProfile = async () => {
+        if (user && !isProfileChecked) {
+            const userDocRef = doc(firestore, 'users', user.uid);
+            const userDoc = await getDoc(userDocRef);
+            if (!userDoc.exists() || !userDoc.data()?.state) {
+                 if (pathname !== '/dashboard/complete-profile') {
+                    router.replace('/dashboard/complete-profile');
+                 }
+            } else {
+                const userData = userDoc.data();
+                setIsKidsMode(userData.ageGroup === 'Age 1-5');
+            }
+            setIsProfileChecked(true); // Mark as checked
         }
-       
-      };
-      checkUserProfile();
-    }
+    };
 
+    checkUserProfile();
 
     const appConfigUnsub = onSnapshot(doc(firestore, 'settings', 'appConfig'), (doc) => {
         if (doc.exists()) {

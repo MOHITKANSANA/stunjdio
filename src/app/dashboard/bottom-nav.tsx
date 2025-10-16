@@ -1,4 +1,3 @@
-
 "use client";
 
 import Link from 'next/link';
@@ -11,7 +10,7 @@ const mainBottomNavItems = [
     { href: '/dashboard/my-learning', icon: Library, label: 'My Library' },
     { href: '/dashboard/orders', icon: ShoppingCart, label: 'My Orders' },
     { href: '/dashboard/live-classes', icon: Calendar, label: 'Live Class' },
-    { href: '/dashboard/tutor', icon: Bot, label: 'AI Tutor' },
+    { href: '/dashboard/feed', icon: Rss, label: 'Feed' },
 ];
 
 const kidsBottomNavItems = [

@@ -2,7 +2,7 @@
 
 import { useAuth } from '@/hooks/use-auth';
 import { firestore } from '@/lib/firebase';
-import { collection, query, where, orderBy } from 'firebase/firestore';
+import { collection, query, where, orderBy, getDocs } from 'firebase/firestore';
 import { useCollection } from 'react-firebase-hooks/firestore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -13,16 +13,24 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 export default function MyOrdersPage() {
     const { user, loading: authLoading } = useAuth();
 
+    // Use Firestore's 'in' operator to query for multiple types at once
+    // This avoids needing a composite index for 'enrollmentType' and 'createdAt'
     const enrollmentsQuery = user
         ? query(
             collection(firestore, 'enrollments'),
             where('userId', '==', user.uid),
-            where('enrollmentType', '==', 'Book'), // Assuming book orders are of this type
-            orderBy('createdAt', 'desc')
+            where('enrollmentType', 'in', ['Book', 'E-Book', 'Test Series', 'Course', 'Previous Year Paper'])
           )
         : null;
 
     const [orders, ordersLoading, ordersError] = useCollection(enrollmentsQuery);
+
+    // Client-side sorting
+    const sortedOrders = orders?.docs.sort((a, b) => {
+        const dateA = a.data().createdAt?.toDate() || 0;
+        const dateB = b.data().createdAt?.toDate() || 0;
+        return dateB - dateA;
+    });
 
     if (authLoading || ordersLoading) {
         return (
@@ -34,15 +42,28 @@ export default function MyOrdersPage() {
     }
 
     if (ordersError) {
-        return <p className="text-destructive p-4">Error loading your orders.</p>;
+        return (
+            <div className="max-w-4xl mx-auto p-4 md:p-8">
+                 <Card className="text-center p-8">
+                    <CardHeader>
+                        <ShoppingCart className="mx-auto h-12 w-12 text-destructive" />
+                        <CardTitle className="text-destructive">Error Loading Orders</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <p className="text-muted-foreground">We couldn't load your order history at the moment. Please try again later.</p>
+                        <p className="text-xs text-muted-foreground mt-4">{ordersError.message}</p>
+                    </CardContent>
+                </Card>
+            </div>
+        );
     }
 
-    if (!orders || orders.empty) {
+    if (!sortedOrders || sortedOrders.length === 0) {
         return (
             <div className="text-center py-12">
                 <ShoppingCart className="mx-auto h-12 w-12 text-muted-foreground" />
                 <h3 className="mt-4 text-lg font-semibold">You have no orders</h3>
-                <p className="mt-1 text-sm text-muted-foreground">Your book orders will appear here.</p>
+                <p className="mt-1 text-sm text-muted-foreground">Your book and course purchases will appear here.</p>
             </div>
         );
     }
@@ -51,17 +72,17 @@ export default function MyOrdersPage() {
         <div className="max-w-4xl mx-auto p-4 md:p-8 space-y-6">
             <div>
                 <h1 className="text-3xl md:text-4xl font-bold font-headline">My Orders</h1>
-                <p className="text-muted-foreground mt-2">Track the status of your book purchases.</p>
+                <p className="text-muted-foreground mt-2">Track the status of your purchases.</p>
             </div>
             <div className="space-y-4">
-                {orders.docs.map(doc => {
+                {sortedOrders.map(doc => {
                     const order = doc.data();
                     return (
                         <Card key={doc.id}>
                             <CardHeader>
                                 <div className="flex justify-between items-start">
                                     <div>
-                                        <CardTitle>{order.courseTitle}</CardTitle>
+                                        <CardTitle>{order.courseTitle || 'Item'}</CardTitle>
                                         <CardDescription>
                                             Order Date: {order.createdAt?.toDate().toLocaleDateString()}
                                         </CardDescription>
