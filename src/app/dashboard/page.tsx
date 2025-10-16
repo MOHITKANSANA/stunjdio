@@ -1,3 +1,4 @@
+
 'use client';
 import React, { useState, useEffect } from 'react';
 import {
@@ -35,7 +36,7 @@ const quickAccessItems = [
   { label: "Courses", icon: Book, href: "/dashboard/courses", color: "from-blue-500 to-sky-500" },
   { label: "Book Shala", icon: BookHeart, href: "/dashboard/book-shala", color: "from-orange-500 to-amber-500" },
   { label: "Free Courses", icon: BookCopy, href: "/dashboard/courses/free", color: "from-green-500 to-teal-500" },
-  { label: "AI Tests", icon: ShieldQuestion, href: "/dashboard/tests", color: "from-purple-500 to-violet-500" },
+  { label: "Test Hub", icon: ShieldQuestion, href: "/dashboard/tests", color: "from-purple-500 to-violet-500" },
   { label: "My Library", icon: Library, href: "/dashboard/my-learning", color: "from-fuchsia-500 to-pink-500" },
   { label: "Live Classes", icon: Clapperboard, href: "/dashboard/live-classes", color: "from-red-500 to-rose-500" },
   { label: "Motivation", icon: Heart, href: "/dashboard/motivation", color: "from-pink-500 to-rose-500" },
@@ -102,10 +103,7 @@ const MainDashboard = () => {
 
     return (
        <div className="relative min-h-screen w-full">
-            <div 
-                 className="fixed top-0 left-0 right-0 h-[35vh] bg-gradient-to-b from-blue-700 to-sky-500 -z-10" 
-                 style={{clipPath: 'polygon(0 0, 100% 0, 100% 80%, 0 100%)'}}
-            />
+            
             <div className="relative p-4 md:p-6 space-y-6 z-10">
 
                 <InstallPwaPrompt />
