@@ -1,12 +1,12 @@
 
 'use client';
 
-import { BookOpenCheck, Library, Trash2, Eye, FileText, Newspaper, BellDot, Bell } from "lucide-react";
+import { BookOpenCheck, Library, Eye, FileText, Newspaper } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from '@/hooks/use-auth';
 import { useCollection } from 'react-firebase-hooks/firestore';
-import { collection, query, where, orderBy, deleteDoc, doc, getDoc, onSnapshot } from 'firebase/firestore';
+import { collection, query, where, orderBy, doc, getDoc, onSnapshot } from 'firebase/firestore';
 import { firestore } from '@/lib/firebase';
 import { Skeleton } from "@/components/ui/skeleton";
 import Image from 'next/image';
@@ -15,7 +15,6 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import type { DocumentData, QueryDocumentSnapshot } from 'firebase/firestore';
 import { useEffect, useState } from "react";
-import { Separator } from "@/components/ui/separator";
 
 const CourseCard = ({ course, courseId }: { course: any, courseId: string }) => {
     return (
@@ -29,7 +28,7 @@ const CourseCard = ({ course, courseId }: { course: any, courseId: string }) => 
             </CardHeader>
             <CardContent className="flex-grow" />
             <CardFooter className="flex flex-col sm:flex-row gap-2">
-                 <Button asChild className="w-full active:scale-95 transition-transform">
+                 <Button asChild className="w-full">
                     <Link href={`/dashboard/courses/${courseId}`}>
                        <Eye className="mr-2 h-4 w-4" /> View Course
                     </Link>
@@ -56,8 +55,8 @@ export default function MyLearningPage() {
             const unsubscribe = onSnapshot(q, async (snapshot) => {
                 const now = new Date();
                 const validEnrollments: QueryDocumentSnapshot<DocumentData>[] = [];
-                for (const doc of snapshot.docs) {
-                    const enrollment = doc.data();
+                for (const enrollmentDoc of snapshot.docs) {
+                    const enrollment = enrollmentDoc.data();
                     if (enrollment.enrollmentType === 'Course' && enrollment.courseId) {
                         try {
                             const courseDoc = await getDoc(doc(firestore, 'courses', enrollment.courseId));
@@ -67,16 +66,16 @@ export default function MyLearningPage() {
                                 const validityDays = courseData.validity || 365; // Default to 365 days if not set
                                 const expiryDate = new Date(enrollmentDate.getTime() + validityDays * 24 * 60 * 60 * 1000);
                                 if (now < expiryDate) {
-                                    validEnrollments.push(doc);
+                                    validEnrollments.push(enrollmentDoc);
                                 }
                             }
                         } catch (e) {
                             console.error("Error fetching course for validity check", e);
-                            validEnrollments.push(doc); // failsafe to include if course doc fails
+                            validEnrollments.push(enrollmentDoc); // failsafe to include if course doc fails
                         }
                     } else {
                         // For non-course enrollments, no validity check needed for now
-                        validEnrollments.push(doc);
+                        validEnrollments.push(enrollmentDoc);
                     }
                 }
                 setEnrollments(validEnrollments);
@@ -110,18 +109,6 @@ export default function MyLearningPage() {
     const papersQuery = user && enrolledPaperIds.length > 0
         ? query(collection(firestore, 'previousPapers'), where('__name__', 'in', enrolledPaperIds)) : null;
     const [myPapers, myPapersLoading, myPapersError] = useCollection(papersQuery);
-    
-    const createIdMap = (enrollments: QueryDocumentSnapshot<DocumentData>[]) => {
-        return enrollments.reduce((acc: Record<string, string>, doc: QueryDocumentSnapshot<DocumentData>) => {
-            const data = doc.data();
-            if (data.courseId) {
-                acc[data.courseId] = doc.id;
-            }
-            return acc;
-        }, {} as Record<string, string>);
-    }
-
-    const courseIdToEnrollmentIdMap = createIdMap(enrollments);
     
     const renderCourseGrid = (courses: any[] | undefined, isLoading: boolean, error: any) => {
         if (isLoading) {
