@@ -15,6 +15,7 @@ import {
   Info,
   Heart,
   BookHeart,
+  Gift,
 } from 'lucide-react';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -36,7 +37,7 @@ const quickAccessItems = [
   { label: "Courses", icon: Book, href: "/dashboard/courses", color: "from-blue-500 to-sky-500" },
   { label: "Book Shala", icon: BookHeart, href: "/dashboard/book-shala", color: "from-orange-500 to-amber-500" },
   { label: "Free Courses", icon: BookCopy, href: "/dashboard/courses/free", color: "from-green-500 to-teal-500" },
-  { label: "Test Hub", icon: ShieldQuestion, href: "/dashboard/tests", color: "from-purple-500 to-violet-500" },
+  { label: "Refer & Earn", icon: Gift, href: "/refer", color: "from-purple-500 to-violet-500" },
   { label: "My Library", icon: Library, href: "/dashboard/my-learning", color: "from-fuchsia-500 to-pink-500" },
   { label: "Live Classes", icon: Clapperboard, href: "/dashboard/live-classes", color: "from-red-500 to-rose-500" },
   { label: "Motivation", icon: Heart, href: "/dashboard/motivation", color: "from-pink-500 to-rose-500" },
