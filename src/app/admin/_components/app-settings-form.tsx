@@ -23,11 +23,6 @@ const qrCodeSchema = z.object({
 });
 type QrCodeFormValues = z.infer<typeof qrCodeSchema>;
 
-const carouselSchema = z.object({
-  imageUrl: z.string().url('Must be a valid image URL.'),
-});
-type CarouselFormValues = z.infer<typeof carouselSchema>;
-
 const carouselUploadSchema = z.object({
   imageFile: z.any().refine(file => file, 'An image is required.'),
 });
@@ -37,7 +32,6 @@ const appLinkSchema = z.object({
     referralLink: z.string().url('Please enter a valid URL.'),
 });
 type AppLinkValues = z.infer<typeof appLinkSchema>;
-
 
 const logoSchema = z.object({
   logoFile: z.any().refine(file => file, 'Logo image is required.'),
@@ -55,7 +49,12 @@ const appSettingsSchema = z.object({
   socialMediaLinks: z.array(socialLinkSchema).optional(),
   defaultTheme: z.enum(['light', 'dark', 'system']).optional(),
   aiFeaturesEnabled: z.boolean().optional(),
+  referralLink: z.string().url('Please enter a valid URL.').optional(),
+  qrCodeFile: z.any().optional(),
+  carouselImageFile: z.any().optional(),
+  logoFile: z.any().optional(),
 });
+
 type AppSettingsFormValues = z.infer<typeof appSettingsSchema>;
 
 
@@ -68,31 +67,6 @@ function fileToDataUrl(file: File): Promise<string> {
   });
 }
 
-const SocialIcon = ({ icon, iconName }: { icon?: string | File, iconName?: string }) => {
-    const [iconUrl, setIconUrl] = useState('');
-
-    useEffect(() => {
-        if(typeof icon === 'string') {
-            setIconUrl(icon)
-        } else if (icon instanceof File) {
-            const url = URL.createObjectURL(icon);
-            setIconUrl(url);
-            return () => URL.revokeObjectURL(url);
-        } else {
-            setIconUrl('');
-        }
-    }, [icon]);
-
-    if (iconName === 'youtube') return <Youtube className="h-10 w-10 text-red-600" />
-    if (iconName === 'instagram') return <Instagram className="h-10 w-10 text-pink-600" />
-    if (iconName === 'facebook') return <Facebook className="h-10 w-10 text-blue-600" />
-    if (iconName === 'twitter') return <Twitter className="h-10 w-10 text-sky-500" />
-    if (iconName === 'linkedin') return <Linkedin className="h-10 w-10 text-blue-700" />
-    
-    if (iconUrl) return <Image src={iconUrl} alt="icon" width={40} height={40} className="rounded-full" />
-    
-    return <LinkIcon className="h-10 w-10" />
-};
 
 export function AppSettingsForm() {
   const { toast } = useToast();
@@ -101,8 +75,7 @@ export function AppSettingsForm() {
   const [isLogoLoading, setIsLogoLoading] = useState(false);
   const [isSocialLoading, setIsSocialLoading] = useState(false);
   const [isLinkLoading, setIsLinkLoading] = useState(false);
-  const [isThemeLoading, setIsThemeLoading] = useState(false);
-  const [isAiLoading, setIsAiLoading] = useState(false);
+  const [isSettingsLoading, setIsSettingsLoading] = useState(false);
   
   const [qrPreview, setQrPreview] = useState<string | null>(null);
   const qrFileInputRef = useRef<HTMLInputElement>(null);
@@ -111,27 +84,18 @@ export function AppSettingsForm() {
   const logoFileInputRef = useRef<HTMLInputElement>(null);
   
   const [carouselImages, setCarouselImages] = useState<string[]>([]);
-  const [settingsLoading, setSettingsLoading] = useState(true);
+  const [loading, setLoading] = useState(true);
 
   const ADMIN_PASSWORD = "ADMIN@123";
 
-  const qrForm = useForm<QrCodeFormValues>({ resolver: zodResolver(qrCodeSchema) });
-  const carouselForm = useForm<CarouselUploadFormValues>({ resolver: zodResolver(carouselUploadSchema) });
-  const logoForm = useForm<LogoFormValues>({ resolver: zodResolver(logoSchema) });
-  const socialForm = useForm<AppSettingsFormValues>({
+  const form = useForm<AppSettingsFormValues>({
     resolver: zodResolver(appSettingsSchema),
     defaultValues: { socialMediaLinks: [] },
-  });
-  const linkForm = useForm<AppLinkValues>({
-    resolver: zodResolver(appLinkSchema),
-  });
-  const settingsForm = useForm<AppSettingsFormValues>({
-    resolver: zodResolver(appSettingsSchema),
   });
 
 
   const { fields, append, remove } = useFieldArray({
-      control: socialForm.control,
+      control: form.control,
       name: "socialMediaLinks",
   });
 
@@ -142,24 +106,24 @@ export function AppSettingsForm() {
         setQrPreview(data.paymentQrCodeUrl || null);
         setCarouselImages(data.carouselImages || []);
         setLogoPreview(data.appLogoUrl || null);
-        socialForm.reset({ socialMediaLinks: data.socialMediaLinks || [] });
-        linkForm.reset({ referralLink: data.referralLink || '' });
-        settingsForm.reset({ 
+        form.reset({ 
+            socialMediaLinks: data.socialMediaLinks || [],
+            referralLink: data.referralLink || '',
             defaultTheme: data.defaultTheme || 'dark',
             aiFeaturesEnabled: data.aiFeaturesEnabled === undefined ? true : data.aiFeaturesEnabled,
          });
       }
-      setSettingsLoading(false);
+      setLoading(false);
     });
     return () => unsub();
-  }, [socialForm, linkForm, settingsForm]);
+  }, [form]);
 
 
   
   const handleQrFileChange = (e: ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
-      qrForm.setValue('qrCodeFile', file);
+      form.setValue('qrCodeFile', file);
       setQrPreview(URL.createObjectURL(file));
     }
   };
@@ -167,12 +131,17 @@ export function AppSettingsForm() {
   const handleLogoFileChange = (e: ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
-      logoForm.setValue('logoFile', file);
+      form.setValue('logoFile', file);
       setLogoPreview(URL.createObjectURL(file));
     }
   };
 
-  const onQrSubmit = async (data: QrCodeFormValues) => {
+  const onQrSubmit = async () => {
+    const qrCodeFile = form.getValues('qrCodeFile');
+    if (!qrCodeFile) {
+        toast({variant: 'destructive', title: 'Error', description: 'Please select a QR code image.'});
+        return;
+    }
     const password = prompt("Enter admin password to change QR code:");
     if (password !== ADMIN_PASSWORD) {
         toast({ variant: 'destructive', title: 'Incorrect Password' });
@@ -180,7 +149,7 @@ export function AppSettingsForm() {
     }
     setIsQrLoading(true);
     try {
-      const dataUrl = await fileToDataUrl(data.qrCodeFile);
+      const dataUrl = await fileToDataUrl(qrCodeFile);
       await setDoc(doc(firestore, 'settings', 'appConfig'), { paymentQrCodeUrl: dataUrl }, { merge: true });
       toast({ title: 'Success', description: 'Payment QR code updated.' });
     } catch (error: any) {
@@ -190,10 +159,12 @@ export function AppSettingsForm() {
     }
   };
 
-  const onReferralLinkSubmit = async (data: AppLinkValues) => {
+  const onReferralLinkSubmit = async () => {
+    const referralLink = form.getValues('referralLink');
+    if (!referralLink) return;
     setIsLinkLoading(true);
     try {
-        await setDoc(doc(firestore, 'settings', 'appConfig'), { referralLink: data.referralLink }, { merge: true });
+        await setDoc(doc(firestore, 'settings', 'appConfig'), { referralLink: referralLink }, { merge: true });
         toast({ title: 'Success', description: 'Referral link updated.' });
     } catch (error: any) {
         toast({ variant: 'destructive', title: 'Error', description: error.message });
@@ -202,10 +173,13 @@ export function AppSettingsForm() {
     }
   };
   
-  const onLogoSubmit = async (data: LogoFormValues) => {
+  const onLogoSubmit = async () => {
+    const logoFile = form.getValues('logoFile');
+    if (!logoFile) return;
+
     setIsLogoLoading(true);
     try {
-      const dataUrl = await fileToDataUrl(data.logoFile);
+      const dataUrl = await fileToDataUrl(logoFile);
       await setDoc(doc(firestore, 'settings', 'appConfig'), { appLogoUrl: dataUrl }, { merge: true });
       toast({ title: 'Success', description: 'App logo updated.' });
     } catch (error: any) {
@@ -215,13 +189,15 @@ export function AppSettingsForm() {
     }
   }
 
-  const onCarouselSubmit = async (data: CarouselUploadFormValues) => {
+  const onCarouselSubmit = async () => {
+    const imageFile = form.getValues('carouselImageFile');
+    if (!imageFile) return;
     setIsCarouselLoading(true);
     try {
-        const imageUrl = await fileToDataUrl(data.imageFile);
+        const imageUrl = await fileToDataUrl(imageFile);
         await updateDoc(doc(firestore, 'settings', 'appConfig'), { carouselImages: arrayUnion(imageUrl) });
         toast({ title: 'Success', description: 'Carousel image added.' });
-        carouselForm.reset();
+        form.setValue('carouselImageFile', null);
     } catch (error: any) {
         toast({ variant: 'destructive', title: 'Error', description: error.message });
     } finally {
@@ -229,7 +205,8 @@ export function AppSettingsForm() {
     }
   };
 
-   const onSocialSubmit = async (data: AppSettingsFormValues) => {
+   const onSocialSubmit = async () => {
+    const data = form.getValues();
     setIsSocialLoading(true);
     try {
       const linksToSave = await Promise.all(
@@ -253,8 +230,9 @@ export function AppSettingsForm() {
     }
   };
 
-  const onGeneralSettingsSubmit = async (data: AppSettingsFormValues) => {
-    setIsThemeLoading(true); // Re-use one of the loaders
+  const onGeneralSettingsSubmit = async () => {
+    const data = form.getValues();
+    setIsSettingsLoading(true);
     try {
       await setDoc(doc(firestore, 'settings', 'appConfig'), { 
           defaultTheme: data.defaultTheme,
@@ -264,7 +242,7 @@ export function AppSettingsForm() {
     } catch (error: any) {
       toast({ variant: 'destructive', title: 'Error', description: error.message });
     } finally {
-      setIsThemeLoading(false);
+      setIsSettingsLoading(false);
     }
   }
 
@@ -278,7 +256,7 @@ export function AppSettingsForm() {
       }
   }
 
-  if (settingsLoading) {
+  if (loading) {
       return (
           <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-8">
               <Skeleton className="h-64 w-full" />
@@ -289,11 +267,9 @@ export function AppSettingsForm() {
   }
 
   return (
-    <div className="space-y-8">
-        <Form {...settingsForm}>
-            <form onSubmit={settingsForm.handleSubmit(onGeneralSettingsSubmit)} className="space-y-8">
+    <Form {...form}>
+        <div className="space-y-8">
                 <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-8">
-                    {/* Theme and AI Settings Card */}
                      <Card>
                         <CardHeader>
                             <CardTitle>General App Settings</CardTitle>
@@ -301,7 +277,7 @@ export function AppSettingsForm() {
                         </CardHeader>
                         <CardContent className="space-y-6">
                             <FormField
-                                control={settingsForm.control}
+                                control={form.control}
                                 name="defaultTheme"
                                 render={({ field }) => (
                                     <FormItem>
@@ -321,7 +297,7 @@ export function AppSettingsForm() {
                                 )}
                             />
                              <FormField
-                                control={settingsForm.control}
+                                control={form.control}
                                 name="aiFeaturesEnabled"
                                 render={({ field }) => (
                                 <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
@@ -340,16 +316,18 @@ export function AppSettingsForm() {
                                 </FormItem>
                                 )}
                             />
+                            <Button type="button" onClick={onGeneralSettingsSubmit} disabled={isSettingsLoading}>
+                                {isSettingsLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                Save General Settings
+                            </Button>
                         </CardContent>
                     </Card>
 
-                    {/* QR Code Card */}
                     <Card>
                         <CardHeader><CardTitle>Payment QR Code</CardTitle><CardDescription>Upload the QR code for payment pages.</CardDescription></CardHeader>
-                        <CardContent>
-                            <form onSubmit={qrForm.handleSubmit(onQrSubmit)} className="space-y-4">
+                        <CardContent className="space-y-4">
                                 <FormField
-                                    control={qrForm.control} name="qrCodeFile"
+                                    control={form.control} name="qrCodeFile"
                                     render={({ field }) => (
                                         <FormItem><FormLabel>QR Code Image</FormLabel>
                                         <FormControl>
@@ -362,19 +340,17 @@ export function AppSettingsForm() {
                                         <FormMessage /></FormItem>
                                     )}
                                 />
-                                <Button type="submit" disabled={isQrLoading}> {isQrLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Save QR Code </Button>
-                            </form>
+                                <Button type="button" onClick={onQrSubmit} disabled={isQrLoading}> {isQrLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Save QR Code </Button>
                         </CardContent>
                     </Card>
 
-                    {/* Carousel Card */}
                     <Card>
                         <CardHeader><CardTitle>Home Page Carousel</CardTitle><CardDescription>Manage images for the dashboard slider.</CardDescription></CardHeader>
                         <CardContent>
-                            <form onSubmit={carouselForm.handleSubmit(onCarouselSubmit)} className="space-y-4 mb-6">
+                            <div className="space-y-4 mb-6">
                                 <FormField
-                                    control={carouselForm.control}
-                                    name="imageFile"
+                                    control={form.control}
+                                    name="carouselImageFile"
                                     render={({ field: { onChange, value, ...fieldProps } }) => (
                                         <FormItem>
                                         <FormLabel>New Image</FormLabel>
@@ -385,7 +361,7 @@ export function AppSettingsForm() {
                                                     accept="image/*"
                                                     onChange={(e) => onChange(e.target.files?.[0])}
                                                 />
-                                                <Button type="submit" disabled={isCarouselLoading}>
+                                                <Button type="button" onClick={onCarouselSubmit} disabled={isCarouselLoading}>
                                                     {isCarouselLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Add'}
                                                 </Button>
                                             </div>
@@ -394,7 +370,7 @@ export function AppSettingsForm() {
                                         </FormItem>
                                     )}
                                 />
-                            </form>
+                            </div>
                             <div className="space-y-2">
                                 <h4 className="font-semibold">Current Images</h4>
                                 {carouselImages.length === 0 && <p className="text-sm text-muted-foreground">No images added yet.</p>}
@@ -417,13 +393,11 @@ export function AppSettingsForm() {
                         </CardContent>
                     </Card>
 
-                    {/* Referral Link Card */}
                     <Card>
                         <CardHeader><CardTitle>Referral Link</CardTitle><CardDescription>Set the app link for the "Refer &amp; Earn" feature.</CardDescription></CardHeader>
-                        <CardContent>
-                            <form onSubmit={linkForm.handleSubmit(onReferralLinkSubmit)} className="space-y-4">
+                        <CardContent className="space-y-4">
                                 <FormField
-                                    control={linkForm.control}
+                                    control={form.control}
                                     name="referralLink"
                                     render={({ field }) => (
                                         <FormItem>
@@ -435,87 +409,80 @@ export function AppSettingsForm() {
                                         </FormItem>
                                     )}
                                 />
-                                <Button type="submit" disabled={isLinkLoading}>
+                                <Button type="button" onClick={onReferralLinkSubmit} disabled={isLinkLoading}>
                                     {isLinkLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                     Save Link
                                 </Button>
-                            </form>
                         </CardContent>
                     </Card>
                 </div>
-                 <Button type="submit" disabled={isThemeLoading}>
-                    {isThemeLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    Save General Settings
-                </Button>
-            </form>
-        </Form>
-        <Card>
-            <CardHeader><CardTitle>Social Media Links</CardTitle><CardDescription>Add links to your social media profiles.</CardDescription></CardHeader>
-            <CardContent>
-                 <Form {...socialForm}>
-                    <form onSubmit={socialForm.handleSubmit(onSocialSubmit)} className="space-y-6">
-                        {fields.map((field, index) => {
-                             const selectedIconName = socialForm.watch(`socialMediaLinks.${index}.iconName`);
-                             return (
-                             <div key={field.id} className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end p-4 border rounded-lg">
-                                <FormField control={socialForm.control} name={`socialMediaLinks.${index}.name`} render={({ field }) => (
-                                    <FormItem><FormLabel>Name</FormLabel><FormControl><Input placeholder="e.g. YouTube Channel" {...field} /></FormControl><FormMessage /></FormItem>
-                                )}/>
-                                <FormField control={socialForm.control} name={`socialMediaLinks.${index}.url`} render={({ field }) => (
-                                    <FormItem><FormLabel>URL</FormLabel><FormControl><Input placeholder="https://youtube.com/..." {...field} /></FormControl><FormMessage /></FormItem>
-                                )}/>
-                                <FormField
-                                    control={socialForm.control}
-                                    name={`socialMediaLinks.${index}.iconName`}
-                                    render={({ field }) => (
-                                      <FormItem>
-                                        <FormLabel>Icon</FormLabel>
-                                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                          <FormControl>
-                                            <SelectTrigger><SelectValue placeholder="Select Icon" /></SelectTrigger>
-                                          </FormControl>
-                                          <SelectContent>
-                                            <SelectItem value="youtube">YouTube</SelectItem>
-                                            <SelectItem value="instagram">Instagram</SelectItem>
-                                            <SelectItem value="facebook">Facebook</SelectItem>
-                                            <SelectItem value="twitter">Twitter</SelectItem>
-                                            <SelectItem value="linkedin">LinkedIn</SelectItem>
-                                            <SelectItem value="custom">Custom...</SelectItem>
-                                          </SelectContent>
-                                        </Select>
-                                      </FormItem>
-                                    )}
-                                  />
-                                <div className="flex items-center gap-2">
-                                     {selectedIconName === 'custom' && (
-                                        <FormField
-                                            control={socialForm.control}
-                                            name={`socialMediaLinks.${index}.icon`}
-                                            render={({ field: { onChange, value, ...rest } }) => (
-                                                <FormItem className="flex-1">
-                                                    <FormLabel className="sr-only">Upload</FormLabel>
-                                                    <FormControl>
-                                                        <Input type="file" accept="image/*" onChange={(e) => onChange(e.target.files?.[0])} />
-                                                    </FormControl>
-                                                </FormItem>
-                                            )}
-                                        />
-                                     )}
-                                    <Button type="button" variant="destructive" size="icon" onClick={() => remove(index)}><Trash2 className="h-4 w-4" /></Button>
-                               </div>
+
+            <Card>
+                <CardHeader><CardTitle>Social Media Links</CardTitle><CardDescription>Add links to your social media profiles.</CardDescription></CardHeader>
+                <CardContent>
+                        <div className="space-y-6">
+                            {fields.map((field, index) => {
+                                const selectedIconName = form.watch(`socialMediaLinks.${index}.iconName`);
+                                return (
+                                <div key={field.id} className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end p-4 border rounded-lg">
+                                    <FormField control={form.control} name={`socialMediaLinks.${index}.name`} render={({ field }) => (
+                                        <FormItem><FormLabel>Name</FormLabel><FormControl><Input placeholder="e.g. YouTube Channel" {...field} /></FormControl><FormMessage /></FormItem>
+                                    )}/>
+                                    <FormField control={form.control} name={`socialMediaLinks.${index}.url`} render={({ field }) => (
+                                        <FormItem><FormLabel>URL</FormLabel><FormControl><Input placeholder="https://youtube.com/..." {...field} /></FormControl><FormMessage /></FormItem>
+                                    )}/>
+                                    <FormField
+                                        control={form.control}
+                                        name={`socialMediaLinks.${index}.iconName`}
+                                        render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Icon</FormLabel>
+                                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                            <FormControl>
+                                                <SelectTrigger><SelectValue placeholder="Select Icon" /></SelectTrigger>
+                                            </FormControl>
+                                            <SelectContent>
+                                                <SelectItem value="youtube">YouTube</SelectItem>
+                                                <SelectItem value="instagram">Instagram</SelectItem>
+                                                <SelectItem value="facebook">Facebook</SelectItem>
+                                                <SelectItem value="twitter">Twitter</SelectItem>
+                                                <SelectItem value="linkedin">LinkedIn</SelectItem>
+                                                <SelectItem value="custom">Custom...</SelectItem>
+                                            </SelectContent>
+                                            </Select>
+                                        </FormItem>
+                                        )}
+                                    />
+                                    <div className="flex items-center gap-2">
+                                        {selectedIconName === 'custom' && (
+                                            <FormField
+                                                control={form.control}
+                                                name={`socialMediaLinks.${index}.icon`}
+                                                render={({ field: { onChange, value, ...rest } }) => (
+                                                    <FormItem className="flex-1">
+                                                        <FormLabel className="sr-only">Upload</FormLabel>
+                                                        <FormControl>
+                                                            <Input type="file" accept="image/*" onChange={(e) => onChange(e.target.files?.[0])} />
+                                                        </FormControl>
+                                                    </FormItem>
+                                                )}
+                                            />
+                                        )}
+                                        <Button type="button" variant="destructive" size="icon" onClick={() => remove(index)}><Trash2 className="h-4 w-4" /></Button>
+                                    </div>
+                                </div>
+                            )})}
+                            <div className="flex justify-between items-center">
+                                <Button type="button" variant="outline" onClick={() => append({ name: '', url: '', iconName: 'link' })}><PlusCircle className="mr-2"/>Add Link</Button>
+                                <Button type="button" onClick={onSocialSubmit} disabled={isSocialLoading}>
+                                    {isSocialLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                    Save Social Links
+                                </Button>
                             </div>
-                         )})}
-                         <div className="flex justify-between items-center">
-                             <Button type="button" variant="outline" onClick={() => append({ name: '', url: '', iconName: 'link' })}><PlusCircle className="mr-2"/>Add Link</Button>
-                             <Button type="submit" disabled={isSocialLoading}>
-                                {isSocialLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                Save Social Links
-                            </Button>
-                         </div>
-                    </form>
-                 </Form>
-            </CardContent>
-        </Card>
-    </div>
+                        </div>
+                </CardContent>
+            </Card>
+        </div>
+    </Form>
   );
 }
