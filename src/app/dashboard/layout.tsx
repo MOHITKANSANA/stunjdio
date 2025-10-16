@@ -119,7 +119,7 @@ const SidebarMenuItemWithHandler = ({ href, icon: Icon, label, closeSidebar }: {
 }
 
 
-const AppSidebar = ({ isKidsMode, appLogoUrl }: { isKidsMode: boolean; appLogoUrl: string | null }) => {
+const AppSidebar = ({ isKidsMode, appLogoUrl, settings }: { isKidsMode: boolean; appLogoUrl: string | null, settings: any }) => {
     const { isMobile, setOpenMobile } = useSidebar();
     const { t } = useLanguage();
     const { user, logout } = useAuth();
@@ -150,9 +150,13 @@ const AppSidebar = ({ isKidsMode, appLogoUrl }: { isKidsMode: boolean; appLogoUr
         logout();
     }
     
-    const navItems = isKidsMode 
+    let navItems = isKidsMode 
         ? kidsSidebarNavItems 
         : sidebarNavItems;
+
+    if (settings && !settings.aiFeaturesEnabled) {
+        navItems = navItems.filter(item => !['/dashboard/tutor', '/dashboard/tests', '/dashboard/battle-quiz'].includes(item.href));
+    }
 
     return (
         <Sidebar>
@@ -298,7 +302,7 @@ function DashboardLayoutContent({
   const [isKidsMode, setIsKidsMode] = useState(false);
   const [isScreenLocked, setIsScreenLocked] = useState(false);
   const [timeUsed, setTimeUsed] = useState(0); // in seconds
-  const [appLogoUrl, setAppLogoUrl] = useState<string | null>(null);
+  const [appConfig, setAppConfig] = useState<any>(null);
   const { toast } = useToast();
   const [isProfileChecked, setIsProfileChecked] = useState(false);
   
@@ -434,7 +438,7 @@ function DashboardLayoutContent({
 
     const appConfigUnsub = onSnapshot(doc(firestore, 'settings', 'appConfig'), (doc) => {
         if (doc.exists()) {
-            setAppLogoUrl(doc.data().appLogoUrl || null);
+            setAppConfig(doc.data());
         }
      });
 
@@ -456,7 +460,7 @@ function DashboardLayoutContent({
         />
          {!isVideoPlaybackPage && <AppHeader />}
          <div className={cn("flex flex-col md:flex-row w-full h-full overflow-hidden")}>
-            {!isVideoPlaybackPage && <AppSidebar isKidsMode={isKidsMode} appLogoUrl={appLogoUrl} />}
+            {!isVideoPlaybackPage && <AppSidebar isKidsMode={isKidsMode} appLogoUrl={appConfig?.appLogoUrl || null} settings={appConfig} />}
              <main className="flex-1 overflow-y-auto h-full bg-background" onClick={() => isMobile && setOpenMobile(false)}>
                 <SidebarInset>
                     <div className={cn(!isVideoPlaybackPage && 'p-4 md:p-6')}>

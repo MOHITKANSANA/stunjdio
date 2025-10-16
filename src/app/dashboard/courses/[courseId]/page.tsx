@@ -3,7 +3,7 @@
 
 import { useState, Suspense, useEffect } from 'react';
 import { doc, DocumentData } from 'firebase/firestore';
-import { useDocument, useCollection } from 'react-firebase-hooks/firestore';
+import { useDocument, useCollection, useDocumentData } from 'react-firebase-hooks/firestore';
 import { firestore } from '@/lib/firebase';
 import { notFound, useParams, useRouter, useSearchParams } from 'next/navigation';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -134,7 +134,7 @@ const VideoLecturesTab = ({ courseId }: { courseId: string; }) => {
     );
 };
 
-const TestsTab = ({ course, courseId }: { course: DocumentData, courseId: string }) => {
+const TestsTab = ({ course, courseId, aiFeaturesEnabled }: { course: DocumentData, courseId: string, aiFeaturesEnabled: boolean }) => {
     const [testsCollection, loading, error] = useCollection(
         query(collection(firestore, 'courses', courseId, 'content'))
     );
@@ -167,9 +167,9 @@ const TestsTab = ({ course, courseId }: { course: DocumentData, courseId: string
             </Dialog>
 
             <Tabs defaultValue="series">
-                <TabsList className="grid w-full grid-cols-2">
+                <TabsList className={cn("grid w-full", aiFeaturesEnabled ? "grid-cols-2" : "grid-cols-1")}>
                     <TabsTrigger value="series">Test Series</TabsTrigger>
-                    <TabsTrigger value="ai">AI Generated Test</TabsTrigger>
+                    {aiFeaturesEnabled && <TabsTrigger value="ai">AI Generated Test</TabsTrigger>}
                 </TabsList>
                 <TabsContent value="series" className="pt-4">
                     {error && <p className="text-destructive">Could not load test series: {error.message}</p>}
@@ -198,18 +198,20 @@ const TestsTab = ({ course, courseId }: { course: DocumentData, courseId: string
                         </div>
                     )}
                 </TabsContent>
-                <TabsContent value="ai" className="pt-4">
-                     <div 
-                        className="p-6 border-2 border-dashed rounded-lg text-center cursor-pointer hover:border-primary hover:bg-primary/5 transition-colors active:scale-[0.98]"
-                        onClick={() => setIsAiTestModalOpen(true)}
-                     >
-                        <div className="w-fit mx-auto p-3 rounded-full bg-gradient-to-br from-purple-500 to-blue-500 text-white mb-3">
-                            <Bot className="h-8 w-8" />
-                        </div>
-                        <h3 className="font-bold text-lg">AI Generated Test</h3>
-                        <p className="text-muted-foreground text-sm">Create unlimited personalized tests for this course.</p>
-                     </div>
-                </TabsContent>
+                {aiFeaturesEnabled && 
+                    <TabsContent value="ai" className="pt-4">
+                         <div 
+                            className="p-6 border-2 border-dashed rounded-lg text-center cursor-pointer hover:border-primary hover:bg-primary/5 transition-colors active:scale-[0.98]"
+                            onClick={() => setIsAiTestModalOpen(true)}
+                         >
+                            <div className="w-fit mx-auto p-3 rounded-full bg-gradient-to-br from-purple-500 to-blue-500 text-white mb-3">
+                                <Bot className="h-8 w-8" />
+                            </div>
+                            <h3 className="font-bold text-lg">AI Generated Test</h3>
+                            <p className="text-muted-foreground text-sm">Create unlimited personalized tests for this course.</p>
+                         </div>
+                    </TabsContent>
+                }
             </Tabs>
         </CardContent>
     );
@@ -272,21 +274,40 @@ const ManualDoubtsTab = ({ courseId }: { courseId: string; }) => {
 const EnrolledCourseView = ({ course, courseId }: { course: DocumentData, courseId: string }) => {
     const searchParams = useSearchParams();
     const router = useRouter();
+    const [settings, setSettings] = useState<any>(null);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const unsub = onSnapshot(doc(firestore, 'settings', 'appConfig'), (doc) => {
+            if (doc.exists()) {
+                setSettings(doc.data());
+            }
+            setLoading(false);
+        });
+        return () => unsub();
+    }, []);
+    
     const defaultTab = searchParams.get('tab') || 'videos';
 
     const onTabChange = (value: string) => {
         router.push(`/dashboard/courses/${courseId}?tab=${value}`, { scroll: false });
     };
 
+    if (loading) {
+        return <Skeleton className="h-64 w-full" />
+    }
+
+    const aiFeaturesEnabled = settings?.aiFeaturesEnabled === undefined ? true : settings.aiFeaturesEnabled;
+
     return (
         <div className="w-full">
             <Tabs defaultValue={defaultTab} onValueChange={onTabChange} className="w-full">
                 <div className="overflow-x-auto">
-                    <TabsList className="grid w-full grid-cols-4 min-w-[400px]">
+                    <TabsList className={cn("grid w-full min-w-[400px]", aiFeaturesEnabled ? "grid-cols-4" : "grid-cols-3")}>
                         <TabsTrigger value="videos">Videos</TabsTrigger>
                         <TabsTrigger value="content">Content</TabsTrigger>
                         <TabsTrigger value="tests">Tests</TabsTrigger>
-                        <TabsTrigger value="doubts">Doubts</TabsTrigger>
+                        {aiFeaturesEnabled && <TabsTrigger value="doubts">Doubts</TabsTrigger>}
                     </TabsList>
                 </div>
                 <TabsContent value="videos">
@@ -296,22 +317,24 @@ const EnrolledCourseView = ({ course, courseId }: { course: DocumentData, course
                     <ContentTab courseId={courseId} />
                 </TabsContent>
                 <TabsContent value="tests">
-                    <TestsTab course={course} courseId={courseId} />
+                    <TestsTab course={course} courseId={courseId} aiFeaturesEnabled={aiFeaturesEnabled} />
                 </TabsContent>
-                 <TabsContent value="doubts">
-                    <Tabs defaultValue="ai" className="w-full">
-                         <TabsList className="grid w-full grid-cols-2">
-                             <TabsTrigger value="ai">AI Doubts</TabsTrigger>
-                             <TabsTrigger value="manual">Manual Doubts</TabsTrigger>
-                         </TabsList>
-                         <TabsContent value="ai" className="pt-4">
-                             <AIDoubtsTab course={course} />
-                         </TabsContent>
-                         <TabsContent value="manual" className="pt-4">
-                             <ManualDoubtsTab courseId={courseId} />
-                         </TabsContent>
-                    </Tabs>
-                </TabsContent>
+                 {aiFeaturesEnabled && 
+                    <TabsContent value="doubts">
+                        <Tabs defaultValue="ai" className="w-full">
+                             <TabsList className="grid w-full grid-cols-2">
+                                 <TabsTrigger value="ai">AI Doubts</TabsTrigger>
+                                 <TabsTrigger value="manual">Manual Doubts</TabsTrigger>
+                             </TabsList>
+                             <TabsContent value="ai" className="pt-4">
+                                 <AIDoubtsTab course={course} />
+                             </TabsContent>
+                             <TabsContent value="manual" className="pt-4">
+                                 <ManualDoubtsTab courseId={courseId} />
+                             </TabsContent>
+                        </Tabs>
+                    </TabsContent>
+                 }
             </Tabs>
         </div>
     )

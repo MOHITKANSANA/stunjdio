@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -7,7 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Heart, Film, GalleryHorizontal, Video, AlertTriangle } from 'lucide-react';
 import Image from 'next/image';
-import { useCollectionData } from 'react-firebase-hooks/firestore';
+import { useCollection } from 'react-firebase-hooks/firestore';
 import { collection, query, orderBy, where } from 'firebase/firestore';
 import { firestore } from '@/lib/firebase';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -23,8 +22,10 @@ const motivationalLines = [
 ];
 
 const ShortsTab = () => {
-    const q = query(collection(firestore, 'motivationVideos'), where('type', '==', 'short_video'), orderBy('createdAt', 'desc'));
-    const [videos, loading, error] = useCollectionData(q);
+    const q = query(collection(firestore, 'motivationVideos'), orderBy('createdAt', 'desc'));
+    const [videosSnapshot, loading, error] = useCollection(q);
+
+    const videos = videosSnapshot?.docs.filter(doc => doc.data().type === 'short_video');
 
     if (loading) {
         return (
@@ -56,26 +57,31 @@ const ShortsTab = () => {
     
     return (
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-            {videos.map((video, index) => (
-                <a key={index} href={video.url} target="_blank" rel="noopener noreferrer">
-                    <div className="relative aspect-[9/16] w-full rounded-lg overflow-hidden shadow-lg bg-muted">
-                        <Image src={video.thumbnailUrl || '/placeholder.jpg'} alt={video.title} fill style={{objectFit: 'cover'}}/>
-                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-                            <Video className="h-8 w-8 text-white" />
+            {videos.map((doc) => {
+                const video = doc.data();
+                return (
+                    <a key={doc.id} href={video.url} target="_blank" rel="noopener noreferrer">
+                        <div className="relative aspect-[9/16] w-full rounded-lg overflow-hidden shadow-lg bg-muted">
+                            <Image src={video.thumbnailUrl || '/placeholder.jpg'} alt={video.title} fill style={{objectFit: 'cover'}}/>
+                            <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                                <Video className="h-8 w-8 text-white" />
+                            </div>
+                             <p className="absolute bottom-2 left-2 right-2 text-white text-xs font-semibold truncate text-center bg-black/50 p-1 rounded">
+                                {video.title}
+                            </p>
                         </div>
-                         <p className="absolute bottom-2 left-2 right-2 text-white text-xs font-semibold truncate text-center bg-black/50 p-1 rounded">
-                            {video.title}
-                        </p>
-                    </div>
-                </a>
-            ))}
+                    </a>
+                )
+            })}
         </div>
     );
 };
 
 const FullVideosTab = () => {
-    const q = query(collection(firestore, 'motivationVideos'), where('type', '==', 'full_video'), orderBy('createdAt', 'desc'));
-    const [videos, loading, error] = useCollectionData(q);
+    const q = query(collection(firestore, 'motivationVideos'), orderBy('createdAt', 'desc'));
+    const [videosSnapshot, loading, error] = useCollection(q);
+
+    const videos = videosSnapshot?.docs.filter(doc => doc.data().type === 'full_video');
 
      if (loading) {
         return (
@@ -107,8 +113,10 @@ const FullVideosTab = () => {
 
      return (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {videos.map((video, index) => (
-                <a key={index} href={video.url} target="_blank" rel="noopener noreferrer">
+            {videos.map((doc) => {
+                const video = doc.data();
+                return (
+                <a key={doc.id} href={video.url} target="_blank" rel="noopener noreferrer">
                      <div className="relative aspect-video w-full rounded-lg overflow-hidden shadow-lg bg-muted">
                         <Image src={video.thumbnailUrl || '/placeholder.jpg'} alt={video.title} fill style={{objectFit: 'cover'}}/>
                         <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
@@ -119,7 +127,7 @@ const FullVideosTab = () => {
                         </p>
                     </div>
                 </a>
-            ))}
+            )})}
         </div>
     );
 }

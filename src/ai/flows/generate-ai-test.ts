@@ -24,7 +24,8 @@ export type GenerateAiTestInput = z.infer<typeof GenerateAiTestInputSchema>;
 const MultipleChoiceQuestionSchema = z.object({
     question: z.string().describe("The question text."),
     options: z.array(z.string()).length(4).describe("An array of exactly four possible answers."),
-    correctAnswerIndex: z.number().min(0).max(3).describe("The index (0-3) of the correct answer in the options array.")
+    correctAnswerIndex: z.number().min(0).max(3).describe("The index (0-3) of the correct answer in the options array."),
+    explanation: z.string().optional().describe("A brief explanation for the correct answer."),
 });
 
 const GenerateAiTestOutputSchema = z.object({
@@ -55,7 +56,7 @@ Number of Questions: {{{questionCount}}}
 Difficulty: {{{difficulty}}}
 {{/if}}
 
-Please generate exactly {{{questionCount}}} high-quality, relevant multiple-choice questions. Each question must have exactly four options and a clearly identified correct answer index. 
+Please generate exactly {{{questionCount}}} high-quality, relevant multiple-choice questions. Each question must have exactly four options, a clearly identified correct answer index, and a brief explanation for the correct answer. 
 `,
 });
 

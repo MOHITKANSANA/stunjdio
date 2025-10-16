@@ -5,7 +5,7 @@ import { useState, useRef, ChangeEvent, useEffect } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
@@ -16,6 +16,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import Image from 'next/image';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 
 const qrCodeSchema = z.object({
   qrCodeFile: z.any().refine(file => file, 'QR Code image is required.'),
@@ -53,6 +54,7 @@ const socialLinkSchema = z.object({
 const appSettingsSchema = z.object({
   socialMediaLinks: z.array(socialLinkSchema).optional(),
   defaultTheme: z.enum(['light', 'dark', 'system']).optional(),
+  aiFeaturesEnabled: z.boolean().optional(),
 });
 type AppSettingsFormValues = z.infer<typeof appSettingsSchema>;
 
@@ -100,6 +102,7 @@ export function AppSettingsForm() {
   const [isSocialLoading, setIsSocialLoading] = useState(false);
   const [isLinkLoading, setIsLinkLoading] = useState(false);
   const [isThemeLoading, setIsThemeLoading] = useState(false);
+  const [isAiLoading, setIsAiLoading] = useState(false);
   
   const [qrPreview, setQrPreview] = useState<string | null>(null);
   const qrFileInputRef = useRef<HTMLInputElement>(null);
@@ -122,7 +125,7 @@ export function AppSettingsForm() {
   const linkForm = useForm<AppLinkValues>({
     resolver: zodResolver(appLinkSchema),
   });
-  const themeForm = useForm<AppSettingsFormValues>({
+  const settingsForm = useForm<AppSettingsFormValues>({
     resolver: zodResolver(appSettingsSchema),
   });
 
@@ -141,12 +144,15 @@ export function AppSettingsForm() {
         setLogoPreview(data.appLogoUrl || null);
         socialForm.reset({ socialMediaLinks: data.socialMediaLinks || [] });
         linkForm.reset({ referralLink: data.referralLink || '' });
-        themeForm.reset({ defaultTheme: data.defaultTheme || 'dark' });
+        settingsForm.reset({ 
+            defaultTheme: data.defaultTheme || 'dark',
+            aiFeaturesEnabled: data.aiFeaturesEnabled === undefined ? true : data.aiFeaturesEnabled,
+         });
       }
       setSettingsLoading(false);
     });
     return () => unsub();
-  }, [socialForm, linkForm, themeForm]);
+  }, [socialForm, linkForm, settingsForm]);
 
 
   
@@ -247,11 +253,14 @@ export function AppSettingsForm() {
     }
   };
 
-  const onThemeSubmit = async (data: AppSettingsFormValues) => {
-    setIsThemeLoading(true);
+  const onGeneralSettingsSubmit = async (data: AppSettingsFormValues) => {
+    setIsThemeLoading(true); // Re-use one of the loaders
     try {
-      await setDoc(doc(firestore, 'settings', 'appConfig'), { defaultTheme: data.defaultTheme }, { merge: true });
-      toast({ title: 'Success', description: 'App default theme updated.' });
+      await setDoc(doc(firestore, 'settings', 'appConfig'), { 
+          defaultTheme: data.defaultTheme,
+          aiFeaturesEnabled: data.aiFeaturesEnabled,
+       }, { merge: true });
+      toast({ title: 'Success', description: 'App settings updated.' });
     } catch (error: any) {
       toast({ variant: 'destructive', title: 'Error', description: error.message });
     } finally {
@@ -281,119 +290,23 @@ export function AppSettingsForm() {
 
   return (
     <div className="space-y-8">
-        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-8">
-            <Card>
-                <CardHeader><CardTitle>Payment QR Code</CardTitle><CardDescription>Upload the QR code for payment pages.</CardDescription></CardHeader>
-                <CardContent>
-                    <Form {...qrForm}>
-                        <form onSubmit={qrForm.handleSubmit(onQrSubmit)} className="space-y-4">
+        <Form {...settingsForm}>
+            <form onSubmit={settingsForm.handleSubmit(onGeneralSettingsSubmit)} className="space-y-8">
+                <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-8">
+                    {/* Theme and AI Settings Card */}
+                     <Card>
+                        <CardHeader>
+                            <CardTitle>General App Settings</CardTitle>
+                            <CardDescription>Manage global settings for the application.</CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-6">
                             <FormField
-                                control={qrForm.control} name="qrCodeFile"
-                                render={({ field }) => (
-                                    <FormItem><FormLabel>QR Code Image</FormLabel>
-                                    <FormControl>
-                                        <div>
-                                            <Button type="button" variant="outline" className="w-full" onClick={() => qrFileInputRef.current?.click()}><Upload className="mr-2 h-4 w-4" />{qrPreview ? 'Change QR Code' : 'Upload QR Code'}</Button>
-                                            <input type="file" ref={qrFileInputRef} onChange={handleQrFileChange} className="hidden" accept="image/*" />
-                                        </div>
-                                    </FormControl>
-                                    {qrPreview && <Image src={qrPreview} alt="QR Code preview" width={200} height={200} className="mt-4 rounded-md mx-auto" />}
-                                    <FormMessage /></FormItem>
-                                )}
-                            />
-                            <Button type="submit" disabled={isQrLoading}> {isQrLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Save QR Code </Button>
-                        </form>
-                    </Form>
-                </CardContent>
-            </Card>
-            <Card>
-                <CardHeader><CardTitle>Home Page Carousel</CardTitle><CardDescription>Manage images for the dashboard slider.</CardDescription></CardHeader>
-                <CardContent>
-                    <Form {...carouselForm}>
-                        <form onSubmit={carouselForm.handleSubmit(onCarouselSubmit)} className="space-y-4 mb-6">
-                            <FormField
-                                control={carouselForm.control}
-                                name="imageFile"
-                                render={({ field: { onChange, value, ...fieldProps } }) => (
-                                    <FormItem>
-                                    <FormLabel>New Image</FormLabel>
-                                    <FormControl>
-                                        <div className="flex gap-2">
-                                            <Input
-                                                type="file"
-                                                accept="image/*"
-                                                onChange={(e) => onChange(e.target.files?.[0])}
-                                            />
-                                            <Button type="submit" disabled={isCarouselLoading}>
-                                                {isCarouselLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Add'}
-                                            </Button>
-                                        </div>
-                                    </FormControl>
-                                    <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-                        </form>
-                    </Form>
-                    <div className="space-y-2">
-                        <h4 className="font-semibold">Current Images</h4>
-                        {carouselImages.length === 0 && <p className="text-sm text-muted-foreground">No images added yet.</p>}
-                        <div className="max-h-60 overflow-y-auto pr-2">
-                            {carouselImages.map((url, index) => (
-                                <div key={index} className="flex items-center justify-between gap-2 p-2 border rounded-md mb-2">
-                                    <div className="flex items-center gap-2 truncate">
-                                        <div className="relative w-10 h-10 shrink-0">
-                                            <Image src={url} alt={`Carousel Image ${index+1}`} fill className="rounded-sm object-cover" />
-                                        </div>
-                                        <a href={url} target="_blank" rel="noopener noreferrer" className="text-xs text-muted-foreground truncate hover:underline">{url}</a>
-                                    </div>
-                                    <Button variant="ghost" size="icon" onClick={() => handleRemoveCarouselImage(url)}>
-                                        <Trash2 className="h-4 w-4 text-destructive" />
-                                    </Button>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                </CardContent>
-            </Card>
-             <Card>
-                <CardHeader><CardTitle>Referral Link</CardTitle><CardDescription>Set the app link for the "Refer &amp; Earn" feature.</CardDescription></CardHeader>
-                <CardContent>
-                    <Form {...linkForm}>
-                        <form onSubmit={linkForm.handleSubmit(onReferralLinkSubmit)} className="space-y-4">
-                            <FormField
-                                control={linkForm.control}
-                                name="referralLink"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>App Link</FormLabel>
-                                        <FormControl>
-                                            <Input placeholder="https://yourapp.com" {...field} />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-                            <Button type="submit" disabled={isLinkLoading}>
-                                {isLinkLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                Save Link
-                            </Button>
-                        </form>
-                    </Form>
-                </CardContent>
-            </Card>
-             <Card>
-                <CardHeader><CardTitle>App Default Theme</CardTitle><CardDescription>Set the default theme for all users.</CardDescription></CardHeader>
-                <CardContent>
-                    <Form {...themeForm}>
-                        <form onSubmit={themeForm.handleSubmit(onThemeSubmit)} className="space-y-4">
-                            <FormField
-                                control={themeForm.control}
+                                control={settingsForm.control}
                                 name="defaultTheme"
                                 render={({ field }) => (
                                     <FormItem>
                                         <FormLabel>Default Theme</FormLabel>
-                                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                        <Select onValueChange={field.onChange} value={field.value}>
                                             <FormControl>
                                                 <SelectTrigger><SelectValue placeholder="Select a theme" /></SelectTrigger>
                                             </FormControl>
@@ -407,15 +320,135 @@ export function AppSettingsForm() {
                                     </FormItem>
                                 )}
                             />
-                            <Button type="submit" disabled={isThemeLoading}>
-                                {isThemeLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                Save Theme
-                            </Button>
-                        </form>
-                    </Form>
-                </CardContent>
-            </Card>
-        </div>
+                             <FormField
+                                control={settingsForm.control}
+                                name="aiFeaturesEnabled"
+                                render={({ field }) => (
+                                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                                    <div className="space-y-0.5">
+                                    <FormLabel>AI Features</FormLabel>
+                                    <FormDescription>
+                                        Enable or disable AI Tutor, AI Tests, etc.
+                                    </FormDescription>
+                                    </div>
+                                    <FormControl>
+                                    <Switch
+                                        checked={field.value}
+                                        onCheckedChange={field.onChange}
+                                    />
+                                    </FormControl>
+                                </FormItem>
+                                )}
+                            />
+                        </CardContent>
+                    </Card>
+
+                    {/* QR Code Card */}
+                    <Card>
+                        <CardHeader><CardTitle>Payment QR Code</CardTitle><CardDescription>Upload the QR code for payment pages.</CardDescription></CardHeader>
+                        <CardContent>
+                            <form onSubmit={qrForm.handleSubmit(onQrSubmit)} className="space-y-4">
+                                <FormField
+                                    control={qrForm.control} name="qrCodeFile"
+                                    render={({ field }) => (
+                                        <FormItem><FormLabel>QR Code Image</FormLabel>
+                                        <FormControl>
+                                            <div>
+                                                <Button type="button" variant="outline" className="w-full" onClick={() => qrFileInputRef.current?.click()}><Upload className="mr-2 h-4 w-4" />{qrPreview ? 'Change QR Code' : 'Upload QR Code'}</Button>
+                                                <input type="file" ref={qrFileInputRef} onChange={handleQrFileChange} className="hidden" accept="image/*" />
+                                            </div>
+                                        </FormControl>
+                                        {qrPreview && <Image src={qrPreview} alt="QR Code preview" width={200} height={200} className="mt-4 rounded-md mx-auto" />}
+                                        <FormMessage /></FormItem>
+                                    )}
+                                />
+                                <Button type="submit" disabled={isQrLoading}> {isQrLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Save QR Code </Button>
+                            </form>
+                        </CardContent>
+                    </Card>
+
+                    {/* Carousel Card */}
+                    <Card>
+                        <CardHeader><CardTitle>Home Page Carousel</CardTitle><CardDescription>Manage images for the dashboard slider.</CardDescription></CardHeader>
+                        <CardContent>
+                            <form onSubmit={carouselForm.handleSubmit(onCarouselSubmit)} className="space-y-4 mb-6">
+                                <FormField
+                                    control={carouselForm.control}
+                                    name="imageFile"
+                                    render={({ field: { onChange, value, ...fieldProps } }) => (
+                                        <FormItem>
+                                        <FormLabel>New Image</FormLabel>
+                                        <FormControl>
+                                            <div className="flex gap-2">
+                                                <Input
+                                                    type="file"
+                                                    accept="image/*"
+                                                    onChange={(e) => onChange(e.target.files?.[0])}
+                                                />
+                                                <Button type="submit" disabled={isCarouselLoading}>
+                                                    {isCarouselLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Add'}
+                                                </Button>
+                                            </div>
+                                        </FormControl>
+                                        <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                            </form>
+                            <div className="space-y-2">
+                                <h4 className="font-semibold">Current Images</h4>
+                                {carouselImages.length === 0 && <p className="text-sm text-muted-foreground">No images added yet.</p>}
+                                <div className="max-h-60 overflow-y-auto pr-2">
+                                    {carouselImages.map((url, index) => (
+                                        <div key={index} className="flex items-center justify-between gap-2 p-2 border rounded-md mb-2">
+                                            <div className="flex items-center gap-2 truncate">
+                                                <div className="relative w-10 h-10 shrink-0">
+                                                    <Image src={url} alt={`Carousel Image ${index+1}`} fill className="rounded-sm object-cover" />
+                                                </div>
+                                                <a href={url} target="_blank" rel="noopener noreferrer" className="text-xs text-muted-foreground truncate hover:underline">{url}</a>
+                                            </div>
+                                            <Button variant="ghost" size="icon" onClick={() => handleRemoveCarouselImage(url)}>
+                                                <Trash2 className="h-4 w-4 text-destructive" />
+                                            </Button>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    {/* Referral Link Card */}
+                    <Card>
+                        <CardHeader><CardTitle>Referral Link</CardTitle><CardDescription>Set the app link for the "Refer &amp; Earn" feature.</CardDescription></CardHeader>
+                        <CardContent>
+                            <form onSubmit={linkForm.handleSubmit(onReferralLinkSubmit)} className="space-y-4">
+                                <FormField
+                                    control={linkForm.control}
+                                    name="referralLink"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>App Link</FormLabel>
+                                            <FormControl>
+                                                <Input placeholder="https://yourapp.com" {...field} />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                                <Button type="submit" disabled={isLinkLoading}>
+                                    {isLinkLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                    Save Link
+                                </Button>
+                            </form>
+                        </CardContent>
+                    </Card>
+                </div>
+                 <Button type="submit" disabled={isThemeLoading}>
+                    {isThemeLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Save General Settings
+                </Button>
+            </form>
+        </Form>
         <Card>
             <CardHeader><CardTitle>Social Media Links</CardTitle><CardDescription>Add links to your social media profiles.</CardDescription></CardHeader>
             <CardContent>
